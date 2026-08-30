@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-[#050505]/90 backdrop-blur-md border-b border-white/10 px-3 sm:px-6 py-2.5">
+    <header className="sticky top-0 z-40 bg-[#050505]/95 backdrop-blur-md border-b border-white/10 px-3 sm:px-6 pt-9 sm:pt-4 pb-2.5">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2.5">
         
         {/* Brand & Nothing LED indicator */}
