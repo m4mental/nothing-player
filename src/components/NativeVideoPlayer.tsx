@@ -451,9 +451,11 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
       {/* Video Canvas Element */}
       <video
         ref={videoRef}
-        crossOrigin="anonymous"
         onError={() => {
-          setVideoError(`Cannot decode this video container/codec (${video.format || 'MKV'}) natively in WebView.`);
+          const isOnlineStream = video.url?.startsWith('http://') || video.url?.startsWith('https://');
+          if (!isOnlineStream) {
+            setVideoError(`Cannot decode this video container/codec (${video.format || 'MKV'}) natively in WebView.`);
+          }
         }}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
@@ -496,16 +498,27 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
               {videoError}
             </p>
           </div>
-          <button
-            onClick={() => {
-              triggerHaptic('heavy');
-              openNativePlayer(video.path, (video as any).contentUri);
-            }}
-            className="px-6 py-3 rounded-2xl bg-white text-black font-mono text-xs font-bold shadow-xl active-press hover:bg-white/90 flex items-center gap-2"
-          >
-            <Play className="w-4 h-4 fill-black" />
-            PLAY IN VLC / SYSTEM PLAYER
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                onClose();
+              }}
+              className="px-5 py-2.5 rounded-2xl bg-white/10 text-white font-mono text-xs font-bold active-press hover:bg-white/20"
+            >
+              GO BACK
+            </button>
+            <button
+              onClick={() => {
+                triggerHaptic('heavy');
+                openNativePlayer(video.path, (video as any).contentUri);
+              }}
+              className="px-5 py-2.5 rounded-2xl bg-white text-black font-mono text-xs font-bold shadow-xl active-press hover:bg-white/90 flex items-center gap-2"
+            >
+              <Play className="w-4 h-4 fill-black" />
+              PLAY IN VLC / SYSTEM
+            </button>
+          </div>
         </div>
       )}
 
