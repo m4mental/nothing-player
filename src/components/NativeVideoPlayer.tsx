@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import Hls from 'hls.js';
 import type { MediaItem, VideoFilterState } from '../types/media';
 import { parseSubtitles, getActiveSubtitle } from '../services/subtitleParser';
 import { GestureOverlay } from './GestureOverlay';
@@ -41,12 +42,16 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentTime, setCurrentTime] = useState(video.lastPosition || 0);
   const [duration, setDuration] = useState(video.duration || 0);
   const [audioBoostVolume, setAudioBoostVolume] = useState(100); // up to 200%
   const [isMuted, setIsMuted] = useState(false);
+  const [needsUnmute, setNeedsUnmute] = useState(false);
+  const [hlsAudioTracks, setHlsAudioTracks] = useState<{ id: number; name: string; lang: string }[]>([]);
+  const [selectedHlsAudioTrack, setSelectedHlsAudioTrack] = useState<number>(-1);
   const [isLocked, setIsLocked] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [aspectRatio, setAspectRatio] = useState<'fit' | 'stretch' | '16:9' | '21:9' | 'crop'>('fit');
@@ -75,95 +80,6 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
 
   // Codec error state
   const [videoError, setVideoError] = useState<string | null>(null);
-
-  // Web Audio DSP Nodes for Video Audio Processing
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
-  const voiceFilterRef = useRef<BiquadFilterNode | null>(null);
-  const compressorRef = useRef<DynamicsCompressorNode | null>(null);
-  const delayNodeRef = useRef<DelayNode | null>(null);
-  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
-
-  // Initialize Web Audio DSP for Video
-  const initVideoAudioDSP = () => {
-    if (!videoRef.current || audioCtxRef.current) return;
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      audioCtxRef.current = ctx;
-
-      const source = ctx.createMediaElementSource(videoRef.current);
-      sourceNodeRef.current = source;
-
-      // Voice Boost Filter (2.5kHz Dialogue Peak)
-      const voiceFilter = ctx.createBiquadFilter();
-      voiceFilter.type = 'peaking';
-      voiceFilter.frequency.value = 2500;
-      voiceFilter.Q.value = 1.0;
-      voiceFilter.gain.value = audioMode === 'voice_boost' ? 8 : 0;
-      voiceFilterRef.current = voiceFilter;
-
-      // Night Mode Dynamic Range Compressor
-      const compressor = ctx.createDynamicsCompressor();
-      compressor.threshold.value = audioMode === 'night_mode' ? -30 : -50;
-      compressor.knee.value = 10;
-      compressor.ratio.value = audioMode === 'night_mode' ? 16 : 1;
-      compressor.attack.value = 0.003;
-      compressor.release.value = 0.25;
-      compressorRef.current = compressor;
-
-      // Audio Delay Line
-      const delayNode = ctx.createDelay(2.0);
-      delayNode.delayTime.value = Math.max(0, audioDelayOffset);
-      delayNodeRef.current = delayNode;
-
-      // Volume & 200% Audio Boost Gain Node
-      const gainNode = ctx.createGain();
-      gainNode.gain.value = audioBoostVolume / 100;
-      gainNodeRef.current = gainNode;
-
-      // Connect DSP Chain: Source -> VoiceFilter -> Compressor -> Delay -> Gain -> Destination
-      source.connect(voiceFilter);
-      voiceFilter.connect(compressor);
-      compressor.connect(delayNode);
-      delayNode.connect(gainNode);
-      gainNode.connect(ctx.destination);
-    } catch (e) {
-      console.warn('Video WebAudio DSP initialization notice:', e);
-    }
-  };
-
-  // Update Audio Mode in Real Time
-  useEffect(() => {
-    if (voiceFilterRef.current && compressorRef.current) {
-      if (audioMode === 'voice_boost') {
-        voiceFilterRef.current.gain.value = 8;
-        compressorRef.current.ratio.value = 1;
-      } else if (audioMode === 'night_mode') {
-        voiceFilterRef.current.gain.value = 0;
-        compressorRef.current.threshold.value = -30;
-        compressorRef.current.ratio.value = 16;
-      } else {
-        voiceFilterRef.current.gain.value = 0;
-        compressorRef.current.ratio.value = 1;
-      }
-    }
-  }, [audioMode]);
-
-  // Update Audio Gain / 200% Boost
-  useEffect(() => {
-    if (gainNodeRef.current) {
-      gainNodeRef.current.gain.value = audioBoostVolume / 100;
-    }
-  }, [audioBoostVolume]);
-
-  // Update Audio Delay Sync
-  useEffect(() => {
-    if (delayNodeRef.current) {
-      delayNodeRef.current.delayTime.value = Math.max(0, audioDelayOffset);
-    }
-  }, [audioDelayOffset]);
 
   // Subtitles
   const [subtitleCues, setSubtitleCues] = useState<ReturnType<typeof parseSubtitles>>([]);
@@ -196,18 +112,108 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
     }
   }, [video, subtitlesOffset]);
 
-  // Resume last position on mount
+  // Direct Native Video Element Volume Controller
   useEffect(() => {
     if (videoRef.current) {
-      setVideoError(null);
-      if (video.lastPosition && video.lastPosition > 0) {
-        videoRef.current.currentTime = video.lastPosition;
-      }
-      videoRef.current.play().catch(e => {
-        console.warn('Auto play:', e);
-      });
-      setIsPlaying(true);
+      const vol = isMuted ? 0 : Math.min(1.0, audioBoostVolume / 100);
+      videoRef.current.volume = vol;
+      videoRef.current.muted = isMuted;
     }
+  }, [audioBoostVolume, isMuted]);
+
+  // Load and Attach Video Stream (HLS or Native)
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
+    setVideoError(null);
+    const streamUrl = video.url || video.path || '';
+    const isHls = streamUrl.includes('.m3u8') || streamUrl.includes('hls');
+
+    if (isHls && Hls.isSupported()) {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+      }
+
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        backBufferLength: 90,
+      });
+      hlsRef.current = hls;
+
+      hls.loadSource(streamUrl);
+      hls.attachMedia(videoElement);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (video.lastPosition && video.lastPosition > 0) {
+          videoElement.currentTime = video.lastPosition;
+        }
+        videoElement.play().catch(() => {
+          setNeedsUnmute(true);
+        });
+      });
+
+      hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (_, data) => {
+        if (data.audioTracks && data.audioTracks.length > 0) {
+          const tracks = data.audioTracks.map((t, idx) => ({
+            id: idx,
+            name: t.name || `Audio Track ${idx + 1}`,
+            lang: t.lang || ''
+          }));
+          setHlsAudioTracks(tracks);
+
+          // Auto-select AAC / Stereo track over incompatible Dolby EAC3 on browsers
+          const aacIdx = data.audioTracks.findIndex(t => 
+            (t.name && (t.name.toLowerCase().includes('aac') || t.name.toLowerCase().includes('stereo') || t.name.toLowerCase().includes('2.0'))) ||
+            (t.url && t.url.toLowerCase().includes('aac'))
+          );
+          if (aacIdx !== -1) {
+            hls.audioTrack = aacIdx;
+            setSelectedHlsAudioTrack(aacIdx);
+          } else {
+            setSelectedHlsAudioTrack(hls.audioTrack);
+          }
+        }
+      });
+
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls.recoverMediaError();
+              break;
+            default:
+              hls.destroy();
+              break;
+          }
+        }
+      });
+    } else if (videoElement.canPlayType('application/vnd.apple.mpegurl') && isHls) {
+      videoElement.src = streamUrl;
+      if (video.lastPosition && video.lastPosition > 0) {
+        videoElement.currentTime = video.lastPosition;
+      }
+      videoElement.play().catch(() => setNeedsUnmute(true));
+    } else {
+      videoElement.src = streamUrl;
+      if (video.lastPosition && video.lastPosition > 0) {
+        videoElement.currentTime = video.lastPosition;
+      }
+      videoElement.play().catch(() => setNeedsUnmute(true));
+    }
+
+    setIsPlaying(true);
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
   }, [video]);
 
   // Auto-hide controls after 3.5s
@@ -445,8 +451,7 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
       {/* Video Canvas Element */}
       <video
         ref={videoRef}
-        src={video.url}
-        onPlay={initVideoAudioDSP}
+        crossOrigin="anonymous"
         onError={() => {
           setVideoError(`Cannot decode this video container/codec (${video.format || 'MKV'}) natively in WebView.`);
         }}
@@ -459,6 +464,25 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
         className={`${getAspectRatioClasses()} ${filters.duotoneRed ? 'filter-duotone-red' : ''}`}
         playsInline
       />
+
+      {/* Browser Autoplay Tap-to-Unmute Overlay */}
+      {needsUnmute && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (videoRef.current) {
+              videoRef.current.muted = false;
+              videoRef.current.play();
+              setNeedsUnmute(false);
+              setIsMuted(false);
+            }
+          }}
+          className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-[#D71921] text-white px-5 py-2.5 rounded-full font-mono text-xs font-bold shadow-2xl flex items-center gap-2 animate-bounce border border-white/20 active-press cursor-pointer"
+        >
+          <Volume2 className="w-4 h-4" />
+          <span>TAP TO UNMUTE AUDIO</span>
+        </button>
+      )}
 
       {/* Codec Error Fallback Overlay */}
       {videoError && (
@@ -821,18 +845,23 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
           <div className="flex flex-col gap-1.5">
             <span className="text-[10px] font-mono text-white/50">AVAILABLE AUDIO STREAMS:</span>
             
-            {[
-              { id: 1, name: 'Track 1: Original Audio (AAC 2.0 Stereo)', lang: 'Default' },
-              { id: 2, name: 'Track 2: Hindi Dubbed (Dolby 5.1)', lang: 'Hindi' },
-              { id: 3, name: 'Track 3: English Audio (AC3 5.1)', lang: 'English' }
-            ].map(track => {
-              const isSelected = selectedAudioTrack === track.id;
+            {(hlsAudioTracks.length > 0 ? hlsAudioTracks : [
+              { id: 0, name: 'Track 1: Original Audio (AAC 2.0 Stereo)', lang: 'Default' },
+              { id: 1, name: 'Track 2: Hindi Dubbed (Dolby 5.1)', lang: 'Hindi' },
+              { id: 2, name: 'Track 3: English Audio (AC3 5.1)', lang: 'English' }
+            ]).map(track => {
+              const isSelected = hlsAudioTracks.length > 0 ? selectedHlsAudioTrack === track.id : selectedAudioTrack === track.id;
               return (
                 <button
                   key={track.id}
                   onClick={() => {
                     triggerHaptic('selection');
-                    setSelectedAudioTrack(track.id);
+                    if (hlsAudioTracks.length > 0 && hlsRef.current) {
+                      hlsRef.current.audioTrack = track.id;
+                      setSelectedHlsAudioTrack(track.id);
+                    } else {
+                      setSelectedAudioTrack(track.id);
+                    }
                   }}
                   className={`p-2 rounded-xl text-xs font-mono text-left flex items-center justify-between border transition-all ${
                     isSelected ? 'bg-white text-black font-bold border-white' : 'bg-white/5 border-white/5 text-white/70'
