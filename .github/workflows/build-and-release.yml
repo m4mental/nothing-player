@@ -28,19 +28,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '21'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+          cache: 'gradle'
 
       - name: Install NPM Dependencies
-        run: npm ci || npm install
+        run: npm install
 
       - name: Build Web Assets
         run: npm run build
@@ -53,14 +50,18 @@ jobs:
 
       - name: Build Android Debug APK
         working-directory: ./android
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NothingPlayer-v2.0-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Prepare Release Assets
         run: |
           mkdir -p release-assets
-          # Copy Built APK
-          cp android/app/build/outputs/apk/debug/app-debug.apk release-assets/NothingPlayer-v1.0.apk
-          # Package Web App Zip
+          cp android/app/build/outputs/apk/debug/app-debug.apk release-assets/NothingPlayer-v2.0.apk
           cd dist && zip -r ../release-assets/nothing-player-web-bundle.zip . && cd ..
 
       - name: Generate Changelog & Release Notes
@@ -71,20 +72,19 @@ jobs:
           COMMIT_AUTHOR=$(git log -1 --pretty=format:"%an")
           COMMIT_HASH=$(git log -1 --pretty=format:"%h")
           
-          # Recent commits log
           COMMITS_LOG=$(git log -n 10 --pretty=format:"- [%h] %s (%an)")
 
           cat << 'EOF' > release_notes.md
-          # 🔴 NOTHING PLAYER (01) // ANDROID RELEASE
+          # 🔴 NOTHING PLAYER v2.0 // ANDROID RELEASE
 
           > **Build Timestamp:** $DATE  
-          > **Commit:** \`$COMMIT_HASH\` by @$COMMIT_AUTHOR  
+          > **Commit:** `$COMMIT_HASH` by @$COMMIT_AUTHOR  
           > **Latest Push Note:** $COMMIT_MSG  
 
           ---
 
           ### 📲 Download Android APK
-          - **[NothingPlayer-v1.0.apk](NothingPlayer-v1.0.apk)** *(Direct install on any Android phone)*
+          - **[NothingPlayer-v2.0.apk](NothingPlayer-v2.0.apk)** *(Direct install on any Android phone)*
 
           ---
 
@@ -95,17 +95,14 @@ jobs:
           ---
 
           ## 📱 Mobile App Features Included
-          - **Dedicated Dual Hub**: [01 / MUSIC] Audiophile Deck & [02 / VIDEO] Cinema Hub
-          - **VLC Mobile Touch Gestures**:
-            - **Left Vertical Swipe**: Screen Brightness (0% - 150%)
-            - **Right Vertical Swipe**: Volume with 200% Audio Boost
-            - **Horizontal Swipe**: High-precision timeline scrub
-            - **Double Tap**: Fast ±10s seek
-          - **10-Band Graphic Equalizer**: Preamp boost, bass punch & acoustic presets
-          - **Hardware Glyph Interface**: Dynamic LED visualizers reactive to audio frequencies
-          - **Synced Lyrics & Subtitles Engine**: .LRC auto-scrolling lyrics & .SRT / .VTT video subtitles
-          - **Android MediaSession**: Background audio playback, lock screen metadata & notifications
-          - **Persistent Offline Media Vault**: IndexedDB file storage & multi-format support
+          - **Universal Dual-Engine**: AndroidX Media3 (HW+) + LibVLC Native C++ Engine (SW+)
+          - **Dolby EAC-3 5.1 / AC-3 / DTS / TrueHD Native Downmixing**: Crystal-clear surround playback with zero codec errors
+          - **Zero-Black-Screen TextureView Rendering**: Direct hardware streaming without video freezing
+          - **Pro Gesture Cinema Controls**: Vertical swipe brightness/volume with 200% audio boost & real-time Nothing OS HUD
+          - **Multi-Track Audio & Subtitle Switchers**: Top bar dialogs for multi-language tracks and embedded subtitles
+          - **Background Audio Service**: MediaStyle foreground playback service with lockscreen and Bluetooth headset controls
+          - **Detailed File Specs Sheet**: Exact storage path display with 1-tap copy button
+          - **Network Stream Player**: Direct video link playback with clipboard paste and demo streams
 
           ---
           *Automated Android APK build powered by GitHub Actions for NOTHING PLAYER.*
@@ -120,11 +117,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: release-${{ github.sha }}
-          name: "🔴 Nothing Player Android App - ${{ github.sha }}"
+          tag_name: v2.0.${{ github.run_number }}
+          name: "🔴 Nothing Player v2.0 (Build #${{ github.run_number }})"
           body_path: release_notes.md
           files: |
-            release-assets/NothingPlayer-v1.0.apk
+            release-assets/NothingPlayer-v2.0.apk
             release-assets/nothing-player-web-bundle.zip
           draft: false
           prerelease: false
