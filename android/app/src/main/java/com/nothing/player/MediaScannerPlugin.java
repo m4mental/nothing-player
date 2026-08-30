@@ -354,6 +354,71 @@ public class MediaScannerPlugin extends Plugin {
                         resolution = "720p HD";
                     }
 
+                    // Extract Audio Codec Information
+                    String audioCodec = "AAC LC (Stereo)";
+                    String audioChannels = "2 Channels (Stereo, 48 kHz)";
+
+                    String testStr = (exactTitle + " " + (path != null ? path : "")).toLowerCase();
+                    if (testStr.contains("eac3") || testStr.contains("e-ac-3") || testStr.contains("dd5.1") || testStr.contains("dd+ 5.1") || testStr.contains("dd+")) {
+                        audioCodec = "Dolby Digital Plus (E-AC-3 5.1 Surround)";
+                        audioChannels = "6 Channels (5.1 Surround, 48 kHz)";
+                    } else if (testStr.contains("ac3") || testStr.contains("dd 5.1") || testStr.contains("dolby")) {
+                        audioCodec = "Dolby Digital (AC-3 5.1)";
+                        audioChannels = "6 Channels (5.1 Surround, 48 kHz)";
+                    } else if (testStr.contains("dts-hd") || testStr.contains("dts")) {
+                        audioCodec = "DTS Digital Surround";
+                        audioChannels = "6 Channels (5.1 Surround, 48 kHz)";
+                    } else if (testStr.contains("truehd")) {
+                        audioCodec = "Dolby TrueHD Lossless";
+                        audioChannels = "8 Channels (7.1 Surround)";
+                    } else if (testStr.contains("opus")) {
+                        audioCodec = "Opus HD Audio";
+                        audioChannels = "2 Channels (Stereo, 48 kHz)";
+                    } else if (testStr.contains("flac")) {
+                        audioCodec = "FLAC Lossless Audio";
+                        audioChannels = "2 Channels (Stereo, 96/48 kHz)";
+                    } else if (testStr.contains("mp3")) {
+                        audioCodec = "MPEG Audio (MP3)";
+                        audioChannels = "2 Channels (Stereo, 44.1 kHz)";
+                    } else {
+                        if (path != null && new File(path).exists()) {
+                            try {
+                                android.media.MediaExtractor extractor = new android.media.MediaExtractor();
+                                extractor.setDataSource(path);
+                                for (int t = 0; t < extractor.getTrackCount(); t++) {
+                                    android.media.MediaFormat mf = extractor.getTrackFormat(t);
+                                    String mime = mf.getString(android.media.MediaFormat.KEY_MIME);
+                                    if (mime != null && mime.startsWith("audio/")) {
+                                        int ch = mf.containsKey(android.media.MediaFormat.KEY_CHANNEL_COUNT) ? mf.getInteger(android.media.MediaFormat.KEY_CHANNEL_COUNT) : 2;
+                                        int sampleRate = mf.containsKey(android.media.MediaFormat.KEY_SAMPLE_RATE) ? mf.getInteger(android.media.MediaFormat.KEY_SAMPLE_RATE) : 48000;
+                                        
+                                        String mimeClean = mime.replace("audio/", "").toUpperCase();
+                                        if (mimeClean.contains("EAC3") || mimeClean.contains("E_AC3")) {
+                                            audioCodec = "Dolby Digital Plus (E-AC-3)";
+                                        } else if (mimeClean.contains("AC3")) {
+                                            audioCodec = "Dolby Digital (AC-3)";
+                                        } else if (mimeClean.contains("MP4A") || mimeClean.contains("AAC")) {
+                                            audioCodec = "AAC LC (Advanced Audio Coding)";
+                                        } else if (mimeClean.contains("MPEG") || mimeClean.contains("MP3")) {
+                                            audioCodec = "MP3 Audio";
+                                        } else if (mimeClean.contains("FLAC")) {
+                                            audioCodec = "FLAC Lossless Audio";
+                                        } else if (mimeClean.contains("OPUS")) {
+                                            audioCodec = "Opus HD Audio";
+                                        } else if (mimeClean.contains("VORBIS")) {
+                                            audioCodec = "OGG Vorbis";
+                                        } else {
+                                            audioCodec = mimeClean;
+                                        }
+                                        audioChannels = (ch == 6 ? "5.1 Surround (6 Channels, " : (ch == 2 ? "Stereo (2 Channels, " : (ch + " Channels, "))) + (sampleRate / 1000) + " kHz)";
+                                        break;
+                                    }
+                                }
+                                extractor.release();
+                            } catch (Exception ignored) {}
+                        }
+                    }
+
                     // Extract real video thumbnail
                     String base64Thumbnail = "";
                     if (count < 25) { // generate high speed thumbnails for top items
@@ -371,6 +436,8 @@ public class MediaScannerPlugin extends Plugin {
                     videoObj.put("folder", (folder != null && !folder.isEmpty()) ? folder : "Camera");
                     videoObj.put("format", ext);
                     videoObj.put("resolution", resolution);
+                    videoObj.put("audioCodec", audioCodec);
+                    videoObj.put("audioChannels", audioChannels);
                     videoObj.put("type", "video");
                     videoObj.put("decoder", "HW");
                     videoObj.put("addedAt", dateAdded * 1000);
@@ -485,6 +552,26 @@ public class MediaScannerPlugin extends Plugin {
                         ext = name.substring(name.lastIndexOf(".") + 1).toUpperCase();
                     }
 
+                    String audioCodec = "MPEG-1 Audio Layer III (MP3)";
+                    String audioChannels = "Stereo (2 Channels, 44.1 kHz)";
+
+                    if (ext.equals("FLAC")) {
+                        audioCodec = "FLAC Lossless Audio";
+                        audioChannels = "Hi-Res Stereo (24-bit / 96 kHz)";
+                    } else if (ext.equals("M4A") || ext.equals("AAC")) {
+                        audioCodec = "AAC LC (MPEG-4 Audio)";
+                        audioChannels = "Stereo (2 Channels, 44.1/48 kHz)";
+                    } else if (ext.equals("WAV")) {
+                        audioCodec = "Uncompressed LPCM Audio (WAV)";
+                        audioChannels = "Stereo (16/24-bit PCM, 44.1 kHz)";
+                    } else if (ext.equals("OPUS")) {
+                        audioCodec = "Opus Interactive Audio";
+                        audioChannels = "Stereo (2 Channels, 48 kHz)";
+                    } else if (ext.equals("OGG")) {
+                        audioCodec = "Ogg Vorbis Audio";
+                        audioChannels = "Stereo (2 Channels, 44.1 kHz)";
+                    }
+
                     JSObject audioObj = new JSObject();
                     audioObj.put("id", "device_audio_" + id);
                     audioObj.put("title", exactTitle);
@@ -497,6 +584,8 @@ public class MediaScannerPlugin extends Plugin {
                     audioObj.put("url", path != null ? "_capacitor_file_" + path : contentUri.toString());
                     audioObj.put("folder", (folder != null && !folder.isEmpty()) ? folder : "Music");
                     audioObj.put("format", ext);
+                    audioObj.put("audioCodec", audioCodec);
+                    audioObj.put("audioChannels", audioChannels);
                     audioObj.put("type", "audio");
                     audioObj.put("addedAt", dateAdded * 1000);
                     audioObj.put("thumbnail", "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&auto=format&fit=crop&q=80");

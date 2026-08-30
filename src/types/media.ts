@@ -24,6 +24,8 @@ export interface MediaItem {
   decoder?: 'HW' | 'SW';
   path?: string;
   contentUri?: string;
+  audioCodec?: string; // e.g. "Dolby Digital Plus (E-AC-3 5.1)", "AAC LC", "DTS", "FLAC"
+  audioChannels?: string; // e.g. "5.1 Surround (6 Channels, 48 kHz)", "Stereo (2 Channels)"
 }
 
 export interface VideoFolder {

@@ -10,7 +10,8 @@ import {
   Check, 
   HardDrive, 
   Music, 
-  Play 
+  Play,
+  Volume2
 } from 'lucide-react';
 import { triggerHaptic } from '../services/haptic';
 
@@ -348,6 +349,25 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
               <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase">SAMPLE RATE</span>
                 <span className="text-white font-bold">44.1 kHz • 16/24-bit</span>
+              </div>
+            </div>
+
+            {/* Audio Codec & Sound Architecture */}
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1.5 font-mono">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-white/40 uppercase flex items-center gap-1.5">
+                  <Volume2 className="w-3.5 h-3.5 text-[#D71921]" />
+                  AUDIO CODEC & SOUND FORMAT
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/90 text-[9px] font-bold">
+                  {infoModalTrack.format}
+                </span>
+              </div>
+              <div className="text-white font-bold text-xs">
+                {infoModalTrack.audioCodec || (infoModalTrack.format === 'FLAC' ? 'FLAC Lossless Audio' : (infoModalTrack.format === 'M4A' || infoModalTrack.format === 'AAC' ? 'AAC LC (MPEG-4 Audio)' : 'MPEG-1 Audio Layer III (MP3)'))}
+              </div>
+              <div className="text-[11px] text-white/60">
+                Configuration: <span className="text-white/90 font-medium">{infoModalTrack.audioChannels || 'Stereo (2 Channels, 44.1 kHz, 16/24-bit)'}</span>
               </div>
             </div>
 

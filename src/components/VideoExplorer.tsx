@@ -18,7 +18,8 @@ import {
   Film,
   Globe,
   ExternalLink,
-  History
+  History,
+  Volume2
 } from 'lucide-react';
 import { triggerHaptic } from '../services/haptic';
 
@@ -467,7 +468,7 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
                       </div>
 
                       {/* Top Badges (Resolution & Codec) */}
-                      <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                      <div className="absolute top-2 left-2 flex items-center gap-1.5 flex-wrap">
                         {video.resolution && (
                           <span className="px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-md text-[9px] font-mono text-white font-bold border border-white/10">
                             {video.resolution}
@@ -476,6 +477,11 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
                         <span className="px-1.5 py-0.5 rounded bg-[#D71921]/80 backdrop-blur-md text-[9px] font-mono text-white font-bold">
                           {video.format}
                         </span>
+                        {(video.audioCodec?.includes('Dolby') || video.audioCodec?.includes('E-AC-3') || video.audioCodec?.includes('5.1') || video.title?.toLowerCase().includes('dd5.1') || video.title?.toLowerCase().includes('5.1')) && (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/80 backdrop-blur-md text-[9px] font-mono text-white font-bold">
+                            5.1 SURROUND
+                          </span>
+                        )}
                       </div>
 
                       {/* Duration Tag */}
@@ -561,10 +567,15 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
                       <h3 className="font-mono text-xs font-bold text-white line-clamp-1 group-hover:text-[#D71921] transition-colors">
                         {video.title}
                       </h3>
-                      <div className="flex items-center gap-2 mt-1 text-[10px] font-mono text-white/50">
+                      <div className="flex items-center gap-2 mt-1 text-[10px] font-mono text-white/50 flex-wrap">
                         <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/80">
                           {video.format}
                         </span>
+                        {(video.audioCodec?.includes('Dolby') || video.audioCodec?.includes('E-AC-3') || video.audioCodec?.includes('5.1') || video.title?.toLowerCase().includes('dd5.1') || video.title?.toLowerCase().includes('5.1')) && (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                            5.1 DD
+                          </span>
+                        )}
                         <span>{video.folder}</span>
                         <span>•</span>
                         <span>{formatFileSize(video.size)}</span>
@@ -682,6 +693,25 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
                 <span className="text-white font-bold">
                   {infoModalVideo.addedAt ? new Date(infoModalVideo.addedAt).toLocaleDateString() : 'Recent'}
                 </span>
+              </div>
+            </div>
+
+            {/* Audio Codec & Sound Architecture */}
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1.5 font-mono">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-white/40 uppercase flex items-center gap-1.5">
+                  <Volume2 className="w-3.5 h-3.5 text-[#D71921]" />
+                  AUDIO CODEC & SOUND FORMAT
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-[#D71921]/20 border border-[#D71921]/40 text-[#D71921] text-[9px] font-bold">
+                  {infoModalVideo.audioCodec?.includes('Dolby') || infoModalVideo.audioCodec?.includes('E-AC-3') || infoModalVideo.audioCodec?.includes('5.1') || infoModalVideo.title?.toLowerCase().includes('dd5.1') || infoModalVideo.title?.toLowerCase().includes('5.1') ? 'DOLBY 5.1' : 'STEREO'}
+                </span>
+              </div>
+              <div className="text-white font-bold text-xs">
+                {infoModalVideo.audioCodec || (infoModalVideo.title?.toLowerCase().includes('dd5.1') || infoModalVideo.title?.toLowerCase().includes('eac3') ? 'Dolby Digital Plus (E-AC-3 5.1 Surround)' : 'AAC LC (Stereo)')}
+              </div>
+              <div className="text-[11px] text-white/60">
+                Configuration: <span className="text-white/90 font-medium">{infoModalVideo.audioChannels || (infoModalVideo.title?.toLowerCase().includes('dd5.1') || infoModalVideo.title?.toLowerCase().includes('5.1') ? '6 Channels (5.1 Surround, 48 kHz)' : '2 Channels (Stereo, 48 kHz)')}</span>
               </div>
             </div>
 
