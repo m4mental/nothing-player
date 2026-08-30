@@ -24,10 +24,10 @@ export const GestureOverlay: React.FC<GestureOverlayProps> = ({
         <div className="flex flex-col items-center gap-3 p-4 sm:p-5 rounded-2xl bg-black/80 backdrop-blur-md border border-white/20 shadow-2xl animate-fade-in">
           <Sun className="w-8 h-8 text-white animate-pulse" />
           <div className="flex flex-col items-center">
-            <span className="font-dot text-lg text-white font-bold tracking-wider">
+            <span className="font-ndot-title text-base text-white font-bold tracking-wider">
               BRIGHTNESS
             </span>
-            <span className="font-mono text-sm text-white/80">
+            <span className="font-ndot-num text-sm text-white/80 mt-0.5">
               {Math.round(value)}%
             </span>
           </div>
@@ -52,10 +52,10 @@ export const GestureOverlay: React.FC<GestureOverlayProps> = ({
           )}
 
           <div className="flex flex-col items-center">
-            <span className="font-dot text-lg text-white font-bold tracking-wider flex items-center gap-1.5">
-              VOLUME {value > 100 && <span className="text-[#D71921] text-xs font-mono font-normal">[BOOST]</span>}
+            <span className="font-ndot-title text-base text-white font-bold tracking-wider flex items-center gap-1.5">
+              VOLUME {value > 100 && <span className="text-[#D71921] text-xs font-ndot font-normal">[BOOST]</span>}
             </span>
-            <span className={`font-mono text-sm font-bold ${value > 100 ? 'text-[#D71921]' : 'text-white/80'}`}>
+            <span className={`font-ndot-num text-sm font-bold mt-0.5 ${value > 100 ? 'text-[#D71921]' : 'text-white/80'}`}>
               {Math.round(value)}%
             </span>
           </div>
@@ -73,10 +73,10 @@ export const GestureOverlay: React.FC<GestureOverlayProps> = ({
       {/* Seek HUD (Horizontal Swipe) */}
       {type === 'seek' && (
         <div className="flex flex-col items-center gap-2 p-4 sm:p-6 rounded-2xl bg-black/85 backdrop-blur-md border border-white/20 shadow-2xl">
-          <div className="font-dot text-xl text-white font-bold tracking-wider">
+          <div className="font-ndot-num text-xl text-white font-bold tracking-wider">
             {formattedText || '00:00'}
           </div>
-          <span className="font-mono text-xs text-[#D71921] tracking-widest uppercase">
+          <span className="font-ndot text-xs text-[#D71921] tracking-widest uppercase">
             // SEEK POSITION //
           </span>
         </div>

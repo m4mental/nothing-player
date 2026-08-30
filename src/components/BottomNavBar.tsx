@@ -19,20 +19,20 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
   const tabs: { id: MainTab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { 
       id: 'VIDEOS', 
-      label: 'Videos', 
-      icon: <Film className="w-5 h-5" />, 
+      label: 'VIDEOS', 
+      icon: <Film className="w-4 h-4" />, 
       badge: videoCount 
     },
     { 
       id: 'MUSIC', 
-      label: 'Music', 
-      icon: <Music className="w-5 h-5" />, 
+      label: 'MUSIC', 
+      icon: <Music className="w-4 h-4" />, 
       badge: musicCount 
     },
     { 
       id: 'ME', 
-      label: 'Settings', 
-      icon: <Settings className="w-5 h-5" /> 
+      label: 'SETTINGS', 
+      icon: <Settings className="w-4 h-4" /> 
     },
   ];
 
@@ -58,14 +58,14 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
               <div className="relative">
                 {tab.icon}
                 {tab.badge !== undefined && tab.badge > 0 && !isActive && (
-                  <span className="absolute -top-1.5 -right-2 px-1 rounded-full bg-[#D71921] text-white text-[8px] font-mono font-bold">
+                  <span className="absolute -top-1.5 -right-2.5 px-1.5 py-0.2 rounded-full bg-[#D71921] text-white text-[8px] font-ndot-num font-bold">
                     {tab.badge}
                   </span>
                 )}
               </div>
             </div>
 
-            <span className={`text-[10px] font-sans mt-0.5 tracking-wide ${
+            <span className={`text-[10px] font-ndot mt-1 tracking-wider ${
               isActive ? 'text-white font-bold' : 'text-white/40 group-hover:text-white/60'
             }`}>
               {tab.label}

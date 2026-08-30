@@ -261,10 +261,10 @@ export const NowPlayingSheet: React.FC<NowPlayingSheetProps> = ({
       {/* Track Info (Title & Artist) */}
       <div className="px-6 mb-2 flex items-center justify-between">
         <div className="flex-1 min-w-0 pr-4">
-          <h2 className="font-dot text-xl sm:text-2xl font-bold text-white line-clamp-1">
+          <h2 className="font-ndot-title text-lg sm:text-xl font-bold text-white line-clamp-1">
             {currentTrack.title}
           </h2>
-          <p className="font-sans text-sm text-white/60 line-clamp-1 mt-0.5">
+          <p className="font-mono text-xs text-white/60 line-clamp-1 mt-1">
             {currentTrack.artist || 'Unknown Artist'}
           </p>
         </div>
@@ -290,12 +290,12 @@ export const NowPlayingSheet: React.FC<NowPlayingSheetProps> = ({
           }}
         >
           <div 
-            className="h-full bg-white transition-all duration-75 group-hover:bg-[#D71921]"
+            className="h-full bg-[#D71921] glow-red transition-all" 
             style={{ width: `${progressPercent}%` }}
           />
         </div>
 
-        <div className="flex justify-between font-mono text-[11px] text-white/50">
+        <div className="flex items-center justify-between text-xs font-ndot-num text-white/60">
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
         </div>

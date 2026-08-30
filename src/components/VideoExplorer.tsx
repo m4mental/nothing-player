@@ -174,21 +174,21 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
               className="flex items-center gap-1.5 p-1 -ml-1 text-white hover:text-[#D71921] active-press"
             >
               <ChevronLeft className="w-5 h-5" />
-              <span className="font-dot text-base sm:text-lg font-bold tracking-wider uppercase">
+              <span className="font-ndot-title text-sm sm:text-base font-bold tracking-wider uppercase text-white">
                 {selectedFolder}
               </span>
-              <span className="text-[10px] font-mono text-white/40">
+              <span className="text-[10px] font-ndot-num text-white/40">
                 ({foldersMap[selectedFolder]?.length || 0})
               </span>
             </button>
           ) : (
             <>
               <div className="w-2.5 h-2.5 rounded-full bg-[#D71921] glow-red" />
-              <h1 className="font-dot text-base sm:text-lg font-bold tracking-wider text-white">
+              <h1 className="font-ndot-title text-sm sm:text-base font-bold tracking-wider text-white">
                 NOTHING VIDEOS
               </h1>
-              <span className="text-[10px] font-mono text-white/40">
-                ({viewMode === 'folders' ? `${folderNames.length} Folders` : `${videos.length} Videos`})
+              <span className="text-[10px] font-ndot-num text-white/40">
+                ({viewMode === 'folders' ? `${folderNames.length} FOLDERS` : `${videos.length} VIDEOS`})
               </span>
             </>
           )}
@@ -295,13 +295,13 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
               triggerHaptic('selection');
               setViewMode('folders');
             }}
-            className={`px-4 py-1.5 rounded-full text-xs font-mono transition-all whitespace-nowrap active-press ${
+            className={`px-4 py-1.5 rounded-full text-xs font-ndot transition-all whitespace-nowrap active-press ${
               viewMode === 'folders'
                 ? 'bg-white text-black font-bold shadow-md shadow-white/10'
                 : 'bg-white/5 text-white/60 hover:text-white border border-white/5'
             }`}
           >
-            📁 Folders ({folderNames.length})
+            FOLDERS ({folderNames.length})
           </button>
 
           <button
@@ -309,13 +309,13 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
               triggerHaptic('selection');
               setViewMode('all');
             }}
-            className={`px-4 py-1.5 rounded-full text-xs font-mono transition-all whitespace-nowrap active-press ${
+            className={`px-4 py-1.5 rounded-full text-xs font-ndot transition-all whitespace-nowrap active-press ${
               viewMode === 'all'
                 ? 'bg-white text-black font-bold shadow-md shadow-white/10'
                 : 'bg-white/5 text-white/60 hover:text-white border border-white/5'
             }`}
           >
-            🎬 All Videos ({videos.length})
+            ALL VIDEOS ({videos.length})
           </button>
         </div>
       )}
@@ -609,7 +609,7 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#D71921] glow-red" />
-                <span className="font-dot text-sm text-white font-bold tracking-wider">FILE SPECIFICATIONS & INFO</span>
+                <span className="font-ndot-title text-xs sm:text-sm text-white font-bold tracking-wider">FILE SPECIFICATIONS & INFO</span>
               </div>
               <button 
                 onClick={() => setInfoModalVideo(null)} 
@@ -752,7 +752,7 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#D71921] glow-red" />
-                <span className="font-dot text-sm text-white font-bold tracking-wider">NETWORK STREAM / DIRECT URL</span>
+                <span className="font-ndot-title text-xs sm:text-sm text-white font-bold tracking-wider">NETWORK STREAM // DIRECT URL</span>
               </div>
               <button 
                 onClick={() => setShowStreamModal(false)} 

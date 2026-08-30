@@ -21,14 +21,54 @@
   }
 }
 
-/* Nothing Dot Matrix Typography */
+/* Nothing Authentic NDot & Dot Matrix Typography */
+.font-ndot,
 .font-dot {
-  font-family: 'DotGothic16', 'VT323', monospace;
-  letter-spacing: 0.05em;
+  font-family: 'Silkscreen', 'DotGothic16', 'Pixelify Sans', 'VT323', monospace;
+  letter-spacing: 0.08em;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-ndot-title {
+  font-family: 'Silkscreen', 'DotGothic16', monospace;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.font-ndot-clean {
+  font-family: 'Pixelify Sans', 'Silkscreen', 'DotGothic16', monospace;
+  letter-spacing: 0.04em;
+}
+
+.font-ndot-num {
+  font-family: 'Silkscreen', 'DotGothic16', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
 }
 
 .font-mono-tech {
   font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+/* Nothing OS Glyph Matrix & Glass Utilities */
+.nothing-card {
+  background: rgba(14, 14, 14, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.5rem;
+}
+
+.nothing-badge {
+  font-family: 'Silkscreen', 'DotGothic16', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 6px;
 }
 
 /* Background Matrix Grid Pattern */
@@ -42,6 +82,11 @@
   background-size: 8px 8px;
   background-image: 
     radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+}
+
+.bg-dot-matrix {
+  background-size: 16px 16px;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1.5px, transparent 1.5px);
 }
 
 /* Nothing Red Glow */

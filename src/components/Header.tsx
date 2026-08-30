@@ -44,11 +44,11 @@ export const Header: React.FC<HeaderProps> = ({
             <div className={`w-2.5 h-2.5 rounded-full ${isPlaying ? 'bg-[#D71921] glow-red animate-pulse' : 'bg-white/30'}`} />
             
             <div className="flex flex-col">
-              <span className="font-dot text-sm sm:text-base tracking-widest text-white font-bold flex items-center gap-1.5">
-                NOTHING PLAYER <span className="text-[#D71921] text-xs font-mono font-normal">(01)</span>
+              <span className="font-ndot-title text-sm sm:text-base tracking-widest text-white font-bold flex items-center gap-1.5">
+                NOTHING PLAYER <span className="text-[#D71921] text-xs font-ndot font-normal">(01)</span>
               </span>
-              <span className="font-mono-tech text-[9px] text-white/40 tracking-wider">
-                VLC-GRADE DUAL HUB // TECH SUITE
+              <span className="font-ndot text-[9px] text-white/40 tracking-wider">
+                DUAL-ENGINE // NOTHING OS // (01)
               </span>
             </div>
           </div>

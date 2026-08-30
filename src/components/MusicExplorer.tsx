@@ -68,10 +68,10 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
       <div className="flex items-center justify-between py-2 border-b border-white/10 mb-3">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-[#D71921] glow-red" />
-          <h1 className="font-dot text-base sm:text-lg font-bold tracking-wider text-white">
+          <h1 className="font-ndot-title text-sm sm:text-base font-bold tracking-wider text-white">
             NOTHING MUSIC
           </h1>
-          <span className="text-[10px] font-mono text-white/40">({tracks.length})</span>
+          <span className="text-[10px] font-ndot-num text-white/40">({tracks.length})</span>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -119,14 +119,14 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
         <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
         <input
           type="text"
-          placeholder="Search songs, artists, albums, folders..."
+          placeholder="Search tracks, artists, albums, folders..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full bg-[#111111] border border-white/10 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-sans text-white placeholder-white/40 focus:outline-none focus:border-white/30"
         />
       </div>
 
-      {/* Sub Category Chips */}
+      {/* Sub Category Tabs */}
       <div className="flex items-center gap-2 mb-4 overflow-x-auto no-scrollbar">
         {(['TRACKS', 'FOLDERS', 'ARTISTS', 'ALBUMS'] as const).map((tab) => {
           const isActive = subTab === tab;
@@ -137,7 +137,7 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
                 triggerHaptic('selection');
                 setSubTab(tab);
               }}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-mono transition-all whitespace-nowrap active-press ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-ndot transition-all whitespace-nowrap active-press ${
                 isActive
                   ? 'bg-white text-black font-bold shadow-md shadow-white/10'
                   : 'bg-white/5 text-white/60 hover:text-white border border-white/5'
@@ -262,7 +262,7 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#D71921] glow-red" />
-                <span className="font-dot text-sm text-white font-bold tracking-wider">AUDIO FILE SPECIFICATIONS</span>
+                <span className="font-ndot-title text-xs sm:text-sm text-white font-bold tracking-wider">AUDIO FILE SPECIFICATIONS</span>
               </div>
               <button 
                 onClick={() => setInfoModalTrack(null)} 

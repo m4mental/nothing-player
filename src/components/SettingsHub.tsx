@@ -30,11 +30,11 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
       <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-2">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-[#D71921] glow-red" />
-          <h1 className="font-dot text-base sm:text-lg font-bold tracking-wider text-white">
+          <h1 className="font-ndot-title text-sm sm:text-base font-bold tracking-wider text-white">
             SETTINGS & PREFERENCES
           </h1>
         </div>
-        <span className="font-mono text-[10px] text-white/40">NOTHING OS // 2.5</span>
+        <span className="font-ndot text-[10px] text-white/40">NOTHING OS // 2.5</span>
       </div>
 
       {/* Settings Grid */}
@@ -167,11 +167,11 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
 
       {/* About Box */}
       <div className="p-5 rounded-3xl bg-black/60 border border-white/10 text-center flex flex-col items-center gap-2 mt-4">
-        <span className="font-dot text-sm text-white font-bold tracking-widest flex items-center gap-1.5">
+        <span className="font-ndot-title text-sm text-white font-bold tracking-widest flex items-center gap-1.5">
           NOTHING PLAYER <span className="text-[#D71921]">(01)</span>
         </span>
-        <span className="font-mono text-[10px] text-white/40">
-          VERSION 1.0.0-RELEASE // ANDROID APK BUILD
+        <span className="font-ndot text-[10px] text-white/40">
+          VERSION 2.0.0 // NOTHING DUAL-ENGINE ARCHITECTURE
         </span>
         <span className="font-sans text-[11px] text-white/30">
           Engineered for Nothing Phone (2a) & all Android devices.
