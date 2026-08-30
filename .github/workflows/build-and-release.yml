@@ -1,4 +1,4 @@
-name: Build & Release Android APK
+name: Build & Release Android APK & Deploy Pages
 
 on:
   push:
@@ -12,6 +12,8 @@ on:
 permissions:
   contents: write
   packages: write
+  pages: write
+  id-token: write
 
 jobs:
   build-android:
@@ -70,6 +72,18 @@ jobs:
           mkdir -p release-assets
           cp android/app/build/outputs/apk/debug/app-debug.apk release-assets/NothingPlayer-v2.0.apk
           cd dist && zip -r ../release-assets/nothing-player-web-bundle.zip . && cd ..
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
       - name: Generate Changelog & Release Notes
         id: changelog
