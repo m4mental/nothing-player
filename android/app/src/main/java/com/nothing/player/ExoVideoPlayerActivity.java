@@ -5,24 +5,34 @@ import android.app.PictureInPictureParams;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
 import android.media.AudioManager;
+import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import android.util.Rational;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
@@ -81,6 +91,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private TextView timeCurrentText;
     private TextView timeTotalText;
     private SeekBar videoSeekBar;
+    private FrameLayout seekbarPreviewCard;
+    private ImageView previewThumbnail;
+    private TextView previewTimeText;
+    private boolean showRemainingTime = true;
+    private MediaMetadataRetriever previewRetriever;
+    private final ExecutorService previewExecutor = Executors.newSingleThreadExecutor();
+    private volatile long lastRequestedPreviewTime = -1;
+
     private ImageButton btnPlayPause;
     private Button btnDecoderMode;
     private Button btnSpeed;
@@ -90,7 +108,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private Button btnRotateScreen;
     private Button btnAudioBoost;
     private Button btnPip;
-    private ImageButton btnMute;
+    private Button btnMute;
+    private ImageButton btnExpandControls;
+    private View topExpandableControlsBar;
 
     private boolean isLocked = false;
     private boolean areControlsVisible = true;
@@ -105,6 +125,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private int maxVolume = 15;
     private float currentBrightness = 0.5f;
     private float playbackSpeed = 1.0f;
+    private float currentVideoScale = 1.0f;
     private int currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
 
     private String videoPath;
@@ -229,6 +250,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         timeCurrentText = findViewById(R.id.time_current_text);
         timeTotalText = findViewById(R.id.time_total_text);
         videoSeekBar = findViewById(R.id.video_seek_bar);
+        seekbarPreviewCard = findViewById(R.id.seekbar_preview_card);
+        previewThumbnail = findViewById(R.id.preview_thumbnail);
+        previewTimeText = findViewById(R.id.preview_time_text);
         btnPlayPause = findViewById(R.id.btn_play_pause);
         btnDecoderMode = findViewById(R.id.btn_decoder_mode);
         btnSpeed = findViewById(R.id.btn_speed);
@@ -239,12 +263,15 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         btnAudioBoost = findViewById(R.id.btn_audio_boost);
         btnPip = findViewById(R.id.btn_pip);
         btnMute = findViewById(R.id.btn_mute);
+        btnExpandControls = findViewById(R.id.btn_expand_controls);
+        topExpandableControlsBar = findViewById(R.id.top_expandable_controls_bar);
 
         if (videoTitle != null) {
             videoTitleText.setText(videoTitle);
         }
 
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
+        initPreviewRetriever();
     }
 
     // ==========================================
@@ -327,8 +354,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 if (!isVlcActive) {
                     if (playbackState == Player.STATE_READY) {
                         totalDurationMs = exoPlayer.getDuration();
-                        timeTotalText.setText(formatTime(totalDurationMs));
                         videoSeekBar.setMax((int) totalDurationMs);
+                        updateTimeDisplay(exoPlayer.getCurrentPosition());
+                        AudioEffectManager.getInstance().attachAudioSession(exoPlayer.getAudioSessionId(), ExoVideoPlayerActivity.this);
                         updateCodecInfo();
                     } else if (playbackState == Player.STATE_ENDED) {
                         if (totalDurationMs > 5000 && exoPlayer.getCurrentPosition() >= totalDurationMs - 2500) {
@@ -399,12 +427,12 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                         btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
                     } else if (event.type == MediaPlayer.Event.LengthChanged) {
                         totalDurationMs = vlcPlayer.getLength();
-                        timeTotalText.setText(formatTime(totalDurationMs));
                         videoSeekBar.setMax((int) totalDurationMs);
+                        updateTimeDisplay(currentPositionMs);
                     } else if (event.type == MediaPlayer.Event.TimeChanged) {
                         long pos = event.getTimeChanged();
                         currentPositionMs = pos;
-                        timeCurrentText.setText(formatTime(pos));
+                        updateTimeDisplay(pos);
                         videoSeekBar.setProgress((int) pos);
                     } else if (event.type == MediaPlayer.Event.EndReached) {
                         if (totalDurationMs > 5000 && currentPositionMs >= totalDurationMs - 2500) {
@@ -564,6 +592,16 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             showGestureHud("⏩ +10s", "FORWARD", (int) (target * 100 / Math.max(1, totalDurationMs)));
         });
 
+        if (btnExpandControls != null) {
+            btnExpandControls.setOnClickListener(v -> {
+                if (topExpandableControlsBar != null) {
+                    boolean isExpanded = topExpandableControlsBar.getVisibility() == View.VISIBLE;
+                    topExpandableControlsBar.setVisibility(isExpanded ? View.GONE : View.VISIBLE);
+                }
+                scheduleHideControls();
+            });
+        }
+
         btnDecoderMode.setOnClickListener(v -> {
             long cur = isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0);
             if (isVlcActive) {
@@ -587,10 +625,22 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
         btnScreenLock.setOnClickListener(v -> {
             isLocked = !isLocked;
-            btnScreenLock.setImageResource(isLocked ? android.R.drawable.ic_lock_lock : android.R.drawable.ic_lock_power_off);
-            topControlsBar.setVisibility(isLocked ? View.GONE : View.VISIBLE);
-            bottomControlsBar.setVisibility(isLocked ? View.GONE : View.VISIBLE);
-            showGestureHud(isLocked ? "🔒" : "🔓", isLocked ? "LOCKED" : "UNLOCKED", 100);
+            btnScreenLock.setImageResource(isLocked ? R.drawable.ic_lock_closed : R.drawable.ic_lock_open);
+            if (isLocked) {
+                topControlsBar.setVisibility(View.GONE);
+                bottomControlsBar.setVisibility(View.GONE);
+                if (topExpandableControlsBar != null) topExpandableControlsBar.setVisibility(View.GONE);
+                showGestureHud("🔒", "LOCKED", 100);
+                hideHandler.postDelayed(() -> {
+                    if (isLocked) btnScreenLock.setVisibility(View.GONE);
+                }, 2500);
+            } else {
+                topControlsBar.setVisibility(View.VISIBLE);
+                bottomControlsBar.setVisibility(View.VISIBLE);
+                btnScreenLock.setVisibility(View.VISIBLE);
+                showGestureHud("🔓", "UNLOCKED", 100);
+                scheduleHideControls();
+            }
         });
 
         btnRotateScreen.setOnClickListener(v -> {
@@ -603,6 +653,11 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         });
 
         btnAspectRatio.setOnClickListener(v -> {
+            currentVideoScale = 1.0f;
+            if (exoPlayerView != null && exoPlayerView.getVideoSurfaceView() != null) {
+                exoPlayerView.getVideoSurfaceView().setScaleX(1.0f);
+                exoPlayerView.getVideoSurfaceView().setScaleY(1.0f);
+            }
             if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
                 btnAspectRatio.setText("FILL");
@@ -665,7 +720,8 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             } else if (exoPlayer != null) {
                 exoPlayer.setVolume(isMuted ? 0.0f : (isAudioBoosted ? 2.0f : 1.0f));
             }
-            btnMute.setImageResource(isMuted ? android.R.drawable.ic_lock_silent_mode : android.R.drawable.ic_lock_silent_mode_off);
+            btnMute.setText(isMuted ? "MUTED" : "MUTE");
+            btnMute.setCompoundDrawablesWithIntrinsicBounds(isMuted ? android.R.drawable.ic_lock_silent_mode : android.R.drawable.ic_lock_silent_mode_off, 0, 0, 0);
             showGestureHud(isMuted ? "🔇" : "🔊", isMuted ? "MUTED" : "UNMUTED", isMuted ? 0 : 100);
         });
 
@@ -684,21 +740,37 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             }
         });
 
+        timeTotalText.setOnClickListener(v -> {
+            showRemainingTime = !showRemainingTime;
+            updateTimeDisplay(videoSeekBar.getProgress());
+            Toast.makeText(this, showRemainingTime ? "Showing Remaining Time" : "Showing Total Duration", Toast.LENGTH_SHORT).show();
+        });
+
         videoSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
-                    timeCurrentText.setText(formatTime(progress));
+                    updateTimeDisplay(progress);
+                    updatePreviewPosition(seekBar, progress);
+                    extractAndShowPreviewFrame(progress);
                 }
             }
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
                 stopProgressTracker();
+                if (seekbarPreviewCard != null) {
+                    seekbarPreviewCard.setVisibility(View.VISIBLE);
+                    updatePreviewPosition(seekBar, seekBar.getProgress());
+                    extractAndShowPreviewFrame(seekBar.getProgress());
+                }
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
+                if (seekbarPreviewCard != null) {
+                    seekbarPreviewCard.setVisibility(View.GONE);
+                }
                 int target = seekBar.getProgress();
                 if (isVlcActive && vlcPlayer != null) {
                     vlcPlayer.setTime(target);
@@ -706,6 +778,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                     exoPlayer.seekTo(target);
                 }
                 startProgressTracker();
+                scheduleHideControls();
             }
         });
     }
@@ -912,9 +985,13 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     }
 
     private void setupGestures() {
-        final boolean[] isHorizontalSeek = {false};
+        final int GESTURE_NONE = 0;
+        final int GESTURE_VERTICAL = 1;
+        final int GESTURE_HORIZONTAL = 2;
+        final int[] gestureMode = {GESTURE_NONE};
         final long[] seekStartPosition = {0};
         final long[] targetSeekPosition = {0};
+        final float[] volumeAccumulator = {0f};
 
         GestureDetector gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
             @Override
@@ -922,7 +999,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 if (!isLocked) {
                     toggleControlsVisibility();
                 } else {
-                    btnScreenLock.setVisibility(btnScreenLock.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+                    if (btnScreenLock.getVisibility() == View.VISIBLE) {
+                        btnScreenLock.setVisibility(View.GONE);
+                    } else {
+                        btnScreenLock.setVisibility(View.VISIBLE);
+                        hideHandler.postDelayed(() -> {
+                            if (isLocked) btnScreenLock.setVisibility(View.GONE);
+                        }, 3000);
+                    }
                 }
                 return true;
             }
@@ -953,38 +1037,55 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
                 if (isLocked || e1 == null || e2 == null) return false;
 
+                float totalDx = Math.abs(e2.getX() - e1.getX());
+                float totalDy = Math.abs(e2.getY() - e1.getY());
+
+                // Lock gesture direction once movement exceeds threshold
+                if (gestureMode[0] == GESTURE_NONE) {
+                    if (totalDy > 25 && totalDy > totalDx * 1.25f) {
+                        gestureMode[0] = GESTURE_VERTICAL;
+                    } else if (totalDx > 35 && totalDx > totalDy * 1.25f) {
+                        gestureMode[0] = GESTURE_HORIZONTAL;
+                        seekStartPosition[0] = isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0);
+                    } else {
+                        return false;
+                    }
+                }
+
                 int screenWidth = getResources().getDisplayMetrics().widthPixels;
                 int screenHeight = getResources().getDisplayMetrics().heightPixels;
 
-                if (!isHorizontalSeek[0] && Math.abs(distanceY) > Math.abs(distanceX)) {
-                    // Vertical Swipe: Volume / Brightness
-                    float deltaY = distanceY / screenHeight;
+                if (gestureMode[0] == GESTURE_VERTICAL) {
+                    // Vertical Swipe ONLY: Volume / Brightness
+                    float deltaY = distanceY / (float) screenHeight;
+
                     if (e1.getX() > screenWidth / 2f) {
-                        // Right Side: Volume Swipe
+                        // Right Side: Smooth Volume Swipe
                         if (audioManager != null) {
-                            int currentVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-                            int newVol = Math.max(0, Math.min(maxVolume, currentVol + (distanceY > 0 ? 1 : -1)));
-                            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0);
-                            int percent = (int) ((float) newVol / maxVolume * 100);
-                            showGestureHud(newVol == 0 ? "🔇" : "🔊", "VOLUME: " + percent + "%", percent);
+                            volumeAccumulator[0] += deltaY;
+                            float threshold = 1.0f / (maxVolume * 1.6f);
+                            if (Math.abs(volumeAccumulator[0]) >= threshold) {
+                                int step = volumeAccumulator[0] > 0 ? 1 : -1;
+                                volumeAccumulator[0] = 0;
+                                int currentVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                                int newVol = Math.max(0, Math.min(maxVolume, currentVol + step));
+                                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0);
+                                int percent = (int) ((float) newVol / maxVolume * 100);
+                                showGestureHud(newVol == 0 ? "🔇" : "🔊", "VOLUME: " + percent + "%", percent);
+                            }
                         }
                     } else {
-                        // Left Side: Brightness Swipe
+                        // Left Side: Smooth Brightness Swipe
+                        currentBrightness = Math.max(0.01f, Math.min(1.0f, currentBrightness + deltaY * 0.25f));
                         WindowManager.LayoutParams lp = getWindow().getAttributes();
-                        currentBrightness = Math.max(0.01f, Math.min(1.0f, currentBrightness + deltaY * 0.8f));
                         lp.screenBrightness = currentBrightness;
                         getWindow().setAttributes(lp);
                         int percent = (int) (currentBrightness * 100);
                         showGestureHud("☀️", "BRIGHTNESS: " + percent + "%", percent);
                     }
                     return true;
-                } else if (Math.abs(distanceX) > Math.abs(distanceY) || isHorizontalSeek[0]) {
-                    // Horizontal Swipe: Fast Forward / Rewind
-                    if (!isHorizontalSeek[0]) {
-                        isHorizontalSeek[0] = true;
-                        seekStartPosition[0] = isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0);
-                    }
-
+                } else if (gestureMode[0] == GESTURE_HORIZONTAL) {
+                    // Horizontal Swipe ONLY: Fast Forward / Rewind
                     float totalDeltaX = (e2.getX() - e1.getX()) / (float) screenWidth;
                     long maxSeekSpan = Math.max(60000, Math.min(180000, totalDurationMs / 5));
                     long deltaMs = (long) (totalDeltaX * maxSeekSpan);
@@ -1003,10 +1104,36 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             }
         });
 
+        ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(this, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            @Override
+            public boolean onScale(ScaleGestureDetector detector) {
+                if (isLocked) return false;
+                float scaleFactor = detector.getScaleFactor();
+                currentVideoScale = Math.max(0.5f, Math.min(3.5f, currentVideoScale * scaleFactor));
+
+                if (isVlcActive && vlcPlayer != null) {
+                    vlcPlayer.setScale(currentVideoScale);
+                } else if (exoPlayerView != null) {
+                    View surface = exoPlayerView.getVideoSurfaceView();
+                    if (surface != null) {
+                        surface.setScaleX(currentVideoScale);
+                        surface.setScaleY(currentVideoScale);
+                    }
+                }
+
+                int percent = (int) (currentVideoScale * 100);
+                showGestureHud("🔍", "ZOOM: " + percent + "%", Math.min(100, (int) ((currentVideoScale - 0.5f) / 3.0f * 100)));
+                return true;
+            }
+        });
+
         View.OnTouchListener touchListener = (v, event) -> {
-            boolean handled = gestureDetector.onTouchEvent(event);
+            scaleGestureDetector.onTouchEvent(event);
+            if (!scaleGestureDetector.isInProgress()) {
+                gestureDetector.onTouchEvent(event);
+            }
             if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
-                if (isHorizontalSeek[0]) {
+                if (gestureMode[0] == GESTURE_HORIZONTAL) {
                     long target = targetSeekPosition[0];
                     if (isVlcActive && vlcPlayer != null) {
                         vlcPlayer.setTime(target);
@@ -1015,8 +1142,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                     }
                     videoSeekBar.setProgress((int) target);
                     timeCurrentText.setText(formatTime(target));
-                    isHorizontalSeek[0] = false;
                 }
+                gestureMode[0] = GESTURE_NONE;
+                volumeAccumulator[0] = 0f;
             }
             return true;
         };
@@ -1041,10 +1169,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (areControlsVisible) {
             topControlsBar.setVisibility(View.GONE);
             bottomControlsBar.setVisibility(View.GONE);
+            btnScreenLock.setVisibility(View.GONE);
+            if (topExpandableControlsBar != null) topExpandableControlsBar.setVisibility(View.GONE);
             areControlsVisible = false;
         } else {
             topControlsBar.setVisibility(View.VISIBLE);
             bottomControlsBar.setVisibility(View.VISIBLE);
+            btnScreenLock.setVisibility(View.VISIBLE);
+            btnScreenLock.setImageResource(isLocked ? R.drawable.ic_lock_closed : R.drawable.ic_lock_open);
             areControlsVisible = true;
             scheduleHideControls();
         }
@@ -1060,6 +1192,8 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (isPlaying && !isLocked) {
             topControlsBar.setVisibility(View.GONE);
             bottomControlsBar.setVisibility(View.GONE);
+            btnScreenLock.setVisibility(View.GONE);
+            if (topExpandableControlsBar != null) topExpandableControlsBar.setVisibility(View.GONE);
             areControlsVisible = false;
         }
     };
@@ -1078,11 +1212,117 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             if (!isVlcActive && exoPlayer != null && exoPlayer.isPlaying()) {
                 long pos = exoPlayer.getCurrentPosition();
                 videoSeekBar.setProgress((int) pos);
-                timeCurrentText.setText(formatTime(pos));
+                updateTimeDisplay(pos);
                 progressHandler.postDelayed(this, 500);
             }
         }
     };
+
+    private void updateTimeDisplay(long currentPos) {
+        timeCurrentText.setText(formatTime(currentPos));
+        if (showRemainingTime) {
+            long remaining = Math.max(0, totalDurationMs - currentPos);
+            timeTotalText.setText("-" + formatTime(remaining));
+        } else {
+            timeTotalText.setText(formatTime(totalDurationMs));
+        }
+    }
+
+    private void updatePreviewPosition(SeekBar seekBar, int progress) {
+        if (seekbarPreviewCard == null) return;
+        int usableWidth = seekBar.getWidth() - seekBar.getPaddingLeft() - seekBar.getPaddingRight();
+        float ratio = totalDurationMs > 0 ? (float) progress / (float) totalDurationMs : 0f;
+        float thumbX = seekBar.getX() + seekBar.getPaddingLeft() + (usableWidth * ratio);
+
+        int cardWidth = seekbarPreviewCard.getWidth() > 0 ? seekbarPreviewCard.getWidth() : dpToPx(140);
+        float targetX = thumbX - (cardWidth / 2f);
+
+        float minX = dpToPx(8);
+        View parent = (View) seekbarPreviewCard.getParent();
+        float maxX = parent != null ? parent.getWidth() - cardWidth - dpToPx(8) : getResources().getDisplayMetrics().widthPixels - cardWidth;
+        targetX = Math.max(minX, Math.min(maxX, targetX));
+
+        seekbarPreviewCard.setTranslationX(targetX);
+        if (previewTimeText != null) {
+            previewTimeText.setText(formatTime(progress));
+        }
+    }
+
+    private void initPreviewRetriever() {
+        previewExecutor.execute(() -> {
+            try {
+                if (previewRetriever == null) {
+                    previewRetriever = new MediaMetadataRetriever();
+                }
+                if (videoPath != null && new File(videoPath).exists()) {
+                    previewRetriever.setDataSource(videoPath);
+                } else if (videoUriStr != null) {
+                    previewRetriever.setDataSource(getApplicationContext(), Uri.parse(videoUriStr));
+                } else if (getIntent().getData() != null) {
+                    previewRetriever.setDataSource(getApplicationContext(), getIntent().getData());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void extractAndShowPreviewFrame(long timeMs) {
+        if (previewThumbnail == null) return;
+        lastRequestedPreviewTime = timeMs;
+
+        previewExecutor.execute(() -> {
+            if (timeMs != lastRequestedPreviewTime) return;
+            Bitmap frame = null;
+            try {
+                if (previewRetriever == null) {
+                    if (videoPath != null && new File(videoPath).exists()) {
+                        previewRetriever = new MediaMetadataRetriever();
+                        previewRetriever.setDataSource(videoPath);
+                    } else if (videoUriStr != null) {
+                        previewRetriever = new MediaMetadataRetriever();
+                        previewRetriever.setDataSource(getApplicationContext(), Uri.parse(videoUriStr));
+                    }
+                }
+                if (previewRetriever != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                        frame = previewRetriever.getScaledFrameAtTime(timeMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 300, 180);
+                    }
+                    if (frame == null) {
+                        frame = previewRetriever.getFrameAtTime(timeMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            if (frame != null && timeMs == lastRequestedPreviewTime) {
+                final Bitmap finalFrame = frame;
+                runOnUiThread(() -> {
+                    if (previewThumbnail != null && seekbarPreviewCard != null && seekbarPreviewCard.getVisibility() == View.VISIBLE) {
+                        previewThumbnail.setImageBitmap(finalFrame);
+                    }
+                });
+            } else {
+                runOnUiThread(() -> {
+                    try {
+                        Uri uri = resolveMediaUri();
+                        if (uri != null && previewThumbnail != null) {
+                            Glide.with(ExoVideoPlayerActivity.this)
+                                .asBitmap()
+                                .load(uri)
+                                .override(300, 180)
+                                .frame(timeMs * 1000)
+                                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                .into(previewThumbnail);
+                        }
+                    } catch (Exception ignored) {}
+                });
+            }
+        });
+    }
+
+    private int dpToPx(int dp) {
+        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
+    }
 
     private String formatTime(long millis) {
         long seconds = millis / 1000;
@@ -1110,6 +1350,13 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         super.onDestroy();
         stopProgressTracker();
         hideHandler.removeCallbacksAndMessages(null);
+        try {
+            if (previewRetriever != null) {
+                previewRetriever.release();
+                previewRetriever = null;
+            }
+            previewExecutor.shutdownNow();
+        } catch (Exception ignored) {}
         releaseExoPlayer();
         releaseVlcPlayer();
     }

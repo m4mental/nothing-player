@@ -249,6 +249,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
                     try {
                         mp.start();
                         isPlaying = true;
+                        AudioEffectManager.getInstance().attachAudioSession(mp.getAudioSessionId(), MusicPlaybackService.this);
                         updateMediaSessionMetadata();
                         updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING);
                         startForegroundNotification();
@@ -299,11 +300,19 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         }
     }
 
-    public void seekTo(double seconds) {
+    public void seekTo(long positionMs) {
         if (mediaPlayer != null) {
-            mediaPlayer.seekTo((int) (seconds * 1000));
-            updateMediaSessionPlaybackState(isPlaying ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED);
+            try {
+                mediaPlayer.seekTo((int) positionMs);
+                updateMediaSessionPlaybackState(isPlaying ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
+    }
+
+    public void seekTo(double seconds) {
+        seekTo((long) (seconds * 1000));
     }
 
     public void stop() {
@@ -315,6 +324,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             mediaPlayer = null;
         }
         this.isPlaying = false;
+        AudioEffectManager.getInstance().release();
         if (mediaSession != null) {
             updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_STOPPED);
         }
@@ -323,6 +333,10 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         if (eventListener != null) {
             eventListener.onPlayStateChanged(false);
         }
+    }
+
+    public int getAudioSessionId() {
+        return mediaPlayer != null ? mediaPlayer.getAudioSessionId() : 0;
     }
 
     public boolean isPlaying() {

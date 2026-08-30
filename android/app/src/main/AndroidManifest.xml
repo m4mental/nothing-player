@@ -48,6 +48,13 @@
             android:supportsPictureInPicture="true"
             android:exported="true" />
 
+        <activity
+            android:name=".EqualizerActivity"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
+            android:theme="@style/AppTheme"
+            android:exported="false" />
+
         <service
             android:name=".MusicPlaybackService"
             android:enabled="true"

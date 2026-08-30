@@ -7,8 +7,80 @@
     android:background="@color/nothing_black"
     android:paddingHorizontal="14dp">
 
+    <!-- Contextual Selection Action Bar -->
+    <RelativeLayout
+        android:id="@+id/selection_action_bar"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:background="@drawable/bg_selection_bar"
+        android:paddingHorizontal="12dp"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone">
+
+        <ImageButton
+            android:id="@+id/btn_close_selection"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:tint="@color/nothing_white"
+            android:contentDescription="Close Selection" />
+
+        <TextView
+            android:id="@+id/tv_selection_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toEndOf="@id/btn_close_selection"
+            android:layout_toStartOf="@id/selection_action_buttons"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="10dp"
+            android:text="1 selected"
+            android:textColor="@color/nothing_white"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/selection_action_buttons"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <Button
+                android:id="@+id/btn_select_all"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:background="@drawable/bg_chip_unselected"
+                android:text="ALL"
+                android:textColor="@color/nothing_white_70"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:paddingHorizontal="10dp"
+                android:layout_marginEnd="6dp" />
+
+            <Button
+                android:id="@+id/btn_delete_selected"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:background="@drawable/bg_chip_selected"
+                android:text="DELETE"
+                android:textColor="@color/nothing_black"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:paddingHorizontal="10dp" />
+        </LinearLayout>
+    </RelativeLayout>
+
     <!-- Search & Filter Controls -->
     <LinearLayout
+        android:id="@+id/search_filter_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -40,7 +112,7 @@
             app:tint="@color/nothing_white" />
     </LinearLayout>
 
-    <!-- Category Tabs Chips (FOLDERS vs ALL VIDEOS) -->
+    <!-- Category Tabs Chips (FOLDERS vs ALL VIDEOS vs STREAM) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -73,6 +145,20 @@
             android:textStyle="bold"
             android:gravity="center"
             android:paddingHorizontal="16dp" />
+
+        <TextView
+            android:id="@+id/chip_network_stream"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_chip_unselected"
+            android:text="ONLINE STREAM"
+            android:textColor="@color/nothing_white_70"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:paddingHorizontal="14dp" />
     </LinearLayout>
 
     <!-- Swipe Refresh & Recycler -->

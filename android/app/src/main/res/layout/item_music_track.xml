@@ -79,6 +79,15 @@
             android:src="@android:drawable/ic_menu_more"
             android:contentDescription="Options"
             app:tint="@color/nothing_white_40" />
+
+        <!-- Selection Check Indicator -->
+        <ImageView
+            android:id="@+id/selection_check"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_check_circle"
+            android:visibility="gone"
+            android:layout_marginStart="6dp" />
     </LinearLayout>
 
 </RelativeLayout>

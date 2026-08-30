@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_card_nothing"
+    android:padding="20dp">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="NETWORK STREAM"
+            android:textColor="@color/nothing_white"
+            android:textSize="15sp"
+            android:fontFamily="monospace"
+            android:textStyle="bold"
+            android:letterSpacing="0.05" />
+
+        <ImageButton
+            android:id="@+id/btn_close_dialog"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:tint="@color/nothing_white"
+            android:contentDescription="Close" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="16dp"
+        android:text="Paste direct video URL, HLS (.m3u8), DASH, RTSP or MP4/MKV stream link"
+        android:textColor="@color/nothing_white_40"
+        android:textSize="11sp"
+        android:fontFamily="sans-serif" />
+
+    <!-- Input Bar with Inline PASTE and PLAY -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_chip_unselected"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="6dp">
+
+        <EditText
+            android:id="@+id/et_stream_url"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@null"
+            android:hint="Paste link here..."
+            android:textColorHint="@color/nothing_white_40"
+            android:textColor="@color/nothing_white"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:imeOptions="actionGo"
+            android:inputType="textUri"
+            android:singleLine="true" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_paste_url"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:background="@drawable/bg_chip_unselected"
+            app:backgroundTint="@null"
+            android:text="PASTE"
+            android:textColor="@color/nothing_white"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:textStyle="bold"
+            android:paddingHorizontal="12dp"
+            android:layout_marginStart="4dp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_play_direct"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:background="@drawable/bg_button_red"
+            app:backgroundTint="@null"
+            android:text="▶ PLAY"
+            android:textColor="@color/nothing_white"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:textStyle="bold"
+            android:paddingHorizontal="14dp"
+            android:layout_marginStart="6dp" />
+    </LinearLayout>
+
+    <!-- Prominent Full Width Play Button -->
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btn_play_stream"
+        android:layout_width="match_parent"
+        android:layout_height="46dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_button_red"
+        app:backgroundTint="@null"
+        android:text="▶ START STREAMING NOW"
+        android:textColor="@color/nothing_white"
+        android:textSize="13sp"
+        android:fontFamily="monospace"
+        android:textStyle="bold"
+        android:letterSpacing="0.05" />
+
+    <!-- Recent streams header -->
+    <TextView
+        android:id="@+id/tv_recent_streams_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"
+        android:text="RECENT STREAMS"
+        android:textColor="@color/nothing_white_70"
+        android:textSize="10sp"
+        android:fontFamily="monospace"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:id="@+id/container_recent_streams"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btn_cancel_stream"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_chip_unselected"
+        app:backgroundTint="@null"
+        android:text="CANCEL"
+        android:textColor="@color/nothing_white_70"
+        android:textSize="11sp"
+        android:fontFamily="monospace"
+        android:textStyle="bold" />
+</LinearLayout>

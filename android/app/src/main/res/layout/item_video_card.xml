@@ -75,6 +75,17 @@
             android:textSize="9sp"
             android:fontFamily="monospace"
             android:textStyle="bold" />
+
+        <!-- Selection Check Indicator -->
+        <ImageView
+            android:id="@+id/selection_check"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:layout_margin="6dp"
+            android:src="@drawable/ic_check_circle"
+            android:visibility="gone" />
     </RelativeLayout>
 
     <!-- Metadata Bottom Area -->

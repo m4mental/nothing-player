@@ -55,11 +55,11 @@
             android:fontFamily="monospace"
             android:layout_marginTop="4dp" />
 
-        <!-- Mini Progress Bar for Brightness/Volume -->
+        <!-- Mini Progress Bar for Brightness/Volume/Seek -->
         <ProgressBar
             android:id="@+id/gesture_hud_progress"
             style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="120dp"
+            android:layout_width="140dp"
             android:layout_height="6dp"
             android:layout_marginTop="6dp"
             android:progressTint="#D71921"
@@ -67,168 +67,292 @@
             android:max="100" />
     </LinearLayout>
 
-    <!-- Top Action Bar (XPlayer Style) -->
-    <RelativeLayout
+    <!-- Top Action Bar (Nothing OS Cinematic Style) -->
+    <LinearLayout
         android:id="@+id/top_controls_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="36dp"
-        android:paddingBottom="14dp"
+        android:orientation="vertical"
+        android:paddingTop="20dp"
+        android:paddingBottom="10dp"
         android:paddingHorizontal="16dp"
-        android:background="#B3000000"
+        android:background="#CC000000"
         android:layout_gravity="top">
 
-        <!-- Back Button -->
-        <ImageButton
-            android:id="@+id/btn_back"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_alignParentStart="true"
-            android:layout_centerVertical="true"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_menu_revert"
-            android:contentDescription="Back"
-            app:tint="#FFFFFF" />
+        <!-- Top Header Row: Back Button + Title + Expand Button -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
 
-        <!-- Video Title & Decoder Tag -->
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_toEndOf="@id/btn_back"
-            android:layout_toStartOf="@id/top_actions_group"
-            android:layout_centerVertical="true"
-            android:orientation="vertical"
-            android:paddingStart="12dp">
+            <!-- Back Button -->
+            <ImageButton
+                android:id="@+id/btn_back"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_revert"
+                android:contentDescription="Back"
+                app:tint="#FFFFFF" />
 
-            <TextView
-                android:id="@+id/video_title_text"
+            <!-- Video Title & Codec Tag -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Video Title"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:fontFamily="monospace"
-                android:singleLine="true"
-                android:ellipsize="end" />
+                android:layout_toEndOf="@id/btn_back"
+                android:layout_toStartOf="@id/btn_expand_controls"
+                android:layout_centerVertical="true"
+                android:orientation="vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp">
 
-            <TextView
-                android:id="@+id/video_subtitle_codec"
+                <TextView
+                    android:id="@+id/video_title_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Video Title"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/video_subtitle_codec"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="EXOPLAYER / HW+ DECODER"
+                    android:textColor="#D71921"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Single Expand Controls Button (Top Right) -->
+            <ImageButton
+                android:id="@+id/btn_expand_controls"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/bg_player_pill_button"
+                android:src="@drawable/ic_settings_more"
+                android:contentDescription="Expand Controls"
+                app:tint="#FFFFFF" />
+        </RelativeLayout>
+
+        <!-- Expandable Controls Row (Under Video Title) -->
+        <HorizontalScrollView
+            android:id="@+id/top_expandable_controls_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:layout_marginTop="8dp"
+            android:visibility="gone">
+
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="EXOPLAYER / HW+ DECODER"
-                android:textColor="#D71921"
-                android:textSize="10sp"
-                android:fontFamily="monospace"
-                android:textStyle="bold" />
-        </LinearLayout>
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-        <!-- Top Right Quick Action Buttons -->
-        <LinearLayout
-            android:id="@+id/top_actions_group"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentEnd="true"
-            android:layout_centerVertical="true"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+                <!-- Decoder Button -->
+                <Button
+                    android:id="@+id/btn_decoder_mode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="HW+"
+                    android:textColor="#D71921"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:background="@drawable/bg_player_pill_button"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginEnd="8dp" />
 
-            <!-- HW/SW Decoder Switcher -->
-            <Button
-                android:id="@+id/btn_decoder_mode"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:text="HW+"
-                android:textColor="#D71921"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:fontFamily="monospace"
-                android:background="#22FFFFFF"
-                android:paddingHorizontal="8dp"
-                android:layout_marginEnd="6dp" />
+                <!-- Audio Track Selector Button -->
+                <Button
+                    android:id="@+id/btn_audio_track"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="AUDIO"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:drawableStart="@drawable/ic_audio_track"
+                    android:drawablePadding="6dp"
+                    android:drawableTint="#FFFFFF"
+                    android:background="@drawable/bg_player_pill_button"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginEnd="8dp" />
 
-            <!-- Audio Track Selector -->
-            <Button
-                android:id="@+id/btn_audio_track"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:text="AUDIO"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:fontFamily="monospace"
-                android:background="#22FFFFFF"
-                android:paddingHorizontal="8dp"
-                android:layout_marginEnd="6dp" />
+                <!-- Subtitle Track Selector Button -->
+                <Button
+                    android:id="@+id/btn_subtitle_track"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="SUBTITLES"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:drawableStart="@drawable/ic_subtitles"
+                    android:drawablePadding="6dp"
+                    android:drawableTint="#FFFFFF"
+                    android:background="@drawable/bg_player_pill_button"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginEnd="8dp" />
 
-            <!-- Subtitle Selector -->
-            <Button
-                android:id="@+id/btn_subtitle_track"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:text="SUB"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:fontFamily="monospace"
-                android:background="#22FFFFFF"
-                android:paddingHorizontal="8dp"
-                android:layout_marginEnd="6dp" />
+                <!-- Screen Rotate Button -->
+                <Button
+                    android:id="@+id/btn_rotate_screen"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="ROTATE"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:drawableStart="@drawable/ic_rotate"
+                    android:drawablePadding="6dp"
+                    android:drawableTint="#FFFFFF"
+                    android:background="@drawable/bg_player_pill_button"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginEnd="8dp" />
 
-            <!-- Aspect Ratio Button (FIT / FILL / 16:9 / ZOOM) -->
-            <Button
-                android:id="@+id/btn_aspect_ratio"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:text="FIT"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:fontFamily="monospace"
-                android:background="#22FFFFFF"
-                android:paddingHorizontal="8dp"
-                android:layout_marginEnd="6dp" />
+                <!-- PiP Button -->
+                <Button
+                    android:id="@+id/btn_pip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="PiP"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:drawableStart="@drawable/ic_pip"
+                    android:drawablePadding="6dp"
+                    android:drawableTint="#FFFFFF"
+                    android:background="@drawable/bg_player_pill_button"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginEnd="8dp" />
 
-            <!-- Rotate Screen Button -->
-            <Button
-                android:id="@+id/btn_rotate_screen"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:text="ROTATE"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:fontFamily="monospace"
-                android:background="#22FFFFFF"
-                android:paddingHorizontal="8dp" />
-        </LinearLayout>
-    </RelativeLayout>
+                <!-- Mute Toggle Button -->
+                <Button
+                    android:id="@+id/btn_mute"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="MUTE"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:drawableStart="@android:drawable/ic_lock_silent_mode_off"
+                    android:drawablePadding="6dp"
+                    android:drawableTint="#FFFFFF"
+                    android:background="@drawable/bg_player_pill_button"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginEnd="8dp" />
 
-    <!-- Floating Lock Padlock Button (Left Side) -->
+                <!-- Speed Button -->
+                <Button
+                    android:id="@+id/btn_speed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="1.0x"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:drawableStart="@drawable/ic_speed"
+                    android:drawablePadding="6dp"
+                    android:drawableTint="#FFFFFF"
+                    android:background="@drawable/bg_player_pill_button"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginEnd="8dp" />
+
+                <!-- Audio Boost Button -->
+                <Button
+                    android:id="@+id/btn_audio_boost"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="200%"
+                    android:textColor="#D71921"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace"
+                    android:drawableStart="@drawable/ic_audio_boost"
+                    android:drawablePadding="6dp"
+                    android:drawableTint="#D71921"
+                    android:background="@drawable/bg_player_pill_button"
+                    android:paddingHorizontal="12dp" />
+            </LinearLayout>
+        </HorizontalScrollView>
+    </LinearLayout>
+
+    <!-- Floating Lock Button (Hides when UI hides) -->
     <ImageButton
         android:id="@+id/btn_screen_lock"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
         android:layout_gravity="start|center_vertical"
-        android:layout_marginStart="16dp"
-        android:background="#CC111111"
-        android:src="@android:drawable/ic_lock_lock"
+        android:layout_marginStart="20dp"
+        android:background="@drawable/bg_circle_button"
+        android:src="@drawable/ic_lock_closed"
         app:tint="#FFFFFF"
         android:contentDescription="Screen Lock" />
 
-    <!-- Bottom Controls Bar (XPlayer Style) -->
+    <!-- Bottom Controls Bar (Single Clean Transport Line) -->
     <LinearLayout
         android:id="@+id/bottom_controls_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:orientation="vertical"
-        android:paddingBottom="24dp"
-        android:paddingTop="12dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp"
+        android:paddingTop="10dp"
         android:paddingHorizontal="16dp"
-        android:background="#B3000000">
+        android:background="#CC000000">
 
-        <!-- Time & Scrubber Seek Bar -->
+        <!-- Floating Thumbnail Preview Pop-up Box -->
+        <FrameLayout
+            android:id="@+id/seekbar_preview_card"
+            android:layout_width="150dp"
+            android:layout_height="95dp"
+            android:background="@drawable/bg_card_nothing"
+            android:elevation="12dp"
+            android:padding="2dp"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp">
+
+            <ImageView
+                android:id="@+id/preview_thumbnail"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:background="#111111" />
+
+            <TextView
+                android:id="@+id/preview_time_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|center_horizontal"
+                android:background="#CC000000"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2dp"
+                android:layout_marginBottom="4dp"
+                android:text="00:00"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold" />
+        </FrameLayout>
+
+        <!-- Row 1: Time & Scrubber Seek Bar -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -266,45 +390,31 @@
                 android:gravity="end" />
         </LinearLayout>
 
-        <!-- Main Transport Action Row -->
+        <!-- Row 2: Single Unified Transport & Aspect Ratio Line -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp">
+            android:layout_marginTop="6dp">
 
-            <!-- Left Quick Settings (Speed & PiP) -->
-            <LinearLayout
+            <!-- Aspect Ratio Button (Left side of transport on same line) -->
+            <Button
+                android:id="@+id/btn_aspect_ratio"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="36dp"
                 android:layout_alignParentStart="true"
                 android:layout_centerVertical="true"
-                android:orientation="horizontal">
+                android:text="FIT"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="monospace"
+                android:drawableStart="@drawable/ic_aspect_ratio"
+                android:drawablePadding="6dp"
+                android:drawableTint="#FFFFFF"
+                android:background="@drawable/bg_player_pill_button"
+                android:paddingHorizontal="10dp" />
 
-                <Button
-                    android:id="@+id/btn_speed"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:text="1.0x"
-                    android:textColor="#FFFFFF"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace"
-                    android:background="#22FFFFFF"
-                    android:paddingHorizontal="10dp"
-                    android:layout_marginEnd="8dp" />
-
-                <Button
-                    android:id="@+id/btn_pip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:text="PiP"
-                    android:textColor="#FFFFFF"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace"
-                    android:background="#22FFFFFF"
-                    android:paddingHorizontal="10dp" />
-            </LinearLayout>
-
-            <!-- Center Controls (Rewind 10s, Big Play/Pause, Forward 10s) -->
+            <!-- Center Controls: Rewind 10s, Big Play/Pause, Forward 10s -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -319,15 +429,17 @@
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:src="@android:drawable/ic_media_rew"
                     app:tint="#FFFFFF"
-                    android:layout_marginEnd="16dp" />
+                    android:layout_marginEnd="16dp"
+                    android:contentDescription="Rewind 10 seconds" />
 
                 <ImageButton
                     android:id="@+id/btn_play_pause"
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"
-                    android:background="#FFFFFF"
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:background="@drawable/bg_circle_button"
                     android:src="@android:drawable/ic_media_pause"
-                    app:tint="#000000" />
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Play/Pause" />
 
                 <ImageButton
                     android:id="@+id/btn_forward"
@@ -336,37 +448,8 @@
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:src="@android:drawable/ic_media_ff"
                     app:tint="#FFFFFF"
-                    android:layout_marginStart="16dp" />
-            </LinearLayout>
-
-            <!-- Right Quick Settings (Audio Boost 200% & Mute) -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btn_audio_boost"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:text="200%"
-                    android:textColor="#D71921"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace"
-                    android:textStyle="bold"
-                    android:background="#22FFFFFF"
-                    android:paddingHorizontal="8dp"
-                    android:layout_marginEnd="6dp" />
-
-                <ImageButton
-                    android:id="@+id/btn_mute"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:background="#22FFFFFF"
-                    android:src="@android:drawable/ic_lock_silent_mode_off"
-                    app:tint="#FFFFFF" />
+                    android:layout_marginStart="16dp"
+                    android:contentDescription="Forward 10 seconds" />
             </LinearLayout>
         </RelativeLayout>
     </LinearLayout>

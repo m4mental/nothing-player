@@ -1,14 +1,27 @@
 package com.nothing.player;
 
+import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -17,17 +30,25 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class VideosFragment extends Fragment implements VideoAdapter.OnItemClickListener {
     private RecyclerView recyclerView;
     private VideoAdapter adapter;
     private SwipeRefreshLayout swipeRefresh;
     private EditText etSearch;
-    private TextView chipFolders, chipAllVideos;
+    private TextView chipFolders, chipAllVideos, chipNetworkStream;
+
+    // Multi-select Views
+    private View selectionActionBar, searchFilterBar;
+    private TextView tvSelectionCount;
+    private Button btnSelectAll, btnDeleteSelected;
+    private ImageButton btnCloseSelection;
 
     private List<MediaItem> allVideos = new ArrayList<>();
     private boolean isFoldersMode = true;
@@ -43,6 +64,14 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         etSearch = view.findViewById(R.id.et_search_videos);
         chipFolders = view.findViewById(R.id.chip_folders);
         chipAllVideos = view.findViewById(R.id.chip_all_videos);
+        chipNetworkStream = view.findViewById(R.id.chip_network_stream);
+
+        selectionActionBar = view.findViewById(R.id.selection_action_bar);
+        searchFilterBar = view.findViewById(R.id.search_filter_bar);
+        tvSelectionCount = view.findViewById(R.id.tv_selection_count);
+        btnSelectAll = view.findViewById(R.id.btn_select_all);
+        btnDeleteSelected = view.findViewById(R.id.btn_delete_selected);
+        btnCloseSelection = view.findViewById(R.id.btn_close_selection);
 
         recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
         adapter = new VideoAdapter(getContext(), this);
@@ -62,6 +91,10 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             filterAndDisplay();
         });
 
+        if (chipNetworkStream != null) {
+            chipNetworkStream.setOnClickListener(v -> showNetworkStreamDialog());
+        }
+
         swipeRefresh.setOnRefreshListener(this::loadVideos);
 
         etSearch.addTextChangedListener(new TextWatcher() {
@@ -72,8 +105,81 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             @Override public void afterTextChanged(Editable s) {}
         });
 
+        // Setup Selection Action Bar Listeners
+        btnCloseSelection.setOnClickListener(v -> adapter.clearSelection());
+
+        btnSelectAll.setOnClickListener(v -> adapter.selectAll());
+
+        btnDeleteSelected.setOnClickListener(v -> confirmDeleteSelected());
+
         loadVideos();
         return view;
+    }
+
+    @Override
+    public void onSelectionChanged(int selectedCount) {
+        if (selectedCount > 0) {
+            if (selectionActionBar != null) selectionActionBar.setVisibility(View.VISIBLE);
+            if (tvSelectionCount != null) tvSelectionCount.setText(selectedCount + " selected");
+        } else {
+            if (selectionActionBar != null) selectionActionBar.setVisibility(View.GONE);
+        }
+    }
+
+    private void confirmDeleteSelected() {
+        Set<Object> selected = adapter.getSelectedItems();
+        if (selected.isEmpty()) return;
+
+        int count = selected.size();
+        new AlertDialog.Builder(getContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Delete " + count + " Item" + (count > 1 ? "s" : "") + "?")
+            .setMessage("These files will be permanently deleted from device storage.")
+            .setPositiveButton("DELETE", (dialog, which) -> deleteSelectedItems(selected))
+            .setNegativeButton("CANCEL", null)
+            .show();
+    }
+
+    private void deleteSelectedItems(Set<Object> selected) {
+        android.content.Context ctx = getContext();
+        if (ctx == null) return;
+        ContentResolver resolver = ctx.getContentResolver();
+        int deletedCount = 0;
+
+        for (Object item : selected) {
+            if (item instanceof MediaItem) {
+                MediaItem video = (MediaItem) item;
+                boolean deleted = false;
+                if (video.contentUri != null) {
+                    try {
+                        int rows = resolver.delete(Uri.parse(video.contentUri), null, null);
+                        if (rows > 0) deleted = true;
+                    } catch (Exception ignored) {}
+                }
+                if (!deleted && video.path != null) {
+                    try {
+                        File f = new File(video.path);
+                        if (f.exists() && f.delete()) deleted = true;
+                    } catch (Exception ignored) {}
+                }
+                if (deleted) deletedCount++;
+            } else if (item instanceof VideoAdapter.FolderItem) {
+                VideoAdapter.FolderItem folder = (VideoAdapter.FolderItem) item;
+                // Delete all videos in this folder
+                for (MediaItem v : allVideos) {
+                    if (folder.name.equalsIgnoreCase(v.folder)) {
+                        try {
+                            if (v.contentUri != null) resolver.delete(Uri.parse(v.contentUri), null, null);
+                            if (v.path != null) new File(v.path).delete();
+                            deletedCount++;
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
+        }
+
+        Toast.makeText(ctx, "Deleted " + deletedCount + " item(s)", Toast.LENGTH_SHORT).show();
+        adapter.clearSelection();
+        loadVideos();
     }
 
     public void loadVideos() {
@@ -162,6 +268,10 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     }
 
     public boolean handleBackPress() {
+        if (adapter.isSelectionMode()) {
+            adapter.clearSelection();
+            return true;
+        }
         if (currentSelectedFolder != null) {
             currentSelectedFolder = null;
             isFoldersMode = true;
@@ -170,5 +280,124 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             return true;
         }
         return false;
+    }
+
+    private void showNetworkStreamDialog() {
+        if (getContext() == null) return;
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_network_stream, null);
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setView(dialogView)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        EditText etStreamUrl = dialogView.findViewById(R.id.et_stream_url);
+        Button btnPasteUrl = dialogView.findViewById(R.id.btn_paste_url);
+        Button btnPlayDirect = dialogView.findViewById(R.id.btn_play_direct);
+        Button btnPlayStream = dialogView.findViewById(R.id.btn_play_stream);
+        Button btnCancel = dialogView.findViewById(R.id.btn_cancel_stream);
+        View btnCloseDialog = dialogView.findViewById(R.id.btn_close_dialog);
+        LinearLayout containerRecent = dialogView.findViewById(R.id.container_recent_streams);
+        TextView tvRecentLabel = dialogView.findViewById(R.id.tv_recent_streams_label);
+
+        SharedPreferences prefs = requireContext().getSharedPreferences("nothing_streams_prefs", Context.MODE_PRIVATE);
+        String recentRaw = prefs.getString("recent_streams", "");
+
+        // Check clipboard for video stream links
+        ClipboardManager clipboard = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard != null && clipboard.hasPrimaryClip() && clipboard.getPrimaryClip() != null && clipboard.getPrimaryClip().getItemCount() > 0) {
+            ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
+            if (item != null && item.getText() != null) {
+                String text = item.getText().toString().trim();
+                if (text.startsWith("http://") || text.startsWith("https://") || text.startsWith("rtsp://") || text.startsWith("rtmp://")) {
+                    etStreamUrl.setText(text);
+                    etStreamUrl.setSelection(text.length());
+                }
+            }
+        }
+
+        btnPasteUrl.setOnClickListener(v -> {
+            if (clipboard != null && clipboard.hasPrimaryClip() && clipboard.getPrimaryClip() != null && clipboard.getPrimaryClip().getItemCount() > 0) {
+                ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
+                if (item != null && item.getText() != null) {
+                    etStreamUrl.setText(item.getText().toString().trim());
+                    etStreamUrl.setSelection(etStreamUrl.getText().length());
+                }
+            }
+        });
+
+        Runnable startStreamRunnable = () -> {
+            String url = etStreamUrl.getText().toString().trim();
+            if (url.isEmpty() || (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("rtsp://") && !url.startsWith("rtmp://"))) {
+                Toast.makeText(getContext(), "Please enter or paste a valid stream URL", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Save to recent
+            String updated = url + "\n" + recentRaw.replace(url + "\n", "");
+            prefs.edit().putString("recent_streams", updated).apply();
+
+            dialog.dismiss();
+
+            Intent intent = new Intent(getContext(), ExoVideoPlayerActivity.class);
+            intent.setData(Uri.parse(url));
+            intent.putExtra("video_uri", url);
+            intent.putExtra("contentUri", url);
+            intent.putExtra("path", url);
+            intent.putExtra("title", getFileNameFromUrl(url));
+            intent.putExtra("video_title", getFileNameFromUrl(url));
+            startActivity(intent);
+        };
+
+        if (btnPlayDirect != null) btnPlayDirect.setOnClickListener(v -> startStreamRunnable.run());
+        if (btnPlayStream != null) btnPlayStream.setOnClickListener(v -> startStreamRunnable.run());
+        if (btnCancel != null) btnCancel.setOnClickListener(v -> dialog.dismiss());
+        if (btnCloseDialog != null) btnCloseDialog.setOnClickListener(v -> dialog.dismiss());
+
+        etStreamUrl.setOnEditorActionListener((v, actionId, event) -> {
+            startStreamRunnable.run();
+            return true;
+        });
+
+        // Load recent streams
+        if (!recentRaw.isEmpty()) {
+            String[] streams = recentRaw.split("\n");
+            for (String s : streams) {
+                if (s.trim().isEmpty()) continue;
+                TextView chip = new TextView(getContext());
+                chip.setText(s);
+                chip.setTextColor(getResources().getColor(R.color.nothing_white_70));
+                chip.setTextSize(11);
+                chip.setBackgroundResource(R.drawable.bg_chip_unselected);
+                chip.setPadding(24, 14, 24, 14);
+                chip.setSingleLine(true);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+                lp.setMargins(0, 8, 0, 8);
+                chip.setLayoutParams(lp);
+                chip.setOnClickListener(cv -> {
+                    etStreamUrl.setText(s);
+                    etStreamUrl.setSelection(s.length());
+                });
+                containerRecent.addView(chip);
+            }
+        } else {
+            if (tvRecentLabel != null) tvRecentLabel.setVisibility(View.GONE);
+        }
+
+        dialog.show();
+    }
+
+    private String getFileNameFromUrl(String url) {
+        try {
+            Uri uri = Uri.parse(url);
+            String last = uri.getLastPathSegment();
+            if (last != null && !last.isEmpty()) return last;
+        } catch (Exception ignored) {}
+        return "Network Stream";
     }
 }

@@ -1,13 +1,19 @@
 package com.nothing.player;
 
+import android.app.AlertDialog;
+import android.content.ContentResolver;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -16,8 +22,10 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClickListener {
     private RecyclerView recyclerView;
@@ -25,6 +33,12 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
     private SwipeRefreshLayout swipeRefresh;
     private EditText etSearch;
     private TextView chipTracks, chipArtists, chipFavorites;
+
+    // Multi-select Views
+    private View selectionActionBar;
+    private TextView tvSelectionCount;
+    private Button btnSelectAll, btnDeleteSelected;
+    private ImageButton btnCloseSelection;
 
     private List<MediaItem> allTracks = new ArrayList<>();
 
@@ -40,6 +54,12 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
         chipArtists = view.findViewById(R.id.chip_music_artists);
         chipFavorites = view.findViewById(R.id.chip_music_favorites);
 
+        selectionActionBar = view.findViewById(R.id.music_selection_action_bar);
+        tvSelectionCount = view.findViewById(R.id.tv_music_selection_count);
+        btnSelectAll = view.findViewById(R.id.btn_music_select_all);
+        btnDeleteSelected = view.findViewById(R.id.btn_music_delete_selected);
+        btnCloseSelection = view.findViewById(R.id.btn_close_music_selection);
+
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new MusicAdapter(getContext(), this);
         recyclerView.setAdapter(adapter);
@@ -54,8 +74,66 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
             @Override public void afterTextChanged(Editable s) {}
         });
 
+        // Setup Selection Action Bar Listeners
+        btnCloseSelection.setOnClickListener(v -> adapter.clearSelection());
+
+        btnSelectAll.setOnClickListener(v -> adapter.selectAll());
+
+        btnDeleteSelected.setOnClickListener(v -> confirmDeleteSelected());
+
         loadTracks();
         return view;
+    }
+
+    @Override
+    public void onSelectionChanged(int selectedCount) {
+        if (selectedCount > 0) {
+            if (selectionActionBar != null) selectionActionBar.setVisibility(View.VISIBLE);
+            if (tvSelectionCount != null) tvSelectionCount.setText(selectedCount + " selected");
+        } else {
+            if (selectionActionBar != null) selectionActionBar.setVisibility(View.GONE);
+        }
+    }
+
+    private void confirmDeleteSelected() {
+        Set<MediaItem> selected = adapter.getSelectedTracks();
+        if (selected.isEmpty()) return;
+
+        int count = selected.size();
+        new AlertDialog.Builder(getContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Delete " + count + " Track" + (count > 1 ? "s" : "") + "?")
+            .setMessage("These audio files will be permanently deleted from device storage.")
+            .setPositiveButton("DELETE", (dialog, which) -> deleteSelectedTracks(selected))
+            .setNegativeButton("CANCEL", null)
+            .show();
+    }
+
+    private void deleteSelectedTracks(Set<MediaItem> selected) {
+        android.content.Context ctx = getContext();
+        if (ctx == null) return;
+        ContentResolver resolver = ctx.getContentResolver();
+        int deletedCount = 0;
+
+        for (MediaItem track : selected) {
+            boolean deleted = false;
+            if (track.contentUri != null) {
+                try {
+                    int rows = resolver.delete(Uri.parse(track.contentUri), null, null);
+                    if (rows > 0) deleted = true;
+                } catch (Exception ignored) {}
+            }
+            if (!deleted && track.path != null) {
+                try {
+                    File f = new File(track.path);
+                    if (f.exists() && f.delete()) deleted = true;
+                } catch (Exception ignored) {}
+            }
+            if (deleted) deletedCount++;
+        }
+
+        Toast.makeText(ctx, "Deleted " + deletedCount + " track(s)", Toast.LENGTH_SHORT).show();
+        adapter.clearSelection();
+        loadTracks();
     }
 
     public void loadTracks() {
@@ -101,5 +179,13 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
         if (adapter != null) {
             adapter.setCurrentPlayingId(trackId);
         }
+    }
+
+    public boolean handleBackPress() {
+        if (adapter.isSelectionMode()) {
+            adapter.clearSelection();
+            return true;
+        }
+        return false;
     }
 }

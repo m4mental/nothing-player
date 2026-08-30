@@ -15,8 +15,10 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private static final int TYPE_FOLDER = 0;
@@ -26,12 +28,15 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         void onVideoClick(MediaItem video);
         void onFolderClick(String folderName);
         void onMenuClick(MediaItem video);
+        void onSelectionChanged(int selectedCount);
     }
 
     private final Context context;
     private final OnItemClickListener listener;
     private List<Object> items = new ArrayList<>();
     private boolean isFolderView = true;
+    private final Set<Object> selectedItems = new HashSet<>();
+    private boolean isSelectionMode = false;
 
     public static class FolderItem {
         public String name;
@@ -51,7 +56,46 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     public void setItems(List<Object> items, boolean isFolderView) {
         this.items = items;
         this.isFolderView = isFolderView;
+        clearSelection();
         notifyDataSetChanged();
+    }
+
+    public boolean isSelectionMode() {
+        return isSelectionMode;
+    }
+
+    public Set<Object> getSelectedItems() {
+        return selectedItems;
+    }
+
+    public void clearSelection() {
+        selectedItems.clear();
+        isSelectionMode = false;
+        notifyDataSetChanged();
+        if (listener != null) listener.onSelectionChanged(0);
+    }
+
+    public void selectAll() {
+        selectedItems.clear();
+        selectedItems.addAll(items);
+        isSelectionMode = true;
+        notifyDataSetChanged();
+        if (listener != null) listener.onSelectionChanged(selectedItems.size());
+    }
+
+    private void toggleSelection(Object item) {
+        if (selectedItems.contains(item)) {
+            selectedItems.remove(item);
+        } else {
+            selectedItems.add(item);
+        }
+        if (selectedItems.isEmpty()) {
+            isSelectionMode = false;
+        } else {
+            isSelectionMode = true;
+        }
+        notifyDataSetChanged();
+        if (listener != null) listener.onSelectionChanged(selectedItems.size());
     }
 
     @Override
@@ -77,13 +121,32 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         Object item = items.get(position);
+        boolean isSelected = selectedItems.contains(item);
+
         if (holder instanceof FolderViewHolder) {
             FolderItem folder = (FolderItem) item;
             FolderViewHolder fHolder = (FolderViewHolder) holder;
             fHolder.folderName.setText(folder.name);
             fHolder.folderCount.setText(folder.count + " Videos");
+
+            if (fHolder.selectionCheck != null) {
+                fHolder.selectionCheck.setVisibility(isSelectionMode ? (isSelected ? View.VISIBLE : View.INVISIBLE) : View.GONE);
+                if (fHolder.folderArrow != null) {
+                    fHolder.folderArrow.setVisibility(isSelectionMode ? View.GONE : View.VISIBLE);
+                }
+            }
+
             fHolder.itemView.setOnClickListener(v -> {
-                if (listener != null) listener.onFolderClick(folder.name);
+                if (isSelectionMode) {
+                    toggleSelection(folder);
+                } else if (listener != null) {
+                    listener.onFolderClick(folder.name);
+                }
+            });
+
+            fHolder.itemView.setOnLongClickListener(v -> {
+                toggleSelection(folder);
+                return true;
             });
         } else if (holder instanceof VideoViewHolder) {
             MediaItem video = (MediaItem) item;
@@ -92,6 +155,10 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             vHolder.subtext.setText(video.folder + " • " + formatSize(video.size));
             vHolder.duration.setText(formatDuration(video.duration));
             vHolder.badgeRes.setText(video.resolution != null ? video.resolution : video.format);
+
+            if (vHolder.selectionCheck != null) {
+                vHolder.selectionCheck.setVisibility(isSelectionMode ? (isSelected ? View.VISIBLE : View.INVISIBLE) : View.GONE);
+            }
 
             if (video.audioCodec != null && (video.audioCodec.contains("Dolby") || video.audioCodec.contains("5.1") || video.audioCodec.contains("E-AC-3"))) {
                 vHolder.badgeSurround.setVisibility(View.VISIBLE);
@@ -106,7 +173,16 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                     .into(vHolder.thumb);
 
             vHolder.itemView.setOnClickListener(v -> {
-                if (listener != null) listener.onVideoClick(video);
+                if (isSelectionMode) {
+                    toggleSelection(video);
+                } else if (listener != null) {
+                    listener.onVideoClick(video);
+                }
+            });
+
+            vHolder.itemView.setOnLongClickListener(v -> {
+                toggleSelection(video);
+                return true;
             });
 
             vHolder.btnMenu.setOnClickListener(v -> {
@@ -121,16 +197,20 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     }
 
     static class FolderViewHolder extends RecyclerView.ViewHolder {
-        TextView folderName, folderCount;
+        TextView folderName, folderCount, folderArrow;
+        ImageView selectionCheck;
+
         FolderViewHolder(View v) {
             super(v);
             folderName = v.findViewById(R.id.folder_name);
             folderCount = v.findViewById(R.id.folder_video_count);
+            folderArrow = v.findViewById(R.id.folder_arrow);
+            selectionCheck = v.findViewById(R.id.selection_check);
         }
     }
 
     static class VideoViewHolder extends RecyclerView.ViewHolder {
-        ImageView thumb;
+        ImageView thumb, selectionCheck;
         TextView title, subtext, duration, badgeRes, badgeSurround;
         ImageButton btnMenu;
 
@@ -143,25 +223,27 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             badgeRes = v.findViewById(R.id.badge_resolution);
             badgeSurround = v.findViewById(R.id.badge_surround);
             btnMenu = v.findViewById(R.id.btn_video_menu);
+            selectionCheck = v.findViewById(R.id.selection_check);
         }
     }
 
-    private String formatDuration(long ms) {
-        long seconds = (ms / 1000) % 60;
-        long minutes = (ms / (1000 * 60)) % 60;
-        long hours = ms / (1000 * 60 * 60);
-        if (hours > 0) {
-            return String.format(Locale.US, "%d:%02d:%02d", hours, minutes, seconds);
+    private String formatDuration(long millis) {
+        long seconds = millis / 1000;
+        long h = seconds / 3600;
+        long m = (seconds % 3600) / 60;
+        long s = seconds % 60;
+        if (h > 0) {
+            return String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s);
         }
-        return String.format(Locale.US, "%02d:%02d", minutes, seconds);
+        return String.format(Locale.getDefault(), "%02d:%02d", m, s);
     }
 
     private String formatSize(long bytes) {
         if (bytes <= 0) return "0 MB";
         double mb = bytes / (1024.0 * 1024.0);
         if (mb >= 1024.0) {
-            return String.format(Locale.US, "%.2f GB", mb / 1024.0);
+            return String.format(Locale.getDefault(), "%.1f GB", mb / 1024.0);
         }
-        return String.format(Locale.US, "%.1f MB", mb);
+        return String.format(Locale.getDefault(), "%.1f MB", mb);
     }
 }

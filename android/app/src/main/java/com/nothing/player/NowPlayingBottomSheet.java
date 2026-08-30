@@ -29,6 +29,7 @@ public class NowPlayingBottomSheet extends BottomSheetDialogFragment {
     private TextView title, artist, tvCurrent, tvTotal;
     private SeekBar seekbar;
     private ImageButton btnPlayPause, btnPrev, btnNext, btnEq, btnClose;
+    private boolean isUserSeeking = false;
 
     public static NowPlayingBottomSheet newInstance(MediaItem track) {
         NowPlayingBottomSheet sheet = new NowPlayingBottomSheet();
@@ -93,12 +94,23 @@ public class NowPlayingBottomSheet extends BottomSheetDialogFragment {
         seekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser && getActivity() instanceof MainActivity) {
-                    ((MainActivity) getActivity()).seekTo(progress);
+                if (fromUser && tvCurrent != null) {
+                    tvCurrent.setText(formatTime(progress));
                 }
             }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                isUserSeeking = true;
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                isUserSeeking = false;
+                if (getActivity() instanceof MainActivity) {
+                    ((MainActivity) getActivity()).seekTo(seekBar.getProgress());
+                }
+            }
         });
 
         return view;
@@ -113,12 +125,13 @@ public class NowPlayingBottomSheet extends BottomSheetDialogFragment {
     }
 
     public void updateProgress(long pos, long dur) {
+        if (isUserSeeking) return;
         this.currentPosition = pos;
         this.duration = dur;
         if (tvCurrent != null && tvTotal != null && seekbar != null) {
             tvCurrent.setText(formatTime(pos));
             tvTotal.setText(formatTime(dur));
-            seekbar.setMax((int) dur);
+            if (dur > 0) seekbar.setMax((int) dur);
             seekbar.setProgress((int) pos);
         }
     }
