@@ -25,6 +25,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
@@ -117,6 +120,13 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         // Always Open in Landscape Cinema Mode by Default
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
 
+        // Edge-to-Edge display past camera cutout / notch
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            getWindow().getAttributes().layoutInDisplayCutoutMode = 
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
         // Keep Screen On & Hide System Status / Nav Bars
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         hideSystemUI();
@@ -175,13 +185,28 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     }
 
     private void hideSystemUI() {
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        if (controller != null) {
+            controller.hide(WindowInsetsCompat.Type.systemBars());
+            controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        }
         getWindow().getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE
             | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
             | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
             | View.SYSTEM_UI_FLAG_FULLSCREEN
             | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         );
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            hideSystemUI();
+        }
     }
 
     private void initViews() {
@@ -581,15 +606,27 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
                 btnAspectRatio.setText("FILL");
-                showGestureHud("📺", "STRETCH / FILL", 100);
+                showGestureHud("📺", "STRETCH / FULLSCREEN", 100);
+                if (isVlcActive && vlcPlayer != null) {
+                    vlcPlayer.setAspectRatio("16:9");
+                    vlcPlayer.setScale(0);
+                }
             } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
                 btnAspectRatio.setText("ZOOM");
-                showGestureHud("🔍", "ZOOM / CROP", 100);
+                showGestureHud("🔍", "ZOOM / CROP FULLSCREEN", 100);
+                if (isVlcActive && vlcPlayer != null) {
+                    vlcPlayer.setAspectRatio(null);
+                    vlcPlayer.setScale(1.25f);
+                }
             } else {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
                 btnAspectRatio.setText("FIT");
                 showGestureHud("📐", "FIT TO SCREEN", 100);
+                if (isVlcActive && vlcPlayer != null) {
+                    vlcPlayer.setAspectRatio(null);
+                    vlcPlayer.setScale(0);
+                }
             }
             if (exoPlayerView != null) exoPlayerView.setResizeMode(currentResizeMode);
         });
@@ -875,6 +912,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     }
 
     private void setupGestures() {
+        final boolean[] isHorizontalSeek = {false};
+        final long[] seekStartPosition = {0};
+        final long[] targetSeekPosition = {0};
+
         GestureDetector gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onSingleTapConfirmed(MotionEvent e) {
@@ -892,7 +933,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 int screenWidth = getResources().getDisplayMetrics().widthPixels;
                 long cur = isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0);
 
-                if (e.getX() < screenWidth / 2) {
+                if (e.getX() < screenWidth / 2f) {
                     // Double Tap Left: Rewind 10s
                     long target = Math.max(0, cur - 10000);
                     if (isVlcActive && vlcPlayer != null) vlcPlayer.setTime(target);
@@ -914,14 +955,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
                 int screenWidth = getResources().getDisplayMetrics().widthPixels;
                 int screenHeight = getResources().getDisplayMetrics().heightPixels;
-                float deltaY = distanceY / screenHeight;
 
-                if (Math.abs(distanceY) > Math.abs(distanceX)) {
-                    if (e1.getX() > screenWidth / 2) {
+                if (!isHorizontalSeek[0] && Math.abs(distanceY) > Math.abs(distanceX)) {
+                    // Vertical Swipe: Volume / Brightness
+                    float deltaY = distanceY / screenHeight;
+                    if (e1.getX() > screenWidth / 2f) {
                         // Right Side: Volume Swipe
                         if (audioManager != null) {
                             int currentVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
-                            int change = (int) (deltaY * maxVolume * 2.5f);
                             int newVol = Math.max(0, Math.min(maxVolume, currentVol + (distanceY > 0 ? 1 : -1)));
                             audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0);
                             int percent = (int) ((float) newVol / maxVolume * 100);
@@ -937,13 +978,46 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                         showGestureHud("☀️", "BRIGHTNESS: " + percent + "%", percent);
                     }
                     return true;
+                } else if (Math.abs(distanceX) > Math.abs(distanceY) || isHorizontalSeek[0]) {
+                    // Horizontal Swipe: Fast Forward / Rewind
+                    if (!isHorizontalSeek[0]) {
+                        isHorizontalSeek[0] = true;
+                        seekStartPosition[0] = isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0);
+                    }
+
+                    float totalDeltaX = (e2.getX() - e1.getX()) / (float) screenWidth;
+                    long maxSeekSpan = Math.max(60000, Math.min(180000, totalDurationMs / 5));
+                    long deltaMs = (long) (totalDeltaX * maxSeekSpan);
+                    targetSeekPosition[0] = Math.max(0, Math.min(totalDurationMs, seekStartPosition[0] + deltaMs));
+
+                    long diffSec = (targetSeekPosition[0] - seekStartPosition[0]) / 1000;
+                    String sign = diffSec >= 0 ? "+" : "";
+                    String icon = diffSec >= 0 ? "⏩" : "⏪";
+                    String text = sign + diffSec + "s (" + formatTime(targetSeekPosition[0]) + " / " + formatTime(totalDurationMs) + ")";
+                    int progress = (int) (targetSeekPosition[0] * 100 / Math.max(1, totalDurationMs));
+
+                    showGestureHud(icon, text, progress);
+                    return true;
                 }
                 return false;
             }
         });
 
         View.OnTouchListener touchListener = (v, event) -> {
-            gestureDetector.onTouchEvent(event);
+            boolean handled = gestureDetector.onTouchEvent(event);
+            if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                if (isHorizontalSeek[0]) {
+                    long target = targetSeekPosition[0];
+                    if (isVlcActive && vlcPlayer != null) {
+                        vlcPlayer.setTime(target);
+                    } else if (exoPlayer != null) {
+                        exoPlayer.seekTo(target);
+                    }
+                    videoSeekBar.setProgress((int) target);
+                    timeCurrentText.setText(formatTime(target));
+                    isHorizontalSeek[0] = false;
+                }
+            }
             return true;
         };
 

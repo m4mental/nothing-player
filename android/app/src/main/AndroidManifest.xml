@@ -44,7 +44,7 @@
             android:name=".ExoVideoPlayerActivity"
             android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden"
-            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:theme="@style/PlayerTheme"
             android:supportsPictureInPicture="true"
             android:exported="true" />
 
