@@ -2,10 +2,117 @@ import type { MediaItem, RadioStation } from '../types/media';
 
 export const DEMO_MEDIA_ITEMS: MediaItem[] = [
   {
+    id: 'demo_video_1',
+    title: 'Anbe Diana (2026) SLiv WEBRip',
+    artist: 'Cinema Originals',
+    album: 'Movies',
+    folder: 'Movies',
+    duration: 8392, // 2h 19m
+    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    type: 'video',
+    format: 'MKV',
+    resolution: '1080p FHD',
+    decoder: 'HW',
+    thumbnail: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=600&auto=format&fit=crop&q=80',
+    lastPosition: 3005, // 50m watched (shows progress bar on thumbnail)
+    size: 3242000000,
+    subtitlesContent: `1
+00:00:02,000 --> 00:00:08,000
+NOTHING PLAYER - MX STYLE CINEMA DECODER
+
+2
+00:00:09,000 --> 00:00:15,000
+Swipe Left: Brightness | Swipe Right: Volume (200% Boost)
+
+3
+00:00:16,000 --> 00:00:22,000
+Horizontal Swipe: High Precision Seeking
+
+4
+00:00:25,000 --> 00:00:32,000
+HW/SW Decoder & Screen Padlock Active`,
+    subtitlesName: 'English (Default)',
+    addedAt: Date.now() - 3600000 * 5,
+    isFavorite: true
+  },
+  {
+    id: 'demo_video_2',
+    title: 'Toxic A Fairy Tale for Grown-ups',
+    artist: 'Action Studios',
+    album: 'Movies',
+    folder: 'Movies',
+    duration: 9420,
+    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+    type: 'video',
+    format: 'MP4',
+    resolution: '4K UHD',
+    decoder: 'HW',
+    thumbnail: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
+    lastPosition: 1200,
+    size: 7730000000,
+    addedAt: Date.now() - 3600000 * 12,
+    isFavorite: true
+  },
+  {
+    id: 'demo_video_3',
+    title: 'Awarapan 2 (Hindi Dubbed HD)',
+    artist: 'Bollywood Action',
+    album: 'Downloads',
+    folder: 'Downloads',
+    duration: 7200,
+    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+    type: 'video',
+    format: 'MKV',
+    resolution: '1080p',
+    decoder: 'HW',
+    thumbnail: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=600&auto=format&fit=crop&q=80',
+    lastPosition: 0,
+    size: 1513000000,
+    addedAt: Date.now() - 3600000 * 24,
+    isFavorite: false
+  },
+  {
+    id: 'demo_video_4',
+    title: 'Camera Roll - Night Drive 4K HDR',
+    artist: 'Nothing Camera',
+    album: 'Camera',
+    folder: 'Camera',
+    duration: 345,
+    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    type: 'video',
+    format: 'MP4',
+    resolution: '4K 60FPS',
+    decoder: 'HW',
+    thumbnail: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=600&auto=format&fit=crop&q=80',
+    lastPosition: 120,
+    size: 640000000,
+    addedAt: Date.now() - 3600000 * 48,
+    isFavorite: true
+  },
+  {
+    id: 'demo_video_5',
+    title: 'VID_20260830_WA0012.mp4',
+    artist: 'WhatsApp Media',
+    album: 'WhatsApp Video',
+    folder: 'WhatsApp Video',
+    duration: 184,
+    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    type: 'video',
+    format: 'MP4',
+    resolution: '720p',
+    decoder: 'SW',
+    thumbnail: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=600&auto=format&fit=crop&q=80',
+    lastPosition: 0,
+    size: 45000000,
+    addedAt: Date.now() - 3600000 * 72,
+    isFavorite: false
+  },
+  {
     id: 'demo_track_1',
     title: 'NOTHING GLYPH RHYTHM',
     artist: 'Carl Pei & The Glyphs',
-    album: 'Nothing Phone (3) Soundscapes',
+    album: 'Nothing Phone (2a) Soundscapes',
+    folder: 'Music / Nothing Audio',
     duration: 165,
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     type: 'audio',
@@ -30,6 +137,7 @@ export const DEMO_MEDIA_ITEMS: MediaItem[] = [
     title: 'CYBERPUNK NEON DRIFT',
     artist: 'Kavinsky Resonance',
     album: 'Night City Overdrive',
+    folder: 'Downloads / Audio',
     duration: 180,
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
     type: 'audio',
@@ -49,6 +157,7 @@ export const DEMO_MEDIA_ITEMS: MediaItem[] = [
     title: 'LO-FI GLYPH AMBIENCE',
     artist: 'Tape Cassette Echoes',
     album: 'Late Night Chill',
+    folder: 'Music / Lo-Fi',
     duration: 210,
     url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
     type: 'audio',
@@ -56,48 +165,6 @@ export const DEMO_MEDIA_ITEMS: MediaItem[] = [
     thumbnail: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=600&auto=format&fit=crop&q=80',
     addedAt: Date.now() - 3600000 * 10,
     isFavorite: false
-  },
-  {
-    id: 'demo_video_1',
-    title: 'BIG BUCK BUNNY (CINEMA 4K HDR)',
-    artist: 'Blender Open Movie Studio',
-    album: 'Open Source Cinema Showcase',
-    duration: 596,
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    type: 'video',
-    format: 'MP4 (H.264)',
-    thumbnail: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=600&auto=format&fit=crop&q=80',
-    subtitlesContent: `1
-00:00:02,000 --> 00:00:08,000
-NOTHING PLAYER (01) CINEMA SUITE
-
-2
-00:00:09,000 --> 00:00:15,000
-Swipe Left: Brightness | Swipe Right: Volume (200%)
-
-3
-00:00:16,000 --> 00:00:22,000
-Horizontal Swipe: High Precision Seeking
-
-4
-00:00:25,000 --> 00:00:32,000
-Try Retro CRT Scanline filter or Nothing Red Duotone mode!`,
-    subtitlesName: 'English (Demo Subtitles)',
-    addedAt: Date.now() - 3600000 * 24,
-    isFavorite: true
-  },
-  {
-    id: 'demo_video_2',
-    title: 'TEARS OF STEEL (SCI-FI 4K)',
-    artist: 'Blender VFX Studio',
-    album: 'Future Cybernetics',
-    duration: 734,
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-    type: 'video',
-    format: 'MKV / MP4',
-    thumbnail: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
-    addedAt: Date.now() - 3600000 * 48,
-    isFavorite: true
   }
 ];
 

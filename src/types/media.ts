@@ -7,9 +7,10 @@ export interface MediaItem {
   album?: string;
   duration: number; // in seconds
   url: string;
-  blobKey?: string; // key in IndexedDB for offline blobs
+  blobKey?: string;
   type: MediaType;
-  format: string; // mp3, flac, mp4, mkv, hls, etc.
+  format: string; // MP4, MKV, AVI, MP3, FLAC, HLS, etc.
+  folder?: string; // e.g. "Camera", "Download", "WhatsApp Video", "Movies"
   thumbnail?: string;
   subtitlesUrl?: string;
   subtitlesContent?: string;
@@ -17,8 +18,17 @@ export interface MediaItem {
   lyrics?: string;
   addedAt: number;
   isFavorite?: boolean;
-  lastPosition?: number;
-  size?: number;
+  lastPosition?: number; // playback resume position in seconds
+  size?: number; // in bytes
+  resolution?: string; // e.g. "1080p", "4K UHD", "720p"
+  decoder?: 'HW' | 'SW';
+}
+
+export interface VideoFolder {
+  name: string;
+  count: number;
+  totalDuration: number;
+  previewThumbnail?: string;
 }
 
 export interface Playlist {
@@ -32,29 +42,29 @@ export interface Playlist {
 
 export interface SubtitleCue {
   id: number;
-  startTime: number; // in seconds
-  endTime: number; // in seconds
+  startTime: number;
+  endTime: number;
   text: string;
 }
 
 export interface LyricsLine {
-  time: number; // in seconds
+  time: number;
   text: string;
 }
 
 export interface VideoFilterState {
-  brightness: number; // 50 to 150 (default 100)
-  contrast: number; // 50 to 150 (default 100)
-  saturation: number; // 0 to 200 (default 100)
+  brightness: number;
+  contrast: number;
+  saturation: number;
   crtScanlines: boolean;
   duotoneRed: boolean;
-  hueRotate: number; // 0 to 360
+  hueRotate: number;
   invert: boolean;
 }
 
 export interface EqualizerPreset {
   name: string;
-  gains: number[]; // 10 bands from -12dB to +12dB
+  gains: number[];
 }
 
 export interface RadioStation {
@@ -68,4 +78,5 @@ export interface RadioStation {
   description: string;
 }
 
+export type MainTab = 'VIDEOS' | 'MUSIC' | 'RADIO' | 'ME';
 export type ActiveHub = 'MUSIC' | 'VIDEO' | 'LIBRARY' | 'RADIO' | 'GLYPH';

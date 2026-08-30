@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { MediaItem, ActiveHub, MediaType, RadioStation } from './types/media';
-import { Header } from './components/Header';
-import { MusicHub } from './components/MusicHub';
-import { VideoHub } from './components/VideoHub';
-import { LibraryHub } from './components/LibraryHub';
+import type { MediaItem, MainTab, RadioStation } from './types/media';
+import { BottomNavBar } from './components/BottomNavBar';
+import { VideoExplorer } from './components/VideoExplorer';
+import { NativeVideoPlayer } from './components/NativeVideoPlayer';
+import { MusicExplorer } from './components/MusicExplorer';
+import { MiniMusicPlayer } from './components/MiniMusicPlayer';
+import { NowPlayingSheet } from './components/NowPlayingSheet';
 import { RadioHub } from './components/RadioHub';
-import { GlyphMatrix } from './components/GlyphMatrix';
+import { SettingsHub } from './components/SettingsHub';
 import { EqualizerModal } from './components/EqualizerModal';
 import { VLCShortcutsModal } from './components/VLCShortcutsModal';
 import { audioEngine } from './services/audioEngine';
@@ -21,8 +23,12 @@ import { triggerHaptic } from './services/haptic';
 export const App: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Core State
-  const [activeHub, setActiveHub] = useState<ActiveHub>('MUSIC');
+  // Tabs & Player Views
+  const [activeTab, setActiveTab] = useState<MainTab>('VIDEOS');
+  const [activeVideo, setActiveVideo] = useState<MediaItem | null>(null);
+  const [showNowPlayingSheet, setShowNowPlayingSheet] = useState(false);
+
+  // Media Library State
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
   const [currentTrack, setCurrentTrack] = useState<MediaItem | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -41,7 +47,7 @@ export const App: React.FC = () => {
   const [eqPreamp, setEqPreamp] = useState<number>(0);
   const [eqBassBoost, setEqBassBoost] = useState<number>(3);
   const [eqPreset, setEqPreset] = useState<string>('NOTHING PUNCH');
-  const [audioBoost, setAudioBoost] = useState<number>(100); // 100% to 200%
+  const [audioBoost, setAudioBoost] = useState<number>(100);
 
   // Initialize DB and load media
   useEffect(() => {
@@ -49,18 +55,17 @@ export const App: React.FC = () => {
       try {
         const storedItems = await getAllMediaItems();
         if (storedItems.length === 0) {
-          // Seed initial demo items
           for (const item of DEMO_MEDIA_ITEMS) {
             await saveMediaItem(item);
           }
           setMediaList(DEMO_MEDIA_ITEMS);
-          setCurrentTrack(DEMO_MEDIA_ITEMS[0]);
+          setCurrentTrack(DEMO_MEDIA_ITEMS.find(m => m.type === 'audio') || DEMO_MEDIA_ITEMS[0]);
         } else {
           setMediaList(storedItems);
-          setCurrentTrack(storedItems[0]);
+          setCurrentTrack(storedItems.find(m => m.type === 'audio') || storedItems[0]);
         }
       } catch (e) {
-        console.warn('IndexedDB initial load error:', e);
+        console.warn('IndexedDB load error:', e);
         setMediaList(DEMO_MEDIA_ITEMS);
         setCurrentTrack(DEMO_MEDIA_ITEMS[0]);
       }
@@ -69,7 +74,7 @@ export const App: React.FC = () => {
     initLibrary();
   }, []);
 
-  // Initialize Web Audio Engine with Audio element
+  // Web Audio DSP Engine
   useEffect(() => {
     if (audioRef.current) {
       audioEngine.init(audioRef.current);
@@ -80,23 +85,21 @@ export const App: React.FC = () => {
     }
   }, [eqGains, eqPreamp, eqBassBoost, audioBoost]);
 
-  // Setup Android MediaSession Action Handlers
+  // MediaSession API setup
   useEffect(() => {
     setupMediaSessionActionHandlers({
       onPlay: () => handlePlayPause(),
       onPause: () => handlePlayPause(),
-      onPrev: () => handlePrev(),
-      onNext: () => handleNext(),
+      onPrev: () => handlePrevTrack(),
+      onNext: () => handleNextTrack(),
       onSeek: (pos) => handleSeek(pos)
     });
   }, [currentTrack, isPlaying]);
 
-  // Update MediaSession Metadata
   useEffect(() => {
     updateMediaSessionMetadata(currentTrack, isPlaying);
   }, [currentTrack, isPlaying]);
 
-  // Sync Audio Time & Position State
   const handleTimeUpdate = () => {
     if (audioRef.current) {
       const pos = audioRef.current.currentTime;
@@ -118,11 +121,10 @@ export const App: React.FC = () => {
         audioRef.current.play();
       }
     } else {
-      handleNext();
+      handleNextTrack();
     }
   };
 
-  // Play / Pause Toggle
   const handlePlayPause = async () => {
     if (!audioRef.current) return;
     audioEngine.resume();
@@ -135,77 +137,54 @@ export const App: React.FC = () => {
         await audioRef.current.play();
         setIsPlaying(true);
       } catch (err) {
-        console.warn('Audio playback error:', err);
+        console.warn('Playback err:', err);
       }
     }
   };
 
-  // Play Specific Track
   const handleSelectTrack = async (item: MediaItem) => {
     setCurrentTrack(item);
     setCurrentTime(0);
 
-    // If item has blobKey in IndexedDB, create object URL
     let playUrl = item.url;
     if (item.blobKey) {
       const blob = await getMediaBlob(item.blobKey);
-      if (blob) {
-        playUrl = URL.createObjectURL(blob);
-      }
+      if (blob) playUrl = URL.createObjectURL(blob);
     }
 
-    if (item.type === 'video') {
-      setActiveHub('VIDEO');
-      if (audioRef.current) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      }
-    } else {
-      if (activeHub === 'VIDEO') {
-        setActiveHub('MUSIC');
-      }
-      if (audioRef.current) {
-        audioRef.current.src = playUrl;
-        audioRef.current.load();
-        audioEngine.resume();
-        try {
-          await audioRef.current.play();
-          setIsPlaying(true);
-        } catch (e) {
-          console.warn('Playback error:', e);
-        }
+    if (audioRef.current) {
+      audioRef.current.src = playUrl;
+      audioRef.current.load();
+      audioEngine.resume();
+      try {
+        await audioRef.current.play();
+        setIsPlaying(true);
+      } catch (e) {
+        console.warn('Track play error:', e);
       }
     }
   };
 
-  // Next Track
-  const handleNext = () => {
-    if (mediaList.length === 0) return;
-    triggerHaptic('medium');
-    let nextIndex = 0;
+  const handleNextTrack = () => {
     const audioItems = mediaList.filter(m => m.type === 'audio' || m.type === 'stream');
+    if (audioItems.length === 0) return;
+    triggerHaptic('medium');
     const currentIndex = audioItems.findIndex(m => m.id === currentTrack?.id);
-
-    if (shuffle) {
-      nextIndex = Math.floor(Math.random() * audioItems.length);
-    } else {
-      nextIndex = (currentIndex + 1) % audioItems.length;
-    }
-
+    const nextIndex = shuffle 
+      ? Math.floor(Math.random() * audioItems.length) 
+      : (currentIndex + 1) % audioItems.length;
     handleSelectTrack(audioItems[nextIndex]);
   };
 
-  // Previous Track
-  const handlePrev = () => {
-    if (mediaList.length === 0) return;
-    triggerHaptic('medium');
+  const handlePrevTrack = () => {
     const audioItems = mediaList.filter(m => m.type === 'audio' || m.type === 'stream');
+    if (audioItems.length === 0) return;
+    triggerHaptic('medium');
     const currentIndex = audioItems.findIndex(m => m.id === currentTrack?.id);
     const prevIndex = (currentIndex - 1 + audioItems.length) % audioItems.length;
     handleSelectTrack(audioItems[prevIndex]);
   };
 
-  // Seek
   const handleSeek = (time: number) => {
     if (audioRef.current) {
       audioRef.current.currentTime = time;
@@ -213,32 +192,6 @@ export const App: React.FC = () => {
     }
   };
 
-  // Volume
-  const handleVolumeChange = (newVol: number) => {
-    setVolume(newVol);
-    if (audioRef.current) {
-      audioRef.current.volume = newVol;
-    }
-    setIsMuted(newVol === 0);
-  };
-
-  const handleToggleMute = () => {
-    if (audioRef.current) {
-      const nextMute = !isMuted;
-      setIsMuted(nextMute);
-      audioRef.current.muted = nextMute;
-    }
-  };
-
-  // Playback Rate
-  const handlePlaybackRateChange = (rate: number) => {
-    setPlaybackRate(rate);
-    if (audioRef.current) {
-      audioRef.current.playbackRate = rate;
-    }
-  };
-
-  // Favorite Toggle
   const handleToggleFavorite = async (id: string) => {
     triggerHaptic('light');
     const updated = mediaList.map(item => {
@@ -255,13 +208,22 @@ export const App: React.FC = () => {
     }
   };
 
-  // Delete Item
   const handleDeleteItem = async (id: string) => {
     await deleteMediaItem(id);
     setMediaList(prev => prev.filter(item => item.id !== id));
   };
 
-  // Import Local Files
+  const handleSaveVideoProgress = (id: string, position: number) => {
+    setMediaList(prev => prev.map(v => {
+      if (v.id === id) {
+        const updated = { ...v, lastPosition: position };
+        saveMediaItem(updated);
+        return updated;
+      }
+      return v;
+    }));
+  };
+
   const handleImportFiles = async (files: FileList | File[]) => {
     const newItems: MediaItem[] = [];
 
@@ -273,8 +235,9 @@ export const App: React.FC = () => {
       const item: MediaItem = {
         id: `local_${Date.now()}_${i}`,
         title: file.name.replace(/\.[^/.]+$/, ''),
-        artist: 'Local Device Media',
-        album: isVideo ? 'Local Video Library' : 'Local Music Storage',
+        artist: isVideo ? 'Device Video' : 'Device Audio',
+        album: isVideo ? 'Downloads' : 'Music',
+        folder: isVideo ? 'Downloads' : 'Internal Music',
         duration: 0,
         url: URL.createObjectURL(file),
         type: isVideo ? 'video' : 'audio',
@@ -292,37 +255,21 @@ export const App: React.FC = () => {
 
     setMediaList(prev => [...newItems, ...prev]);
     if (newItems.length > 0) {
-      handleSelectTrack(newItems[0]);
+      if (newItems[0].type === 'video') {
+        setActiveVideo(newItems[0]);
+      } else {
+        handleSelectTrack(newItems[0]);
+      }
     }
   };
 
-  // Add Stream URL
-  const handleAddStreamUrl = async (title: string, url: string, type: MediaType) => {
-    const item: MediaItem = {
-      id: `stream_${Date.now()}`,
-      title: title,
-      artist: 'Live Network Stream',
-      album: 'Network Broadcast',
-      duration: 0,
-      url: url,
-      type: type,
-      format: url.includes('.m3u8') ? 'HLS' : type === 'video' ? 'MP4' : 'MP3',
-      thumbnail: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=400&auto=format&fit=crop&q=80',
-      addedAt: Date.now()
-    };
-
-    await saveMediaItem(item);
-    setMediaList(prev => [item, ...prev]);
-    handleSelectTrack(item);
-  };
-
-  // Play Radio Station
-  const handlePlayRadioStation = (station: RadioStation) => {
+  const handlePlayRadio = (station: RadioStation) => {
     const radioItem: MediaItem = {
       id: station.id,
       title: station.name,
       artist: station.genre,
-      album: `${station.country} Broadcast`,
+      album: station.country,
+      folder: 'Radio Streams',
       duration: 0,
       url: station.streamUrl,
       type: 'stream',
@@ -333,162 +280,154 @@ export const App: React.FC = () => {
     handleSelectTrack(radioItem);
   };
 
-  // Global VLC Keyboard Shortcuts Handler
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in an input field
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
-
-      switch (e.code) {
-        case 'Space':
-          e.preventDefault();
-          handlePlayPause();
-          break;
-        case 'ArrowLeft':
-          e.preventDefault();
-          handleSeek(Math.max(0, currentTime - 5));
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          handleSeek(Math.min(duration, currentTime + 5));
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          handleVolumeChange(Math.min(1.0, volume + 0.05));
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          handleVolumeChange(Math.max(0, volume - 0.05));
-          break;
-        case 'KeyM':
-          e.preventDefault();
-          handleToggleMute();
-          break;
-        case 'KeyN':
-          e.preventDefault();
-          handleNext();
-          break;
-        case 'KeyB':
-          e.preventDefault();
-          handlePrev();
-          break;
-        case 'KeyS':
-          // Open shortcuts guide
-          setShowShortcuts(prev => !prev);
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentTime, duration, volume, isMuted, isPlaying]);
-
-  const audioQueue = mediaList.filter(m => m.type === 'audio' || m.type === 'stream');
-  const videoList = mediaList.filter(m => m.type === 'video');
+  const videos = mediaList.filter(m => m.type === 'video');
+  const tracks = mediaList.filter(m => m.type === 'audio' || m.type === 'stream');
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#f5f5f5] flex flex-col selection:bg-[#D71921] selection:text-white pb-12">
+    <div className="min-h-screen bg-[#050505] text-[#f5f5f5] flex flex-col font-sans select-none overflow-x-hidden">
       
-      {/* Hidden Audio Engine Element */}
+      {/* Hidden Audio Element */}
       <audio
         ref={audioRef}
-        src={currentTrack?.type !== 'video' ? currentTrack?.url : undefined}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleEnded}
         preload="auto"
       />
 
-      {/* Top Nothing OS Navigation Header */}
-      <Header
-        activeHub={activeHub}
-        setActiveHub={setActiveHub}
-        onOpenEqualizer={() => setShowEqualizer(true)}
-        onOpenShortcuts={() => setShowShortcuts(true)}
-        onOpenImport={() => {
-          const input = document.createElement('input');
-          input.type = 'file';
-          input.multiple = true;
-          input.accept = 'audio/*,video/*';
-          input.onchange = (e) => {
-            const files = (e.target as HTMLInputElement).files;
-            if (files) handleImportFiles(files);
-          };
-          input.click();
-        }}
-        isPlaying={isPlaying}
-      />
-
-      {/* Main Hub Router View */}
+      {/* Main Tab Content */}
       <main className="flex-1 flex flex-col">
-        {activeHub === 'MUSIC' && (
-          <MusicHub
-            currentTrack={currentTrack}
-            isPlaying={isPlaying}
-            onPlayPause={handlePlayPause}
-            onPrev={handlePrev}
-            onNext={handleNext}
-            currentTime={currentTime}
-            duration={duration}
-            onSeek={handleSeek}
-            volume={volume}
-            onVolumeChange={handleVolumeChange}
-            isMuted={isMuted}
-            onToggleMute={handleToggleMute}
-            shuffle={shuffle}
-            onToggleShuffle={() => setShuffle(!shuffle)}
-            repeatMode={repeatMode}
-            onCycleRepeat={() => {
-              const modes: ('off' | 'all' | 'one')[] = ['off', 'all', 'one'];
-              const next = modes[(modes.indexOf(repeatMode) + 1) % modes.length];
-              setRepeatMode(next);
+        {activeTab === 'VIDEOS' && (
+          <VideoExplorer
+            videos={videos}
+            onPlayVideo={(v) => {
+              if (audioRef.current) {
+                audioRef.current.pause();
+                setIsPlaying(false);
+              }
+              setActiveVideo(v);
             }}
-            playbackRate={playbackRate}
-            onChangePlaybackRate={handlePlaybackRateChange}
-            onToggleFavorite={handleToggleFavorite}
-            onOpenEqualizer={() => setShowEqualizer(true)}
-            queue={audioQueue}
-            onSelectTrack={handleSelectTrack}
-          />
-        )}
-
-        {activeHub === 'VIDEO' && (
-          <VideoHub
-            currentVideo={currentTrack?.type === 'video' ? currentTrack : videoList[0] || null}
-            videoList={videoList}
-            onSelectVideo={handleSelectTrack}
-            onOpenEqualizer={() => setShowEqualizer(true)}
-          />
-        )}
-
-        {activeHub === 'LIBRARY' && (
-          <LibraryHub
-            mediaItems={mediaList}
-            currentTrackId={currentTrack?.id}
-            onPlayItem={handleSelectTrack}
-            onDeleteItem={handleDeleteItem}
-            onToggleFavorite={handleToggleFavorite}
             onImportFiles={handleImportFiles}
-            onAddStreamUrl={handleAddStreamUrl}
+            onDeleteVideo={handleDeleteItem}
           />
         )}
 
-        {activeHub === 'RADIO' && (
-          <RadioHub
-            currentStationUrl={currentTrack?.url}
-            isPlaying={isPlaying}
-            onPlayStation={handlePlayRadioStation}
+        {activeTab === 'MUSIC' && (
+          <MusicExplorer
+            tracks={tracks}
+            currentTrackId={currentTrack?.id}
+            onPlayTrack={handleSelectTrack}
+            onImportFiles={handleImportFiles}
+            onToggleFavorite={handleToggleFavorite}
           />
         )}
 
-        {activeHub === 'GLYPH' && (
-          <div className="w-full max-w-4xl mx-auto p-4 sm:p-8 flex flex-col items-center gap-6">
-            <GlyphMatrix isPlaying={isPlaying} isExpanded={true} />
+        {activeTab === 'RADIO' && (
+          <div className="pt-9 sm:pt-4 pb-36">
+            <RadioHub
+              currentStationUrl={currentTrack?.url}
+              isPlaying={isPlaying}
+              onPlayStation={handlePlayRadio}
+            />
           </div>
+        )}
+
+        {activeTab === 'ME' && (
+          <SettingsHub
+            onOpenEqualizer={() => setShowEqualizer(true)}
+            onOpenShortcuts={() => setShowShortcuts(true)}
+            audioBoost={audioBoost}
+            setAudioBoost={setAudioBoost}
+            totalMediaCount={mediaList.length}
+          />
         )}
       </main>
 
-      {/* 10-Band Equalizer Modal */}
+      {/* MX Fullscreen Video Player */}
+      {activeVideo && (
+        <NativeVideoPlayer
+          video={activeVideo}
+          videoList={videos}
+          onClose={() => setActiveVideo(null)}
+          onNextVideo={() => {
+            const idx = videos.findIndex(v => v.id === activeVideo.id);
+            const next = videos[(idx + 1) % videos.length];
+            setActiveVideo(next);
+          }}
+          onPrevVideo={() => {
+            const idx = videos.findIndex(v => v.id === activeVideo.id);
+            const prev = videos[(idx - 1 + videos.length) % videos.length];
+            setActiveVideo(prev);
+          }}
+          onSaveProgress={handleSaveVideoProgress}
+        />
+      )}
+
+      {/* Pinned Mini Music Player */}
+      {!activeVideo && (
+        <MiniMusicPlayer
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          onPlayPause={handlePlayPause}
+          onNext={handleNextTrack}
+          onOpenFullPlayer={() => setShowNowPlayingSheet(true)}
+          currentTime={currentTime}
+          duration={duration}
+          onToggleFavorite={handleToggleFavorite}
+        />
+      )}
+
+      {/* Slide-Up Fullscreen Now Playing Sheet */}
+      <NowPlayingSheet
+        isOpen={showNowPlayingSheet}
+        onClose={() => setShowNowPlayingSheet(false)}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        onPlayPause={handlePlayPause}
+        onPrev={handlePrevTrack}
+        onNext={handleNextTrack}
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={handleSeek}
+        volume={volume}
+        onVolumeChange={(v) => {
+          setVolume(v);
+          if (audioRef.current) audioRef.current.volume = v;
+        }}
+        isMuted={isMuted}
+        onToggleMute={() => {
+          setIsMuted(!isMuted);
+          if (audioRef.current) audioRef.current.muted = !isMuted;
+        }}
+        shuffle={shuffle}
+        onToggleShuffle={() => setShuffle(!shuffle)}
+        repeatMode={repeatMode}
+        onCycleRepeat={() => {
+          const modes: ('off' | 'all' | 'one')[] = ['off', 'all', 'one'];
+          setRepeatMode(modes[(modes.indexOf(repeatMode) + 1) % modes.length]);
+        }}
+        playbackRate={playbackRate}
+        onChangePlaybackRate={(r) => {
+          setPlaybackRate(r);
+          if (audioRef.current) audioRef.current.playbackRate = r;
+        }}
+        onToggleFavorite={handleToggleFavorite}
+        onOpenEqualizer={() => setShowEqualizer(true)}
+        queue={tracks}
+        onSelectTrack={handleSelectTrack}
+      />
+
+      {/* Bottom Navigation Bar */}
+      {!activeVideo && (
+        <BottomNavBar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          videoCount={videos.length}
+          musicCount={tracks.length}
+        />
+      )}
+
+      {/* 10-Band Graphic Equalizer */}
       <EqualizerModal
         isOpen={showEqualizer}
         onClose={() => setShowEqualizer(false)}
@@ -504,7 +443,7 @@ export const App: React.FC = () => {
         setAudioBoost={setAudioBoost}
       />
 
-      {/* VLC Shortcuts & Mobile Gestures Modal */}
+      {/* VLC Gestures Cheat Sheet */}
       <VLCShortcutsModal
         isOpen={showShortcuts}
         onClose={() => setShowShortcuts(false)}
