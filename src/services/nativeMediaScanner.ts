@@ -7,9 +7,74 @@ export interface MediaScannerPluginInterface {
   scanAudios(): Promise<{ audios: (MediaItem & { path?: string })[]; count: number }>;
   openMediaFile(options: { path?: string; contentUri?: string }): Promise<void>;
   playInExoPlayer(options: { path?: string; contentUri?: string; title?: string; position?: number }): Promise<void>;
+  playAudio(options: { path?: string; contentUri?: string; title?: string; artist?: string }): Promise<{ duration: number; isPlaying: boolean }>;
+  pauseAudio(): Promise<void>;
+  resumeAudio(): Promise<void>;
+  seekAudio(options: { position: number }): Promise<void>;
+  getAudioStatus(): Promise<{ isPlaying: boolean; currentTime: number; duration: number }>;
+  stopAudio(): Promise<void>;
+  addListener(eventName: string, listenerFunc: (data: any) => void): Promise<{ remove: () => void }>;
 }
 
-const MediaScanner = registerPlugin<MediaScannerPluginInterface>('MediaScanner');
+export const MediaScanner = registerPlugin<MediaScannerPluginInterface>('MediaScanner');
+
+export async function nativePlayAudio(item: MediaItem): Promise<{ duration: number } | null> {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const res = await MediaScanner.playAudio({
+        path: item.path,
+        contentUri: item.contentUri,
+        title: item.title,
+        artist: item.artist || 'Nothing Music'
+      });
+      return res;
+    } catch (e) {
+      console.warn('nativePlayAudio failed:', e);
+    }
+  }
+  return null;
+}
+
+export async function nativePauseAudio() {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await MediaScanner.pauseAudio();
+    } catch (e) {
+      console.warn('nativePauseAudio failed:', e);
+    }
+  }
+}
+
+export async function nativeResumeAudio() {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await MediaScanner.resumeAudio();
+    } catch (e) {
+      console.warn('nativeResumeAudio failed:', e);
+    }
+  }
+}
+
+export async function nativeSeekAudio(position: number) {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await MediaScanner.seekAudio({ position });
+    } catch (e) {
+      console.warn('nativeSeekAudio failed:', e);
+    }
+  }
+}
+
+export async function nativeGetAudioStatus() {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      return await MediaScanner.getAudioStatus();
+    } catch (e) {
+      console.warn('nativeGetAudioStatus failed:', e);
+    }
+  }
+  return null;
+}
 
 export async function playNativeExo(video: MediaItem) {
   if (Capacitor.isNativePlatform()) {

@@ -80,5 +80,5 @@ export interface RadioStation {
   description: string;
 }
 
-export type MainTab = 'VIDEOS' | 'MUSIC' | 'RADIO' | 'ME';
-export type ActiveHub = 'MUSIC' | 'VIDEO' | 'LIBRARY' | 'RADIO' | 'GLYPH';
+export type MainTab = 'VIDEOS' | 'MUSIC' | 'ME';
+export type ActiveHub = 'MUSIC' | 'VIDEO' | 'LIBRARY';

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { MainTab } from '../types/media';
-import { Film, Music, Radio, Settings } from 'lucide-react';
+import { Film, Music, Settings } from 'lucide-react';
 import { triggerHaptic } from '../services/haptic';
 
 interface BottomNavBarProps {
@@ -28,11 +28,6 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
       label: 'Music', 
       icon: <Music className="w-5 h-5" />, 
       badge: musicCount 
-    },
-    { 
-      id: 'RADIO', 
-      label: 'Radio', 
-      icon: <Radio className="w-5 h-5" /> 
     },
     { 
       id: 'ME', 

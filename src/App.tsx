@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { MediaItem, MainTab, RadioStation } from './types/media';
+import type { MediaItem, MainTab } from './types/media';
 import { BottomNavBar } from './components/BottomNavBar';
 import { VideoExplorer } from './components/VideoExplorer';
 import { NativeVideoPlayer } from './components/NativeVideoPlayer';
 import { MusicExplorer } from './components/MusicExplorer';
 import { MiniMusicPlayer } from './components/MiniMusicPlayer';
 import { NowPlayingSheet } from './components/NowPlayingSheet';
-import { RadioHub } from './components/RadioHub';
 import { SettingsHub } from './components/SettingsHub';
 import { EqualizerModal } from './components/EqualizerModal';
 import { VLCShortcutsModal } from './components/VLCShortcutsModal';
@@ -17,16 +16,27 @@ import {
   setupMediaSessionActionHandlers 
 } from './services/mediaSession';
 import { saveMediaItem, getAllMediaItems, deleteMediaItem, getMediaBlob } from './services/db';
-import { DEMO_MEDIA_ITEMS } from './services/demoData';
 import { triggerHaptic } from './services/haptic';
 
-import { scanDeviceStorage, playNativeExo } from './services/nativeMediaScanner';
+import { 
+  scanDeviceStorage, 
+  playNativeExo,
+  nativePlayAudio,
+  nativePauseAudio,
+  nativeResumeAudio,
+  nativeSeekAudio,
+  nativeGetAudioStatus,
+  MediaScanner
+} from './services/nativeMediaScanner';
+import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 
 export const App: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Tabs & Player Views
+  // Tabs & Player Views (Videos, Music, Settings)
   const [activeTab, setActiveTab] = useState<MainTab>('VIDEOS');
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [activeVideo, setActiveVideo] = useState<MediaItem | null>(null);
   const [showNowPlayingSheet, setShowNowPlayingSheet] = useState(false);
 
@@ -52,6 +62,70 @@ export const App: React.FC = () => {
   const [eqPreset, setEqPreset] = useState<string>('NOTHING PUNCH');
   const [audioBoost, setAudioBoost] = useState<number>(100);
 
+  // Android Native Hardware Back Button & Gesture Navigation
+  useEffect(() => {
+    let removeListener: (() => void) | undefined;
+
+    if (Capacitor.isNativePlatform()) {
+      CapApp.addListener('backButton', () => {
+        if (showNowPlayingSheet) {
+          setShowNowPlayingSheet(false);
+          return;
+        }
+        if (showEqualizer) {
+          setShowEqualizer(false);
+          return;
+        }
+        if (showShortcuts) {
+          setShowShortcuts(false);
+          return;
+        }
+        if (selectedFolder !== null) {
+          setSelectedFolder(null);
+          return;
+        }
+        if (activeTab !== 'VIDEOS') {
+          setActiveTab('VIDEOS');
+          return;
+        }
+        CapApp.exitApp();
+      }).then(handle => {
+        removeListener = () => handle.remove();
+      });
+    }
+
+    return () => {
+      if (removeListener) removeListener();
+    };
+  }, [showNowPlayingSheet, showEqualizer, showShortcuts, selectedFolder, activeTab]);
+
+  // Handle Remote Notification and Lockscreen Media Controls
+  useEffect(() => {
+    const unsubs: (() => void)[] = [];
+
+    if (Capacitor.isNativePlatform()) {
+      MediaScanner.addListener('audioNextRequested', () => {
+        handleNextTrack();
+      }).then(h => unsubs.push(() => h.remove()));
+
+      MediaScanner.addListener('audioPrevRequested', () => {
+        handlePrevTrack();
+      }).then(h => unsubs.push(() => h.remove()));
+
+      MediaScanner.addListener('audioTrackEnded', () => {
+        handleNextTrack();
+      }).then(h => unsubs.push(() => h.remove()));
+
+      MediaScanner.addListener('audioPlayStateChanged', (data: { isPlaying: boolean }) => {
+        setIsPlaying(data.isPlaying);
+      }).then(h => unsubs.push(() => h.remove()));
+    }
+
+    return () => {
+      unsubs.forEach(fn => fn());
+    };
+  }, [mediaList, currentTrack, shuffle]);
+
   const handleScanDevice = async () => {
     setIsScanning(true);
     triggerHaptic('medium');
@@ -62,11 +136,10 @@ export const App: React.FC = () => {
         for (const item of combined) {
           await saveMediaItem(item);
         }
-        setMediaList(prev => {
-          const existingIds = new Set(prev.map(i => i.id));
-          const newItems = combined.filter(i => !existingIds.has(i.id));
-          return [...newItems, ...prev];
-        });
+        setMediaList(combined);
+        if (!currentTrack && scannedAuds.length > 0) {
+          setCurrentTrack(scannedAuds[0]);
+        }
       }
     } catch (err) {
       console.warn('Device scan failed:', err);
@@ -75,27 +148,31 @@ export const App: React.FC = () => {
     }
   };
 
-  // Initialize DB and load media
+  // Initialize DB and purge fake demo items
   useEffect(() => {
     const initLibrary = async () => {
       try {
         const storedItems = await getAllMediaItems();
-        if (storedItems.length === 0) {
-          for (const item of DEMO_MEDIA_ITEMS) {
-            await saveMediaItem(item);
+        const realItems: MediaItem[] = [];
+        for (const item of storedItems) {
+          if (item.id.startsWith('demo_')) {
+            await deleteMediaItem(item.id);
+          } else {
+            realItems.push(item);
           }
-          setMediaList(DEMO_MEDIA_ITEMS);
-          setCurrentTrack(DEMO_MEDIA_ITEMS.find(m => m.type === 'audio') || DEMO_MEDIA_ITEMS[0]);
-        } else {
-          setMediaList(storedItems);
-          setCurrentTrack(storedItems.find(m => m.type === 'audio') || storedItems[0]);
         }
+
+        setMediaList(realItems);
+        if (realItems.length > 0) {
+          const firstAudio = realItems.find(m => m.type === 'audio');
+          if (firstAudio) setCurrentTrack(firstAudio);
+        }
+
         // Auto-trigger device media scan
         handleScanDevice();
       } catch (e) {
-        console.warn('IndexedDB load error:', e);
-        setMediaList(DEMO_MEDIA_ITEMS);
-        setCurrentTrack(DEMO_MEDIA_ITEMS[0]);
+        console.warn('DB load error:', e);
+        setMediaList([]);
       }
     };
 
@@ -128,6 +205,28 @@ export const App: React.FC = () => {
     updateMediaSessionMetadata(currentTrack, isPlaying);
   }, [currentTrack, isPlaying]);
 
+  // Native Android Audio Status Poll
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() || !isPlaying) return;
+
+    const interval = setInterval(async () => {
+      const status = await nativeGetAudioStatus();
+      if (status) {
+        if (status.duration > 0) {
+          setDuration(status.duration);
+        }
+        setCurrentTime(status.currentTime);
+        setIsPlaying(status.isPlaying);
+
+        if (status.duration > 0 && status.currentTime >= status.duration - 0.5) {
+          handleEnded();
+        }
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, duration, repeatMode]);
+
   const handleTimeUpdate = () => {
     if (audioRef.current) {
       const pos = audioRef.current.currentTime;
@@ -144,7 +243,11 @@ export const App: React.FC = () => {
 
   const handleEnded = () => {
     if (repeatMode === 'one') {
-      if (audioRef.current) {
+      if (Capacitor.isNativePlatform() && currentTrack) {
+        nativeSeekAudio(0);
+        nativeResumeAudio();
+        setIsPlaying(true);
+      } else if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play();
       }
@@ -154,6 +257,17 @@ export const App: React.FC = () => {
   };
 
   const handlePlayPause = async () => {
+    if (Capacitor.isNativePlatform()) {
+      if (isPlaying) {
+        await nativePauseAudio();
+        setIsPlaying(false);
+      } else {
+        await nativeResumeAudio();
+        setIsPlaying(true);
+      }
+      return;
+    }
+
     if (!audioRef.current) return;
     audioEngine.resume();
 
@@ -173,6 +287,15 @@ export const App: React.FC = () => {
   const handleSelectTrack = async (item: MediaItem) => {
     setCurrentTrack(item);
     setCurrentTime(0);
+
+    if (Capacitor.isNativePlatform()) {
+      const res = await nativePlayAudio(item);
+      if (res) {
+        setDuration(res.duration || item.duration || 0);
+        setIsPlaying(true);
+        return;
+      }
+    }
 
     let playUrl = item.url;
     if (item.blobKey) {
@@ -214,6 +337,12 @@ export const App: React.FC = () => {
   };
 
   const handleSeek = (time: number) => {
+    if (Capacitor.isNativePlatform()) {
+      nativeSeekAudio(time);
+      setCurrentTime(time);
+      return;
+    }
+
     if (audioRef.current) {
       audioRef.current.currentTime = time;
       setCurrentTime(time);
@@ -237,33 +366,39 @@ export const App: React.FC = () => {
   };
 
   const handleDeleteItem = async (id: string) => {
+    triggerHaptic('medium');
     await deleteMediaItem(id);
-    setMediaList(prev => prev.filter(item => item.id !== id));
+    setMediaList(prev => prev.filter(m => m.id !== id));
+    if (currentTrack?.id === id) {
+      setCurrentTrack(null);
+      setIsPlaying(false);
+    }
+    if (activeVideo?.id === id) {
+      setActiveVideo(null);
+    }
   };
 
-  const handleSaveVideoProgress = (id: string, position: number) => {
-    setMediaList(prev => prev.map(v => {
-      if (v.id === id) {
-        const updated = { ...v, lastPosition: position };
-        saveMediaItem(updated);
-        return updated;
-      }
-      return v;
-    }));
+  const handleSaveVideoProgress = async (id: string, pos: number) => {
+    const item = mediaList.find(m => m.id === id);
+    if (item) {
+      const updated = { ...item, lastPosition: pos };
+      await saveMediaItem(updated);
+      setMediaList(prev => prev.map(m => m.id === id ? updated : m));
+    }
   };
 
   const handleImportFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
     const newItems: MediaItem[] = [];
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const isVideo = file.type.startsWith('video/');
+    for (const file of fileArray) {
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|mkv|avi|mov|webm|flv|ts)$/i.test(file.name);
       const ext = file.name.split('.').pop()?.toUpperCase() || (isVideo ? 'MP4' : 'MP3');
-      
+
       const item: MediaItem = {
-        id: `local_${Date.now()}_${i}`,
+        id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         title: file.name.replace(/\.[^/.]+$/, ''),
-        artist: isVideo ? 'Device Video' : 'Device Audio',
+        artist: isVideo ? 'Local Video' : 'Local Audio',
         album: isVideo ? 'Downloads' : 'Music',
         folder: isVideo ? 'Downloads' : 'Internal Music',
         duration: 0,
@@ -284,28 +419,14 @@ export const App: React.FC = () => {
     setMediaList(prev => [...newItems, ...prev]);
     if (newItems.length > 0) {
       if (newItems[0].type === 'video') {
-        setActiveVideo(newItems[0]);
+        const launched = await playNativeExo(newItems[0]);
+        if (!launched) {
+          setActiveVideo(newItems[0]);
+        }
       } else {
         handleSelectTrack(newItems[0]);
       }
     }
-  };
-
-  const handlePlayRadio = (station: RadioStation) => {
-    const radioItem: MediaItem = {
-      id: station.id,
-      title: station.name,
-      artist: station.genre,
-      album: station.country,
-      folder: 'Radio Streams',
-      duration: 0,
-      url: station.streamUrl,
-      type: 'stream',
-      format: 'LIVE',
-      thumbnail: station.coverArt,
-      addedAt: Date.now()
-    };
-    handleSelectTrack(radioItem);
   };
 
   const videos = mediaList.filter(m => m.type === 'video');
@@ -314,25 +435,22 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#050505] text-[#f5f5f5] flex flex-col font-sans select-none overflow-x-hidden">
       
-      {/* Hidden Audio Element */}
+      {/* Hidden Audio Element for Web */}
       <audio
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleEnded}
-        preload="auto"
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
       />
 
-      {/* Main Tab Content */}
-      <main className="flex-1 flex flex-col">
+      {/* Main Tab Router View */}
+      <main className="flex-1 w-full flex flex-col">
         {activeTab === 'VIDEOS' && (
           <VideoExplorer
             videos={videos}
             onPlayVideo={async (v) => {
-              if (audioRef.current) {
-                audioRef.current.pause();
-                setIsPlaying(false);
-              }
               const launched = await playNativeExo(v);
               if (!launched) {
                 setActiveVideo(v);
@@ -342,6 +460,8 @@ export const App: React.FC = () => {
             onDeleteVideo={handleDeleteItem}
             onScanDevice={handleScanDevice}
             isScanning={isScanning}
+            selectedFolder={selectedFolder}
+            setSelectedFolder={setSelectedFolder}
           />
         )}
 
@@ -352,19 +472,10 @@ export const App: React.FC = () => {
             onPlayTrack={handleSelectTrack}
             onImportFiles={handleImportFiles}
             onToggleFavorite={handleToggleFavorite}
+            onDeleteTrack={handleDeleteItem}
             onScanDevice={handleScanDevice}
             isScanning={isScanning}
           />
-        )}
-
-        {activeTab === 'RADIO' && (
-          <div className="pt-9 sm:pt-4 pb-36">
-            <RadioHub
-              currentStationUrl={currentTrack?.url}
-              isPlaying={isPlaying}
-              onPlayStation={handlePlayRadio}
-            />
-          </div>
         )}
 
         {activeTab === 'ME' && (
@@ -378,7 +489,7 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* MX Fullscreen Video Player */}
+      {/* Fullscreen Video Player (Web Fallback) */}
       {activeVideo && (
         <NativeVideoPlayer
           video={activeVideo}
@@ -439,12 +550,13 @@ export const App: React.FC = () => {
         repeatMode={repeatMode}
         onCycleRepeat={() => {
           const modes: ('off' | 'all' | 'one')[] = ['off', 'all', 'one'];
-          setRepeatMode(modes[(modes.indexOf(repeatMode) + 1) % modes.length]);
+          const next = modes[(modes.indexOf(repeatMode) + 1) % modes.length];
+          setRepeatMode(next);
         }}
         playbackRate={playbackRate}
-        onChangePlaybackRate={(r) => {
-          setPlaybackRate(r);
-          if (audioRef.current) audioRef.current.playbackRate = r;
+        onChangePlaybackRate={(rate) => {
+          setPlaybackRate(rate);
+          if (audioRef.current) audioRef.current.playbackRate = rate;
         }}
         onToggleFavorite={handleToggleFavorite}
         onOpenEqualizer={() => setShowEqualizer(true)}
@@ -462,28 +574,31 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* 10-Band Graphic Equalizer */}
-      <EqualizerModal
-        isOpen={showEqualizer}
-        onClose={() => setShowEqualizer(false)}
-        gains={eqGains}
-        setGains={setEqGains}
-        preamp={eqPreamp}
-        setPreamp={setEqPreamp}
-        bassBoost={eqBassBoost}
-        setBassBoost={setEqBassBoost}
-        selectedPreset={eqPreset}
-        setSelectedPreset={setEqPreset}
-        audioBoost={audioBoost}
-        setAudioBoost={setAudioBoost}
-      />
+      {/* DSP Equalizer Modal */}
+      {showEqualizer && (
+        <EqualizerModal
+          isOpen={showEqualizer}
+          onClose={() => setShowEqualizer(false)}
+          gains={eqGains}
+          setGains={setEqGains}
+          preamp={eqPreamp}
+          setPreamp={setEqPreamp}
+          bassBoost={eqBassBoost}
+          setBassBoost={setEqBassBoost}
+          selectedPreset={eqPreset}
+          setSelectedPreset={setEqPreset}
+          audioBoost={audioBoost}
+          setAudioBoost={setAudioBoost}
+        />
+      )}
 
-      {/* VLC Gestures Cheat Sheet */}
-      <VLCShortcutsModal
-        isOpen={showShortcuts}
-        onClose={() => setShowShortcuts(false)}
-      />
-
+      {/* VLC Gestures & Shortcuts Guide */}
+      {showShortcuts && (
+        <VLCShortcutsModal
+          isOpen={showShortcuts}
+          onClose={() => setShowShortcuts(false)}
+        />
+      )}
     </div>
   );
 };

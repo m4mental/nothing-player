@@ -97,6 +97,143 @@ public class MediaScannerPlugin extends Plugin {
         }
     }
 
+    @Override
+    public void load() {
+        super.load();
+        MusicPlaybackService.setEventListener(new MusicPlaybackService.PlaybackEventListener() {
+            @Override
+            public void onTrackEnded() {
+                JSObject data = new JSObject();
+                notifyListeners("audioTrackEnded", data);
+            }
+
+            @Override
+            public void onPlayStateChanged(boolean isPlaying) {
+                JSObject data = new JSObject();
+                data.put("isPlaying", isPlaying);
+                notifyListeners("audioPlayStateChanged", data);
+            }
+
+            @Override
+            public void onNextRequested() {
+                notifyListeners("audioNextRequested", new JSObject());
+            }
+
+            @Override
+            public void onPrevRequested() {
+                notifyListeners("audioPrevRequested", new JSObject());
+            }
+        });
+    }
+
+    @PluginMethod
+    public void playAudio(PluginCall call) {
+        String title = call.getString("title", "Nothing Track");
+        String artist = call.getString("artist", "Nothing Player");
+        String path = call.getString("path");
+        String uriStr = call.getString("contentUri");
+
+        try {
+            android.content.Intent serviceIntent = new android.content.Intent(getContext(), MusicPlaybackService.class);
+            serviceIntent.setAction(MusicPlaybackService.ACTION_PLAY);
+            serviceIntent.putExtra("title", title);
+            serviceIntent.putExtra("artist", artist);
+            serviceIntent.putExtra("uri", uriStr);
+            serviceIntent.putExtra("path", path);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getContext().startForegroundService(serviceIntent);
+            } else {
+                getContext().startService(serviceIntent);
+            }
+
+            if (MusicPlaybackService.instance != null) {
+                MusicPlaybackService.instance.playTrack(title, artist, uriStr, path);
+            }
+
+            JSObject res = new JSObject();
+            res.put("isPlaying", true);
+            call.resolve(res);
+        } catch (Exception e) {
+            e.printStackTrace();
+            call.reject("Audio playback error: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void pauseAudio(PluginCall call) {
+        try {
+            if (MusicPlaybackService.instance != null) {
+                MusicPlaybackService.instance.pause();
+            }
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void resumeAudio(PluginCall call) {
+        try {
+            if (MusicPlaybackService.instance != null) {
+                MusicPlaybackService.instance.resume();
+            } else {
+                android.content.Intent serviceIntent = new android.content.Intent(getContext(), MusicPlaybackService.class);
+                serviceIntent.setAction(MusicPlaybackService.ACTION_RESUME);
+                getContext().startService(serviceIntent);
+            }
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void seekAudio(PluginCall call) {
+        try {
+            Double position = call.getDouble("position", 0.0);
+            if (MusicPlaybackService.instance != null && position != null) {
+                MusicPlaybackService.instance.seekTo(position);
+            }
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void getAudioStatus(PluginCall call) {
+        JSObject res = new JSObject();
+        if (MusicPlaybackService.instance != null) {
+            try {
+                res.put("isPlaying", MusicPlaybackService.instance.isPlaying());
+                res.put("currentTime", MusicPlaybackService.instance.getCurrentPosition());
+                res.put("duration", MusicPlaybackService.instance.getDuration());
+            } catch (Exception e) {
+                res.put("isPlaying", false);
+                res.put("currentTime", 0);
+                res.put("duration", 0);
+            }
+        } else {
+            res.put("isPlaying", false);
+            res.put("currentTime", 0);
+            res.put("duration", 0);
+        }
+        call.resolve(res);
+    }
+
+    @PluginMethod
+    public void stopAudio(PluginCall call) {
+        try {
+            if (MusicPlaybackService.instance != null) {
+                MusicPlaybackService.instance.stop();
+            }
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(e.getMessage());
+        }
+    }
+
     @PluginMethod
     public void openMediaFile(PluginCall call) {
         String path = call.getString("path");

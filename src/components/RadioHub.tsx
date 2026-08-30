@@ -1,6 +1,6 @@
 import React from 'react';
 import type { RadioStation } from '../types/media';
-import { DEMO_RADIO_STATIONS } from '../services/demoData';
+import { RADIO_STATIONS } from '../services/demoData';
 import { Radio, Play, Pause, Signal, Globe } from 'lucide-react';
 import { triggerHaptic } from '../services/haptic';
 
@@ -60,7 +60,7 @@ export const RadioHub: React.FC<RadioHubProps> = ({
 
       {/* Stations Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {DEMO_RADIO_STATIONS.map((station) => {
+        {RADIO_STATIONS.map((station: RadioStation) => {
           const isCurrent = currentStationUrl === station.streamUrl;
           return (
             <div

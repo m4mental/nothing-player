@@ -99,7 +99,7 @@ export const NowPlayingSheet: React.FC<NowPlayingSheetProps> = ({
     <div className="fixed inset-0 z-50 bg-[#050505] flex flex-col justify-between animate-fade-in overflow-hidden select-none pb-safe pb-6">
       
       {/* Top Slide Handle & App Bar */}
-      <div className="pt-safe pt-4 px-4 flex items-center justify-between border-b border-white/10 pb-3">
+      <div className="pt-14 sm:pt-6 px-4 flex items-center justify-between border-b border-white/10 pb-3">
         <button
           onClick={() => {
             triggerHaptic('light');

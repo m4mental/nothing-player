@@ -3,11 +3,9 @@ import {
   Music, 
   Film, 
   FolderOpen, 
-  Radio, 
   SlidersHorizontal, 
   HelpCircle, 
-  PlusCircle,
-  Sparkles
+  PlusCircle
 } from 'lucide-react';
 import type { ActiveHub } from '../types/media';
 import { triggerHaptic } from '../services/haptic';
@@ -33,8 +31,6 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'MUSIC', label: 'MUSIC', number: '01', icon: <Music className="w-3.5 h-3.5" /> },
     { id: 'VIDEO', label: 'VIDEO', number: '02', icon: <Film className="w-3.5 h-3.5" /> },
     { id: 'LIBRARY', label: 'LIBRARY', number: '03', icon: <FolderOpen className="w-3.5 h-3.5" /> },
-    { id: 'RADIO', label: 'RADIO', number: '04', icon: <Radio className="w-3.5 h-3.5" /> },
-    { id: 'GLYPH', label: 'GLYPH', number: '05', icon: <Sparkles className="w-3.5 h-3.5" /> },
   ];
 
   return (

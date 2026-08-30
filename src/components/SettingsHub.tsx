@@ -24,7 +24,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
   totalMediaCount
 }) => {
   return (
-    <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 pb-32 pt-9 sm:pt-4 animate-fade-in px-4">
+    <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 pb-32 pt-14 sm:pt-6 animate-fade-in px-4">
       
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-2">
