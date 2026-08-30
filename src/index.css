@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --nothing-red: #D71921;
+    --nothing-red-glow: rgba(215, 25, 33, 0.4);
+    --nothing-black: #050505;
+    --nothing-surface: #111111;
+    --nothing-surface-hover: #1c1c1c;
+    --nothing-border: rgba(255, 255, 255, 0.12);
+    --nothing-border-active: rgba(215, 25, 33, 0.6);
+  }
+
+  body {
+    background-color: #050505;
+    color: #f5f5f5;
+    font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+}
+
+/* Nothing Dot Matrix Typography */
+.font-dot {
+  font-family: 'DotGothic16', 'VT323', monospace;
+  letter-spacing: 0.05em;
+}
+
+.font-mono-tech {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Background Matrix Grid Pattern */
+.bg-grid-pattern {
+  background-size: 24px 24px;
+  background-image: 
+    radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+}
+
+.bg-dot-dense {
+  background-size: 8px 8px;
+  background-image: 
+    radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+}
+
+/* Nothing Red Glow */
+.glow-red {
+  box-shadow: 0 0 16px rgba(215, 25, 33, 0.5), inset 0 0 8px rgba(215, 25, 33, 0.2);
+}
+
+.glow-glyph {
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.6), inset 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.text-glow-red {
+  text-shadow: 0 0 10px rgba(215, 25, 33, 0.75);
+}
+
+.text-glow-white {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+}
+
+/* CRT Scanline Filter for Video */
+.crt-scanlines {
+  position: relative;
+}
+
+.crt-scanlines::after {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  z-index: 20;
+  background-size: 100% 3px, 6px 100%;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* Duotone Red Video Shader Filter */
+.filter-duotone-red {
+  filter: grayscale(100%) sepia(100%) hue-rotate(320deg) saturate(600%) contrast(1.2);
+}
+
+/* Minimalist Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090909;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #D71921;
+}
+
+/* Tactile Click Animation */
+.active-press:active {
+  transform: scale(0.96);
+  transition: transform 0.05s ease-in-out;
+}
+
+/* Spinning Vinyl Animation */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 12s linear infinite;
+}
+
+.paused {
+  animation-play-state: paused;
+}
