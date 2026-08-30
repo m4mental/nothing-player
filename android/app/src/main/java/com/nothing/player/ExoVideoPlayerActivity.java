@@ -133,13 +133,29 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         currentBrightness = lp.screenBrightness > 0 ? lp.screenBrightness : 0.5f;
 
         videoTitle = getIntent().getStringExtra("title");
+        if (videoTitle == null) videoTitle = getIntent().getStringExtra("video_title");
+
         videoPath = getIntent().getStringExtra("path");
+        if (videoPath == null) videoPath = getIntent().getStringExtra("video_path");
+
         videoUriStr = getIntent().getStringExtra("contentUri");
+        if (videoUriStr == null) videoUriStr = getIntent().getStringExtra("video_uri");
+        if (videoUriStr == null && videoPath != null && videoPath.startsWith("content://")) {
+            videoUriStr = videoPath;
+        }
+
+        if (getIntent().getData() != null) {
+            Uri data = getIntent().getData();
+            if (videoUriStr == null) videoUriStr = data.toString();
+            if (videoPath == null) videoPath = data.getPath();
+            if (videoTitle == null) videoTitle = data.getLastPathSegment();
+        }
+
         currentPositionMs = getIntent().getLongExtra("position", 0);
 
         initViews();
         
-        // Auto-select optimal engine: If Dolby 5.1 / EAC3 / AC3 / DTS is in title/path, use VLC Engine directly
+        // Auto-select optimal engine: If Dolby 5.1 / EAC3 / AC3 / DTS / MKV is detected, use Universal VLC directly
         if (isSurroundOrEac3File()) {
             startVlcPlayer(currentPositionMs);
         } else {
@@ -151,10 +167,11 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     }
 
     private boolean isSurroundOrEac3File() {
-        String testStr = ((videoTitle != null ? videoTitle : "") + " " + (videoPath != null ? videoPath : "")).toLowerCase();
-        return testStr.contains("eac3") || testStr.contains("dd5.1") || testStr.contains("ac3") 
+        String testStr = ((videoTitle != null ? videoTitle : "") + " " + (videoPath != null ? videoPath : "") + " " + (videoUriStr != null ? videoUriStr : "")).toLowerCase();
+        return testStr.contains("eac3") || testStr.contains("e-ac-3") || testStr.contains("dd5.1") 
+            || testStr.contains("ddp") || testStr.contains("ac3") || testStr.contains("ac-3")
             || testStr.contains("dts") || testStr.contains("truehd") || testStr.contains("atmos")
-            || testStr.contains("5.1");
+            || testStr.contains("5.1") || testStr.contains("7.1") || testStr.contains(".mkv");
     }
 
     private void hideSystemUI() {
@@ -170,6 +187,8 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private void initViews() {
         exoPlayerView = findViewById(R.id.exo_player_view);
         vlcVideoLayout = findViewById(R.id.vlc_video_layout);
+
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         topControlsBar = findViewById(R.id.top_controls_bar);
         bottomControlsBar = findViewById(R.id.bottom_controls_bar);
@@ -287,7 +306,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                         videoSeekBar.setMax((int) totalDurationMs);
                         updateCodecInfo();
                     } else if (playbackState == Player.STATE_ENDED) {
-                        finish();
+                        if (totalDurationMs > 5000 && exoPlayer.getCurrentPosition() >= totalDurationMs - 2500) {
+                            finish();
+                        }
                     }
                 }
             }
@@ -318,19 +339,28 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         options.add("--no-drop-late-frames");
         options.add("--no-skip-frames");
         options.add("--audio-time-stretch");
-        options.add("--aout=opensles");
         options.add("--audio-resampler=soxr");
+        options.add("--avcodec-threads=0");
+        options.add("--network-caching=3000");
 
         libVLC = new LibVLC(this, options);
         vlcPlayer = new MediaPlayer(libVLC);
         
-        // Use TextureView for instant zero-black-screen rendering
-        vlcPlayer.attachViews(vlcVideoLayout, null, true, true);
+        vlcVideoLayout.post(() -> {
+            if (vlcPlayer != null && !isFinishing()) {
+                try {
+                    vlcPlayer.attachViews(vlcVideoLayout, null, true, true);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
 
         Media media = createVlcMedia();
 
         if (media != null) {
-            media.setHWDecoderEnabled(true, false);
+            media.setHWDecoderEnabled(true, true);
+            media.addOption(":file-caching=2000");
             vlcPlayer.setMedia(media);
             media.release();
 
@@ -349,10 +379,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                     } else if (event.type == MediaPlayer.Event.TimeChanged) {
                         long pos = event.getTimeChanged();
                         currentPositionMs = pos;
-                        videoSeekBar.setProgress((int) pos);
                         timeCurrentText.setText(formatTime(pos));
+                        videoSeekBar.setProgress((int) pos);
                     } else if (event.type == MediaPlayer.Event.EndReached) {
-                        finish();
+                        if (totalDurationMs > 5000 && currentPositionMs >= totalDurationMs - 2500) {
+                            finish();
+                        }
+                    } else if (event.type == MediaPlayer.Event.EncounteredError) {
+                        Toast.makeText(this, "Playback Warning", Toast.LENGTH_SHORT).show();
                     }
                 });
             });
@@ -362,9 +396,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 vlcPlayer.setTime(resumePos);
             }
             vlcPlayer.setRate(playbackSpeed);
-            currentDecoder = "SW+ (VLC)";
-            btnDecoderMode.setText("SW+");
-            videoSubtitleCodec.setText(currentDecoder + " • DOLBY EAC3 / 5.1 STEREO");
+            currentDecoder = "Universal VLC";
+            btnDecoderMode.setText("VLC");
+            videoSubtitleCodec.setText(currentDecoder + " • DOLBY 5.1 / EAC3");
         } else {
             Toast.makeText(this, "Could not open video stream", Toast.LENGTH_SHORT).show();
             finish();
@@ -376,11 +410,15 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         try {
             if (videoPath != null && !videoPath.isEmpty()) {
                 if (videoPath.startsWith("http://") || videoPath.startsWith("https://") || videoPath.startsWith("rtsp://")) {
-                    return new Media(libVLC, Uri.parse(videoPath));
+                    Media m = new Media(libVLC, Uri.parse(videoPath));
+                    m.setHWDecoderEnabled(true, true);
+                    return m;
                 }
                 File f = new File(videoPath);
                 if (f.exists()) {
-                    return new Media(libVLC, f.getAbsolutePath());
+                    Media m = new Media(libVLC, f.getAbsolutePath());
+                    m.setHWDecoderEnabled(true, true);
+                    return m;
                 }
             }
             if (videoUriStr != null && !videoUriStr.isEmpty()) {
@@ -388,10 +426,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 try {
                     ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(u, "r");
                     if (pfd != null) {
-                        return new Media(libVLC, pfd.getFileDescriptor());
+                        Media m = new Media(libVLC, pfd.getFileDescriptor());
+                        m.setHWDecoderEnabled(true, true);
+                        return m;
                     }
                 } catch (Exception ignored) {}
-                return new Media(libVLC, u);
+                Media m = new Media(libVLC, u);
+                m.setHWDecoderEnabled(true, true);
+                return m;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -671,18 +713,34 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
         CharSequence[] items = trackLabels.toArray(new CharSequence[0]);
         AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        builder.setTitle("Select Audio Track (ExoPlayer)");
+        builder.setTitle("Select Audio Track");
         builder.setSingleChoiceItems(items, selectedIndex, (dialog, which) -> {
-            TrackGroup selectedGroup = audioGroups.get(which);
-            int trackIndex = trackIndices.get(which);
+            try {
+                TrackGroup selectedGroup = audioGroups.get(which);
+                int trackIndex = trackIndices.get(which);
+                Format format = selectedGroup.getFormat(trackIndex);
+                String mime = format.sampleMimeType != null ? format.sampleMimeType.toLowerCase() : "";
 
-            trackSelector.setParameters(
-                trackSelector.buildUponParameters()
-                    .setOverrideForType(new TrackSelectionOverride(selectedGroup, trackIndex))
-            );
+                // If Dolby / DTS multichannel is selected, switch directly to Universal VLC engine without crash
+                if (mime.contains("eac3") || mime.contains("ac3") || mime.contains("dts") || mime.contains("truehd") || format.channelCount > 2) {
+                    long cur = exoPlayer != null ? exoPlayer.getCurrentPosition() : 0;
+                    Toast.makeText(this, "Activating Universal Dolby 5.1 Engine", Toast.LENGTH_SHORT).show();
+                    startVlcPlayer(cur);
+                    dialog.dismiss();
+                    return;
+                }
 
-            Toast.makeText(this, "Selected: " + trackLabels.get(which), Toast.LENGTH_SHORT).show();
-            updateCodecInfo();
+                trackSelector.setParameters(
+                    trackSelector.buildUponParameters()
+                        .setOverrideForType(new TrackSelectionOverride(selectedGroup, trackIndex))
+                );
+
+                Toast.makeText(this, "Selected: " + trackLabels.get(which), Toast.LENGTH_SHORT).show();
+                updateCodecInfo();
+            } catch (Exception e) {
+                long cur = exoPlayer != null ? exoPlayer.getCurrentPosition() : 0;
+                startVlcPlayer(cur);
+            }
             dialog.dismiss();
         });
         builder.setNegativeButton("Cancel", null);
@@ -711,10 +769,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        builder.setTitle("Select Audio Track (VLC Dolby Engine)");
+        builder.setTitle("Select Audio Track (Dolby 5.1 Universal)");
         builder.setSingleChoiceItems(labels.toArray(new CharSequence[0]), selectedIndex, (dialog, which) -> {
-            vlcPlayer.setAudioTrack(trackIds.get(which));
-            Toast.makeText(this, "Selected: " + labels.get(which), Toast.LENGTH_SHORT).show();
+            try {
+                vlcPlayer.setAudioTrack(trackIds.get(which));
+                Toast.makeText(this, "Selected: " + labels.get(which), Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             dialog.dismiss();
         });
         builder.setNegativeButton("Cancel", null);

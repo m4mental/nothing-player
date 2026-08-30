@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#000000</color>
+    <color name="colorPrimaryDark">#000000</color>
+    <color name="colorAccent">#D71921</color>
+    
+    <!-- Nothing OS Pitch-Black Palette -->
+    <color name="nothing_black">#000000</color>
+    <color name="nothing_surface">#050505</color>
+    <color name="nothing_card">#080808</color>
+    <color name="nothing_card_stroke">#222222</color>
+    <color name="nothing_red">#D71921</color>
+    <color name="nothing_red_glow">#44D71921</color>
+    <color name="nothing_white">#FFFFFF</color>
+    <color name="nothing_white_70">#B3FFFFFF</color>
+    <color name="nothing_white_40">#66FFFFFF</color>
+    <color name="nothing_white_10">#1AFFFFFF</color>
+    <color name="nothing_green">#10B981</color>
+</resources>

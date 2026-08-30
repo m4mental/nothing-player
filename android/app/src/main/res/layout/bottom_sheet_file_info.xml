@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_mini_player"
+    android:padding="20dp">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <View
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/led_red"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="FILE SPECIFICATIONS &amp; INFO"
+                android:textColor="@color/nothing_white"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btn_close_info"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_alignParentEnd="true"
+            android:background="@drawable/bg_circle_button"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:tint="@color/nothing_white"
+            android:contentDescription="Close" />
+    </RelativeLayout>
+
+    <!-- File Name Card -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/nothing_black"
+        android:padding="12dp"
+        android:layout_marginBottom="10dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FILE NAME"
+            android:textColor="@color/nothing_white_40"
+            android:textSize="9sp"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:id="@+id/info_file_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:text="Sample_Movie_Dolby_5.1.mkv"
+            android:textColor="@color/nothing_white"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Exact Path Card -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/nothing_black"
+        android:padding="12dp"
+        android:layout_marginBottom="10dp"
+        android:orientation="vertical">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="EXACT STORAGE LOCATION"
+                android:textColor="@color/nothing_white_40"
+                android:textSize="9sp"
+                android:fontFamily="monospace" />
+
+            <Button
+                android:id="@+id/btn_copy_path"
+                android:layout_width="wrap_content"
+                android:layout_height="26dp"
+                android:layout_alignParentEnd="true"
+                android:background="#22FFFFFF"
+                android:text="COPY PATH"
+                android:textColor="@color/nothing_white"
+                android:textSize="9sp"
+                android:fontFamily="monospace"
+                android:paddingHorizontal="8dp" />
+        </RelativeLayout>
+
+        <TextView
+            android:id="@+id/info_storage_path"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="/storage/emulated/0/Movies/Sample_Movie.mkv"
+            android:textColor="@color/nothing_white_70"
+            android:textSize="10sp"
+            android:fontFamily="monospace" />
+    </LinearLayout>
+
+    <!-- Codec & Format Card -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/nothing_black"
+        android:padding="12dp"
+        android:layout_marginBottom="16dp"
+        android:orientation="vertical">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AUDIO CODEC &amp; SOUND FORMAT"
+                android:textColor="@color/nothing_white_40"
+                android:textSize="9sp"
+                android:fontFamily="monospace" />
+
+            <TextView
+                android:id="@+id/badge_audio_format"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:background="#22D71921"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2dp"
+                android:text="DOLBY 5.1"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <TextView
+            android:id="@+id/info_audio_codec"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Dolby Digital Plus (E-AC-3 5.1 Surround)"
+            android:textColor="@color/nothing_white"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/info_audio_channels"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Configuration: 6 Channels (5.1 Surround, 48 kHz)"
+            android:textColor="@color/nothing_white_40"
+            android:textSize="10sp"
+            android:fontFamily="monospace" />
+    </LinearLayout>
+
+    <!-- Play Action Button -->
+    <Button
+        android:id="@+id/btn_play_from_info"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:backgroundTint="@color/nothing_white"
+        android:text="PLAY NOW"
+        android:textColor="@color/nothing_black"
+        android:textSize="12sp"
+        android:fontFamily="monospace"
+        android:textStyle="bold" />
+
+</LinearLayout>

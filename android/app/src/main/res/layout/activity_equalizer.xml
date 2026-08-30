@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/nothing_black"
+    android:padding="20dp">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="20dp"
+        android:layout_marginBottom="24dp">
+
+        <ImageButton
+            android:id="@+id/btn_back_eq"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:background="@drawable/bg_circle_button"
+            android:src="@android:drawable/ic_menu_revert"
+            app:tint="@color/nothing_white"
+            android:contentDescription="Back" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <View
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/led_red"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="10-BAND DSP EQUALIZER"
+                android:textColor="@color/nothing_white"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_reset_eq"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="#22FFFFFF"
+            android:text="RESET"
+            android:textColor="@color/nothing_white_70"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:paddingHorizontal="10dp" />
+    </RelativeLayout>
+
+    <!-- Preset Chips -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:layout_marginBottom="24dp">
+
+        <LinearLayout
+            android:id="@+id/eq_preset_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/preset_nothing_punch"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:background="@drawable/bg_chip_selected"
+                android:text="NOTHING PUNCH"
+                android:textColor="@color/nothing_black"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:paddingHorizontal="14dp" />
+
+            <TextView
+                android:id="@+id/preset_bass_boost"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_chip_unselected"
+                android:text="BASS BOOST"
+                android:textColor="@color/nothing_white_70"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:paddingHorizontal="14dp" />
+
+            <TextView
+                android:id="@+id/preset_vocal"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_chip_unselected"
+                android:text="VOCAL"
+                android:textColor="@color/nothing_white_70"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:paddingHorizontal="14dp" />
+
+            <TextView
+                android:id="@+id/preset_flat"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_chip_unselected"
+                android:text="FLAT"
+                android:textColor="@color/nothing_white_70"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:paddingHorizontal="14dp" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- Sliders Container -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_card_nothing"
+        android:padding="16dp"
+        android:orientation="vertical">
+
+        <!-- Bass Punch & Preamp Sliders -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BASS BOOST PUNCH"
+                android:textColor="@color/nothing_white"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_bass_boost_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:text="+6 dB"
+                android:textColor="@color/nothing_red"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+
+            <SeekBar
+                android:id="@+id/seekbar_bass_boost"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:max="12"
+                android:progress="6"
+                android:progressTint="@color/nothing_red"
+                android:thumbTint="@color/nothing_white" />
+        </RelativeLayout>
+
+        <!-- Preamp Slider -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PREAMP GAIN"
+                android:textColor="@color/nothing_white"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_preamp_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:text="0 dB"
+                android:textColor="@color/nothing_red"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+
+            <SeekBar
+                android:id="@+id/seekbar_preamp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:max="24"
+                android:progress="12"
+                android:progressTint="@color/nothing_red"
+                android:thumbTint="@color/nothing_white" />
+        </RelativeLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

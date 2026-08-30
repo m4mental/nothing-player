@@ -62,7 +62,8 @@ export const App: React.FC = () => {
   const [eqPreset, setEqPreset] = useState<string>('NOTHING PUNCH');
   const [audioBoost, setAudioBoost] = useState<number>(100);
 
-  // Android Native Hardware Back Button & Gesture Navigation
+  // Android Native Hardware Back Button & Gesture Navigation with double-tap protection
+  const lastBackPressRef = useRef<number>(0);
   useEffect(() => {
     let removeListener: (() => void) | undefined;
 
@@ -88,7 +89,14 @@ export const App: React.FC = () => {
           setActiveTab('VIDEOS');
           return;
         }
-        CapApp.exitApp();
+
+        const now = Date.now();
+        if (now - lastBackPressRef.current < 2000) {
+          CapApp.exitApp();
+        } else {
+          lastBackPressRef.current = now;
+          triggerHaptic('light');
+        }
       }).then(handle => {
         removeListener = () => handle.remove();
       });

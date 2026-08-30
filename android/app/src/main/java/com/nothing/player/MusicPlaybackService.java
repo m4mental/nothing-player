@@ -52,6 +52,17 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
     private String currentPath = "";
     private boolean isPlaying = false;
 
+    public interface PlaybackCallback {
+        void onStateChanged(boolean playing);
+        void onTrackEnded();
+    }
+
+    private PlaybackCallback callback;
+
+    public void setCallback(PlaybackCallback cb) {
+        this.callback = cb;
+    }
+
     public interface PlaybackEventListener {
         void onTrackEnded();
         void onPlayStateChanged(boolean isPlaying);
@@ -202,6 +213,10 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         return START_NOT_STICKY;
     }
 
+    public void playMedia(String path, String title, String artist) {
+        playTrack(title, artist, null, path);
+    }
+
     public void playTrack(String title, String artist, String uriStr, String path) {
         try {
             this.currentTitle = (title != null && !title.isEmpty()) ? title : "Nothing Track";
@@ -216,22 +231,38 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             if (uriStr != null && !uriStr.isEmpty()) {
                 uri = Uri.parse(uriStr);
             } else if (path != null && !path.isEmpty()) {
-                uri = Uri.fromFile(new File(path));
+                if (path.startsWith("content://")) {
+                    uri = Uri.parse(path);
+                } else {
+                    File f = new File(path);
+                    if (f.exists()) {
+                        uri = Uri.fromFile(f);
+                    } else {
+                        uri = Uri.parse(path);
+                    }
+                }
             }
 
             if (uri != null) {
-                mediaPlayer.setDataSource(this, uri);
-                mediaPlayer.prepare();
-                mediaPlayer.start();
-                this.isPlaying = true;
-
-                updateMediaSessionMetadata();
-                updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING);
-                startForegroundNotification();
-
-                if (eventListener != null) {
-                    eventListener.onPlayStateChanged(true);
-                }
+                mediaPlayer.setDataSource(getApplicationContext(), uri);
+                mediaPlayer.setOnPreparedListener(mp -> {
+                    try {
+                        mp.start();
+                        isPlaying = true;
+                        updateMediaSessionMetadata();
+                        updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING);
+                        startForegroundNotification();
+                        if (eventListener != null) {
+                            eventListener.onPlayStateChanged(true);
+                        }
+                        if (callback != null) {
+                            callback.onStateChanged(true);
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                });
+                mediaPlayer.prepareAsync();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -247,6 +278,9 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             if (eventListener != null) {
                 eventListener.onPlayStateChanged(false);
             }
+            if (callback != null) {
+                callback.onStateChanged(false);
+            }
         }
     }
 
@@ -258,6 +292,9 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             startForegroundNotification();
             if (eventListener != null) {
                 eventListener.onPlayStateChanged(true);
+            }
+            if (callback != null) {
+                callback.onStateChanged(true);
             }
         }
     }
@@ -296,19 +333,19 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         }
     }
 
-    public double getCurrentPosition() {
+    public long getCurrentPosition() {
         try {
-            return (mediaPlayer != null) ? (mediaPlayer.getCurrentPosition() / 1000.0) : 0.0;
+            return (mediaPlayer != null) ? mediaPlayer.getCurrentPosition() : 0;
         } catch (Exception e) {
-            return 0.0;
+            return 0;
         }
     }
 
-    public double getDuration() {
+    public long getDuration() {
         try {
-            return (mediaPlayer != null) ? (mediaPlayer.getDuration() / 1000.0) : 0.0;
+            return (mediaPlayer != null) ? mediaPlayer.getDuration() : 0;
         } catch (Exception e) {
-            return 0.0;
+            return 0;
         }
     }
 
@@ -318,7 +355,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, currentArtist)
             .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, "Nothing Music")
-            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, (long) (getDuration() * 1000));
+            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, getDuration());
         mediaSession.setMetadata(builder.build());
     }
 
@@ -331,7 +368,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
 
         PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder()
             .setActions(actions)
-            .setState(state, (long) (getCurrentPosition() * 1000), 1.0f);
+            .setState(state, getCurrentPosition(), 1.0f);
         mediaSession.setPlaybackState(stateBuilder.build());
     }
 
@@ -416,6 +453,9 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         updateNotification();
         if (eventListener != null) {
             eventListener.onTrackEnded();
+        }
+        if (callback != null) {
+            callback.onTrackEnded();
         }
     }
 

@@ -46,7 +46,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
             triggerHaptic('medium');
             onOpenEqualizer();
           }}
-          className="flex items-center justify-between p-4 rounded-2xl bg-[#0e0e0e] border border-white/10 hover:border-white/20 transition-all cursor-pointer active-press group"
+          className="flex items-center justify-between p-4 rounded-2xl bg-black border border-white/15 hover:border-white/25 transition-all cursor-pointer active-press group"
         >
           <div className="flex items-center gap-3.5">
             <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-[#D71921]">
@@ -65,7 +65,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
         </div>
 
         {/* Decoder Settings */}
-        <div className="flex items-center justify-between p-4 rounded-2xl bg-[#0e0e0e] border border-white/10">
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-black border border-white/15">
           <div className="flex items-center gap-3.5">
             <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-white/80">
               <Cpu className="w-5 h-5 text-[#D71921]" />
@@ -85,7 +85,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
         </div>
 
         {/* Audio Boost 200% */}
-        <div className="flex flex-col p-4 rounded-2xl bg-[#0e0e0e] border border-white/10 gap-3">
+        <div className="flex flex-col p-4 rounded-2xl bg-black border border-white/15 gap-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3.5">
               <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-white/80">
@@ -125,7 +125,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
             triggerHaptic('medium');
             onOpenShortcuts();
           }}
-          className="flex items-center justify-between p-4 rounded-2xl bg-[#0e0e0e] border border-white/10 hover:border-white/20 transition-all cursor-pointer active-press group"
+          className="flex items-center justify-between p-4 rounded-2xl bg-black border border-white/15 hover:border-white/25 transition-all cursor-pointer active-press group"
         >
           <div className="flex items-center gap-3.5">
             <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-white/80">
@@ -144,7 +144,7 @@ export const SettingsHub: React.FC<SettingsHubProps> = ({
         </div>
 
         {/* Device Media Vault Info */}
-        <div className="flex items-center justify-between p-4 rounded-2xl bg-[#0e0e0e] border border-white/10">
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-black border border-white/15">
           <div className="flex items-center gap-3.5">
             <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-white/80">
               <HardDrive className="w-5 h-5" />

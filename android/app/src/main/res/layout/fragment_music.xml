@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/nothing_black"
+    android:paddingHorizontal="14dp">
+
+    <!-- Search Box -->
+    <EditText
+        android:id="@+id/et_search_music"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_chip_unselected"
+        android:hint="Search tracks, artists, albums..."
+        android:textColorHint="@color/nothing_white_40"
+        android:textColor="@color/nothing_white"
+        android:textSize="12sp"
+        android:fontFamily="sans-serif"
+        android:paddingHorizontal="14dp"
+        android:singleLine="true"
+        android:layout_marginBottom="10dp" />
+
+    <!-- Music Sub-filter Chips -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="12dp">
+
+        <TextView
+            android:id="@+id/chip_music_tracks"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:background="@drawable/bg_chip_selected"
+            android:text="TRACKS"
+            android:textColor="@color/nothing_black"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:paddingHorizontal="16dp" />
+
+        <TextView
+            android:id="@+id/chip_music_artists"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_chip_unselected"
+            android:text="ARTISTS"
+            android:textColor="@color/nothing_white_70"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:paddingHorizontal="16dp" />
+
+        <TextView
+            android:id="@+id/chip_music_favorites"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_chip_unselected"
+            android:text="FAVORITES"
+            android:textColor="@color/nothing_white_70"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:paddingHorizontal="16dp" />
+    </LinearLayout>
+
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipe_refresh_music"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_music"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="80dp" />
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+</LinearLayout>

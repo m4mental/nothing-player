@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_card_nothing"
+    android:layout_margin="4dp"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Video Thumbnail Box -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="110dp">
+
+        <ImageView
+            android:id="@+id/video_thumb"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:background="@color/nothing_surface" />
+
+        <!-- Resolution & 5.1 Badges -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentStart="true"
+            android:layout_margin="6dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/badge_resolution"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="#CC000000"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="1dp"
+                android:text="1080p"
+                android:textColor="@color/nothing_white"
+                android:textSize="8sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/badge_surround"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:background="#CC10B981"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="1dp"
+                android:text="5.1"
+                android:textColor="@color/nothing_white"
+                android:textSize="8sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Duration Tag -->
+        <TextView
+            android:id="@+id/video_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentEnd="true"
+            android:layout_margin="6dp"
+            android:background="#CC000000"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="2dp"
+            android:text="00:00"
+            android:textColor="@color/nothing_white"
+            android:textSize="9sp"
+            android:fontFamily="monospace"
+            android:textStyle="bold" />
+    </RelativeLayout>
+
+    <!-- Metadata Bottom Area -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_toStartOf="@id/btn_video_menu"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/video_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Video Title"
+                android:textColor="@color/nothing_white"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/video_subtext"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Movies • 1.2 GB"
+                android:textColor="@color/nothing_white_40"
+                android:textSize="9sp"
+                android:fontFamily="monospace"
+                android:singleLine="true" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btn_video_menu"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_more"
+            android:contentDescription="Menu"
+            app:tint="@color/nothing_white_40" />
+    </RelativeLayout>
+
+</LinearLayout>

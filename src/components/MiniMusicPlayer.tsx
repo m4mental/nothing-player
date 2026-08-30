@@ -34,7 +34,7 @@ export const MiniMusicPlayer: React.FC<MiniMusicPlayerProps> = ({
         triggerHaptic('light');
         onOpenFullPlayer();
       }}
-      className="fixed bottom-[60px] left-3 right-3 z-35 bg-[#121212]/95 backdrop-blur-xl border border-white/15 rounded-2xl p-2.5 flex items-center justify-between shadow-2xl cursor-pointer active-press group"
+      className="fixed bottom-[60px] left-3 right-3 z-35 bg-black/95 backdrop-blur-xl border border-white/15 rounded-2xl p-2.5 flex items-center justify-between shadow-2xl cursor-pointer active-press group"
     >
       {/* Progress Bar Top Thin Line */}
       <div className="absolute top-0 left-3 right-3 h-[2px] bg-white/10 rounded-full overflow-hidden">
@@ -46,7 +46,7 @@ export const MiniMusicPlayer: React.FC<MiniMusicPlayerProps> = ({
 
       {/* Track Art & Info */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-black/60 shrink-0 border border-white/10">
+        <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-black shrink-0 border border-white/10">
           <img
             src={currentTrack.thumbnail || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80'}
             alt={currentTrack.title}
@@ -60,10 +60,10 @@ export const MiniMusicPlayer: React.FC<MiniMusicPlayerProps> = ({
         </div>
 
         <div className="flex flex-col min-w-0">
-          <span className="font-mono text-xs font-bold text-white line-clamp-1 group-hover:text-[#D71921] transition-colors">
+          <span className="font-ndot-clean text-xs font-bold text-white line-clamp-1 group-hover:text-[#D71921] transition-colors tracking-wide">
             {currentTrack.title}
           </span>
-          <span className="text-[10px] font-mono text-white/50 line-clamp-1">
+          <span className="text-[10px] font-ndot text-white/50 line-clamp-1">
             {currentTrack.artist || 'Unknown Artist'}
           </span>
         </div>

@@ -205,12 +205,12 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
                   </div>
 
                   <div className="flex flex-col min-w-0">
-                    <h3 className={`font-mono text-xs font-bold line-clamp-1 group-hover:text-[#D71921] transition-colors ${
+                    <h3 className={`font-ndot-clean text-xs font-bold line-clamp-1 group-hover:text-[#D71921] transition-colors tracking-wide ${
                       isCurrent ? 'text-[#D71921]' : 'text-white'
                     }`}>
                       {track.title}
                     </h3>
-                    <div className="flex items-center gap-2 mt-0.5 text-[10px] font-mono text-white/40 line-clamp-1">
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px] font-ndot text-white/40 line-clamp-1">
                       <span>{track.artist || 'Unknown Artist'}</span>
                       <span>•</span>
                       <span>{track.folder || 'Music'}</span>
@@ -221,7 +221,7 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs text-white/50">{formatDuration(track.duration)}</span>
+                  <span className="font-ndot-num text-xs text-white/50">{formatDuration(track.duration)}</span>
                   
                   {/* Favorite Button */}
                   <button
@@ -255,8 +255,8 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
 
       {/* Track Details & Technical Specs Bottom Modal */}
       {infoModalTrack && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 animate-fade-in">
-          <div className="w-full max-w-lg bg-[#0e0e0e] border border-white/20 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/90 backdrop-blur-xl p-3 sm:p-4 animate-fade-in">
+          <div className="w-full max-w-lg bg-black border border-white/20 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
             
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -273,25 +273,25 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
             </div>
 
             {/* Audio Title & Artist */}
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3">
+            <div className="p-3.5 rounded-2xl bg-black border border-white/15 flex items-start gap-3">
               <div className="p-2.5 rounded-xl bg-[#D71921]/20 text-[#D71921] shrink-0 mt-0.5">
                 <Music className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-mono text-white/40 uppercase">TITLE & ARTIST</div>
-                <div className="font-mono text-xs text-white font-bold break-all leading-tight mt-0.5">
+                <div className="text-[10px] font-ndot text-white/40 uppercase">TITLE & ARTIST</div>
+                <div className="font-ndot-clean text-xs text-white font-bold break-all leading-relaxed mt-0.5 tracking-wide">
                   {infoModalTrack.title}
                 </div>
-                <div className="font-mono text-[10px] text-white/60 mt-0.5">
+                <div className="font-ndot text-[10px] text-white/60 mt-1">
                   {infoModalTrack.artist || 'Unknown Artist'} • {infoModalTrack.album || 'Music'}
                 </div>
               </div>
             </div>
 
             {/* Exact Storage Location & Path (With Copy Button) */}
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-2">
+            <div className="p-3.5 rounded-2xl bg-black border border-white/15 flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono text-white/40 uppercase flex items-center gap-1.5">
+                <span className="text-[10px] font-ndot text-white/40 uppercase flex items-center gap-1.5">
                   <HardDrive className="w-3.5 h-3.5 text-[#D71921]" />
                   EXACT STORAGE LOCATION
                 </span>
@@ -305,55 +305,55 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
                       setTimeout(() => setCopiedPath(false), 2000);
                     }
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-mono text-white font-bold flex items-center gap-1 active-press"
+                  className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-ndot text-white font-bold flex items-center gap-1 active-press"
                 >
                   {copiedPath ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                   {copiedPath ? 'COPIED ✓' : 'COPY PATH'}
                 </button>
               </div>
 
-              <div className="font-mono text-[11px] text-white/90 bg-black/60 p-2.5 rounded-xl border border-white/10 break-all select-all">
+              <div className="font-mono text-[11px] text-white/90 bg-black p-2.5 rounded-xl border border-white/10 break-all select-all">
                 {infoModalTrack.path || (infoModalTrack.contentUri ? `Content URI: ${infoModalTrack.contentUri}` : 'Internal Device Storage')}
               </div>
             </div>
 
             {/* Technical Metadata Grid */}
-            <div className="grid grid-cols-2 gap-2.5 font-mono text-xs">
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+            <div className="grid grid-cols-2 gap-2.5 font-ndot text-xs">
+              <div className="p-3 rounded-2xl bg-black border border-white/15 flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase">FORMAT</span>
-                <span className="text-white font-bold">{infoModalTrack.format}</span>
+                <span className="text-white font-bold tracking-wider">{infoModalTrack.format}</span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+              <div className="p-3 rounded-2xl bg-black border border-white/15 flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase">DURATION</span>
-                <span className="text-white font-bold">{formatDuration(infoModalTrack.duration)}</span>
+                <span className="text-white font-bold font-ndot-num">{formatDuration(infoModalTrack.duration)}</span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+              <div className="p-3 rounded-2xl bg-black border border-white/15 flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase">FILE SIZE</span>
-                <span className="text-white font-bold">{formatFileSize(infoModalTrack.size)}</span>
+                <span className="text-white font-bold font-ndot-num">{formatFileSize(infoModalTrack.size)}</span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+              <div className="p-3 rounded-2xl bg-black border border-white/15 flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase">FOLDER</span>
-                <span className="text-white font-bold line-clamp-1">{infoModalTrack.folder || 'Music'}</span>
+                <span className="text-white font-bold line-clamp-1 tracking-wider">{infoModalTrack.folder || 'MUSIC'}</span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+              <div className="p-3 rounded-2xl bg-black border border-white/15 flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase">DATE ADDED</span>
-                <span className="text-white font-bold">
+                <span className="text-white font-bold font-ndot-num">
                   {infoModalTrack.addedAt ? new Date(infoModalTrack.addedAt).toLocaleDateString() : 'Recent'}
                 </span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+              <div className="p-3 rounded-2xl bg-black border border-white/15 flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase">SAMPLE RATE</span>
-                <span className="text-white font-bold">44.1 kHz • 16/24-bit</span>
+                <span className="text-white font-bold font-ndot-num">44.1 kHz • 16/24-bit</span>
               </div>
             </div>
 
             {/* Audio Codec & Sound Architecture */}
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1.5 font-mono">
+            <div className="p-3.5 rounded-2xl bg-black border border-white/15 flex flex-col gap-1.5 font-ndot">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-white/40 uppercase flex items-center gap-1.5">
                   <Volume2 className="w-3.5 h-3.5 text-[#D71921]" />
@@ -363,11 +363,11 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
                   {infoModalTrack.format}
                 </span>
               </div>
-              <div className="text-white font-bold text-xs">
+              <div className="text-white font-bold text-xs tracking-wide">
                 {infoModalTrack.audioCodec || (infoModalTrack.format === 'FLAC' ? 'FLAC Lossless Audio' : (infoModalTrack.format === 'M4A' || infoModalTrack.format === 'AAC' ? 'AAC LC (MPEG-4 Audio)' : 'MPEG-1 Audio Layer III (MP3)'))}
               </div>
               <div className="text-[11px] text-white/60">
-                Configuration: <span className="text-white/90 font-medium">{infoModalTrack.audioChannels || 'Stereo (2 Channels, 44.1 kHz, 16/24-bit)'}</span>
+                Configuration: <span className="text-white/90 font-medium font-ndot">{infoModalTrack.audioChannels || 'Stereo (2 Channels, 44.1 kHz, 16/24-bit)'}</span>
               </div>
             </div>
 
@@ -379,7 +379,7 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
                   setInfoModalTrack(null);
                   onPlayTrack(target);
                 }}
-                className="flex-1 py-3 rounded-2xl bg-white text-black font-mono text-xs font-bold hover:bg-white/90 active-press flex items-center justify-center gap-2 shadow-xl"
+                className="flex-1 py-3 rounded-2xl bg-white text-black font-ndot text-xs font-bold hover:bg-white/90 active-press flex items-center justify-center gap-2 shadow-xl"
               >
                 <Play className="w-4 h-4 fill-black" />
                 PLAY AUDIO

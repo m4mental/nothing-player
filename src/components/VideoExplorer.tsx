@@ -283,7 +283,7 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
           placeholder={selectedFolder ? `Search inside ${selectedFolder}...` : "Search videos, folders, movies..."}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-[#111111] border border-white/10 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-sans text-white placeholder-white/40 focus:outline-none focus:border-white/30"
+          className="w-full bg-black border border-white/15 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-sans text-white placeholder-white/40 focus:outline-none focus:border-white/40"
         />
       </div>
 
@@ -501,15 +501,15 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
                     </div>
 
                     {/* Metadata Footer */}
-                    <div className="p-3.5 flex items-start justify-between gap-2">
+                    <div className="p-3.5 flex items-start justify-between gap-2 bg-black">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-mono text-xs font-bold text-white line-clamp-1 group-hover:text-[#D71921] transition-colors">
+                        <h3 className="font-ndot-clean text-xs font-bold text-white line-clamp-1 group-hover:text-[#D71921] transition-colors tracking-wide">
                           {video.title}
                         </h3>
-                        <div className="flex items-center gap-2 mt-1 text-[10px] font-mono text-white/50">
-                          <span>{video.folder || 'Storage'}</span>
+                        <div className="flex items-center gap-2 mt-1 text-[10px] font-ndot text-white/50">
+                          <span>{video.folder || 'STORAGE'}</span>
                           <span>•</span>
-                          <span>{formatFileSize(video.size)}</span>
+                          <span className="font-ndot-num">{formatFileSize(video.size)}</span>
                         </div>
                       </div>
 
@@ -543,16 +543,16 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
                       triggerHaptic('heavy');
                       onPlayVideo(video);
                     }}
-                    className="flex items-center gap-3 p-3 rounded-2xl bg-[#0e0e0e] border border-white/10 hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer group active-press"
+                    className="flex items-center gap-3 p-3 rounded-2xl bg-black border border-white/10 hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer group active-press"
                   >
                     {/* Thumbnail */}
-                    <div className="relative w-28 h-18 rounded-xl bg-black/80 overflow-hidden shrink-0 border border-white/10">
+                    <div className="relative w-28 h-18 rounded-xl bg-black overflow-hidden shrink-0 border border-white/10">
                       <img
                         src={video.thumbnail || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&auto=format&fit=crop&q=80'}
                         alt={video.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                       />
-                      <div className="absolute bottom-1 right-1 px-1 rounded bg-black/80 text-[8px] font-mono text-white">
+                      <div className="absolute bottom-1 right-1 px-1 rounded bg-black/90 text-[8px] font-ndot-num text-white">
                         {formatDuration(video.duration)}
                       </div>
                       {watchedPercent > 0 && (
@@ -564,10 +564,10 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-mono text-xs font-bold text-white line-clamp-1 group-hover:text-[#D71921] transition-colors">
+                      <h3 className="font-ndot-clean text-xs font-bold text-white line-clamp-1 group-hover:text-[#D71921] transition-colors tracking-wide">
                         {video.title}
                       </h3>
-                      <div className="flex items-center gap-2 mt-1 text-[10px] font-mono text-white/50 flex-wrap">
+                      <div className="flex items-center gap-2 mt-1 text-[10px] font-ndot text-white/50 flex-wrap">
                         <span className="px-1.5 py-0.5 rounded bg-white/10 text-white/80">
                           {video.format}
                         </span>
@@ -578,7 +578,7 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
                         )}
                         <span>{video.folder}</span>
                         <span>•</span>
-                        <span>{formatFileSize(video.size)}</span>
+                        <span className="font-ndot-num">{formatFileSize(video.size)}</span>
                       </div>
                     </div>
 
@@ -602,8 +602,8 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
 
       {/* Video Details & Technical Specs Bottom Modal */}
       {infoModalVideo && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 animate-fade-in">
-          <div className="w-full max-w-lg bg-[#0e0e0e] border border-white/20 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/90 backdrop-blur-xl p-3 sm:p-4 animate-fade-in">
+          <div className="w-full max-w-lg bg-black border border-white/20 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
             
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -620,22 +620,22 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
             </div>
 
             {/* Video File Name */}
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3">
+            <div className="p-3.5 rounded-2xl bg-black border border-white/15 flex items-start gap-3">
               <div className="p-2.5 rounded-xl bg-[#D71921]/20 text-[#D71921] shrink-0 mt-0.5">
                 <Film className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-mono text-white/40 uppercase">FILE NAME</div>
-                <div className="font-mono text-xs text-white font-bold break-all leading-tight mt-0.5">
+                <div className="text-[10px] font-ndot text-white/40 uppercase">FILE NAME</div>
+                <div className="font-ndot-clean text-xs text-white font-bold break-all leading-relaxed mt-0.5 tracking-wide">
                   {infoModalVideo.title}
                 </div>
               </div>
             </div>
 
             {/* Exact Storage Location & Path (With Copy Button) */}
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-2">
+            <div className="p-3.5 rounded-2xl bg-black border border-white/15 flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono text-white/40 uppercase flex items-center gap-1.5">
+                <span className="text-[10px] font-ndot text-white/40 uppercase flex items-center gap-1.5">
                   <HardDrive className="w-3.5 h-3.5 text-[#D71921]" />
                   EXACT STORAGE LOCATION
                 </span>
@@ -649,55 +649,55 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
                       setTimeout(() => setCopiedPath(false), 2000);
                     }
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-mono text-white font-bold flex items-center gap-1 active-press"
+                  className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-ndot text-white font-bold flex items-center gap-1 active-press"
                 >
                   {copiedPath ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                   {copiedPath ? 'COPIED ✓' : 'COPY PATH'}
                 </button>
               </div>
 
-              <div className="font-mono text-[11px] text-white/90 bg-black/60 p-2.5 rounded-xl border border-white/10 break-all select-all">
+              <div className="font-mono text-[11px] text-white/90 bg-black p-2.5 rounded-xl border border-white/10 break-all select-all">
                 {infoModalVideo.path || (infoModalVideo.contentUri ? `Content URI: ${infoModalVideo.contentUri}` : 'Internal Device Storage')}
               </div>
             </div>
 
             {/* Technical Metadata Grid */}
-            <div className="grid grid-cols-2 gap-2.5 font-mono text-xs">
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+            <div className="grid grid-cols-2 gap-2.5 font-ndot text-xs">
+              <div className="p-3 rounded-2xl bg-black border border-white/15 flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase">FORMAT / CONTAINER</span>
-                <span className="text-white font-bold">{infoModalVideo.format}</span>
+                <span className="text-white font-bold tracking-wider">{infoModalVideo.format}</span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+              <div className="p-3 rounded-2xl bg-black border border-white/15 flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase">RESOLUTION</span>
-                <span className="text-white font-bold">{infoModalVideo.resolution || 'Auto / Full HD'}</span>
+                <span className="text-white font-bold tracking-wider">{infoModalVideo.resolution || 'AUTO / FULL HD'}</span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+              <div className="p-3 rounded-2xl bg-black border border-white/15 flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase">DURATION</span>
-                <span className="text-white font-bold">{formatDuration(infoModalVideo.duration)}</span>
+                <span className="text-white font-bold font-ndot-num">{formatDuration(infoModalVideo.duration)}</span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+              <div className="p-3 rounded-2xl bg-black border border-white/15 flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase">FILE SIZE</span>
-                <span className="text-white font-bold">{formatFileSize(infoModalVideo.size)}</span>
+                <span className="text-white font-bold font-ndot-num">{formatFileSize(infoModalVideo.size)}</span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+              <div className="p-3 rounded-2xl bg-black border border-white/15 flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase">PARENT FOLDER</span>
-                <span className="text-white font-bold line-clamp-1">{infoModalVideo.folder || 'Storage'}</span>
+                <span className="text-white font-bold line-clamp-1 tracking-wider">{infoModalVideo.folder || 'STORAGE'}</span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1">
+              <div className="p-3 rounded-2xl bg-black border border-white/15 flex flex-col gap-1">
                 <span className="text-[10px] text-white/40 uppercase">DATE ADDED</span>
-                <span className="text-white font-bold">
+                <span className="text-white font-bold font-ndot-num">
                   {infoModalVideo.addedAt ? new Date(infoModalVideo.addedAt).toLocaleDateString() : 'Recent'}
                 </span>
               </div>
             </div>
 
             {/* Audio Codec & Sound Architecture */}
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-1.5 font-mono">
+            <div className="p-3.5 rounded-2xl bg-black border border-white/15 flex flex-col gap-1.5 font-ndot">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-white/40 uppercase flex items-center gap-1.5">
                   <Volume2 className="w-3.5 h-3.5 text-[#D71921]" />
@@ -707,11 +707,11 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
                   {infoModalVideo.audioCodec?.includes('Dolby') || infoModalVideo.audioCodec?.includes('E-AC-3') || infoModalVideo.audioCodec?.includes('5.1') || infoModalVideo.title?.toLowerCase().includes('dd5.1') || infoModalVideo.title?.toLowerCase().includes('5.1') ? 'DOLBY 5.1' : 'STEREO'}
                 </span>
               </div>
-              <div className="text-white font-bold text-xs">
+              <div className="text-white font-bold text-xs tracking-wide">
                 {infoModalVideo.audioCodec || (infoModalVideo.title?.toLowerCase().includes('dd5.1') || infoModalVideo.title?.toLowerCase().includes('eac3') ? 'Dolby Digital Plus (E-AC-3 5.1 Surround)' : 'AAC LC (Stereo)')}
               </div>
               <div className="text-[11px] text-white/60">
-                Configuration: <span className="text-white/90 font-medium">{infoModalVideo.audioChannels || (infoModalVideo.title?.toLowerCase().includes('dd5.1') || infoModalVideo.title?.toLowerCase().includes('5.1') ? '6 Channels (5.1 Surround, 48 kHz)' : '2 Channels (Stereo, 48 kHz)')}</span>
+                Configuration: <span className="text-white/90 font-medium font-ndot">{infoModalVideo.audioChannels || (infoModalVideo.title?.toLowerCase().includes('dd5.1') || infoModalVideo.title?.toLowerCase().includes('5.1') ? '6 Channels (5.1 Surround, 48 kHz)' : '2 Channels (Stereo, 48 kHz)')}</span>
               </div>
             </div>
 
@@ -723,7 +723,7 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
                   setInfoModalVideo(null);
                   onPlayVideo(target);
                 }}
-                className="flex-1 py-3 rounded-2xl bg-white text-black font-mono text-xs font-bold hover:bg-white/90 active-press flex items-center justify-center gap-2 shadow-xl"
+                className="flex-1 py-3 rounded-2xl bg-white text-black font-ndot text-xs font-bold hover:bg-white/90 active-press flex items-center justify-center gap-2 shadow-xl"
               >
                 <Play className="w-4 h-4 fill-black" />
                 PLAY VIDEO
@@ -734,7 +734,7 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
                   onDeleteVideo(infoModalVideo.id);
                   setInfoModalVideo(null);
                 }}
-                className="px-5 py-3 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-500 font-mono text-xs font-bold hover:bg-red-500/25 active-press"
+                className="px-5 py-3 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-500 font-ndot text-xs font-bold hover:bg-red-500/25 active-press"
               >
                 DELETE
               </button>
