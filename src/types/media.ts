@@ -22,6 +22,8 @@ export interface MediaItem {
   size?: number; // in bytes
   resolution?: string; // e.g. "1080p", "4K UHD", "720p"
   decoder?: 'HW' | 'SW';
+  path?: string;
+  contentUri?: string;
 }
 
 export interface VideoFolder {

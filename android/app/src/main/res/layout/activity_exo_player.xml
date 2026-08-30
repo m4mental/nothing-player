@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/player_root_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:keepScreenOn="true">
+
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/exo_player_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        app:use_controller="false"
+        app:resize_mode="fit"
+        app:surface_type="surface_view" />
+
+    <!-- Custom Gesture Overlay HUD -->
+    <TextView
+        android:id="@+id/gesture_hud_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="#DD111111"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:fontFamily="monospace"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="12dp"
+        android:visibility="gone" />
+
+    <!-- Top Action Bar -->
+    <RelativeLayout
+        android:id="@+id/top_controls_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:background="#99000000"
+        android:layout_gravity="top">
+
+        <ImageButton
+            android:id="@+id/btn_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_alignParentStart="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_revert"
+            android:contentDescription="Back"
+            app:tint="#FFFFFF" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toEndOf="@id/btn_back"
+            android:layout_toStartOf="@id/top_actions_group"
+            android:layout_centerVertical="true"
+            android:orientation="vertical"
+            android:paddingStart="12dp">
+
+            <TextView
+                android:id="@+id/video_title_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Video Title"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="monospace"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/video_subtitle_codec"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="EXOPLAYER / HW ACCELERATED"
+                android:textColor="#88FFFFFF"
+                android:textSize="10sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/top_actions_group"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:orientation="horizontal">
+
+            <!-- Audio Track Selector Button -->
+            <Button
+                android:id="@+id/btn_audio_track"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="AUDIO"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="monospace"
+                android:background="#33FFFFFF"
+                android:paddingHorizontal="10dp"
+                android:layout_marginEnd="6dp" />
+
+            <!-- Subtitle Selector Button -->
+            <Button
+                android:id="@+id/btn_subtitle_track"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="SUB"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="monospace"
+                android:background="#33FFFFFF"
+                android:paddingHorizontal="10dp"
+                android:layout_marginEnd="6dp" />
+
+            <!-- Rotate Screen Button -->
+            <Button
+                android:id="@+id/btn_rotate_screen"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="ROTATE"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="monospace"
+                android:background="#33FFFFFF"
+                android:paddingHorizontal="10dp"
+                android:layout_marginEnd="6dp" />
+
+            <!-- Aspect Ratio Button -->
+            <Button
+                android:id="@+id/btn_aspect_ratio"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="FIT"
+                android:textColor="#D71921"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="monospace"
+                android:background="#33FFFFFF"
+                android:paddingHorizontal="10dp" />
+        </LinearLayout>
+    </RelativeLayout>
+
+    <!-- Floating Lock Button -->
+    <ImageButton
+        android:id="@+id/btn_screen_lock"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="start|center_vertical"
+        android:layout_marginStart="16dp"
+        android:background="#AA111111"
+        android:src="@android:drawable/ic_lock_lock"
+        app:tint="#FFFFFF"
+        android:contentDescription="Screen Lock" />
+
+    <!-- Bottom Controls Bar -->
+    <LinearLayout
+        android:id="@+id/bottom_controls_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:background="#99000000">
+
+        <!-- Time & Scrubber -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/time_current_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="00:00"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:fontFamily="monospace" />
+
+            <SeekBar
+                android:id="@+id/video_seek_bar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:progressTint="#D71921"
+                android:thumbTint="#FFFFFF"
+                android:layout_marginHorizontal="8dp" />
+
+            <TextView
+                android:id="@+id/time_total_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="00:00"
+                android:textColor="#88FFFFFF"
+                android:textSize="12sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <!-- Transport Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/btn_speed"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="1.0x"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:background="#33FFFFFF"
+                android:layout_marginEnd="24dp" />
+
+            <ImageButton
+                android:id="@+id/btn_rewind"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_media_rew"
+                app:tint="#FFFFFF"
+                android:layout_marginEnd="16dp" />
+
+            <ImageButton
+                android:id="@+id/btn_play_pause"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="#FFFFFF"
+                android:src="@android:drawable/ic_media_pause"
+                app:tint="#000000" />
+
+            <ImageButton
+                android:id="@+id/btn_forward"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_media_ff"
+                app:tint="#FFFFFF"
+                android:layout_marginStart="16dp" />
+
+            <Button
+                android:id="@+id/btn_night_mode"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="NIGHT"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:background="#33FFFFFF"
+                android:layout_marginStart="24dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+</FrameLayout>

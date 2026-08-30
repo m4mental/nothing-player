@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { MediaItem } from '../types/media';
-import { Search, Plus, Heart } from 'lucide-react';
+import { Search, Plus, Heart, RefreshCw } from 'lucide-react';
 import { triggerHaptic } from '../services/haptic';
 
 interface MusicExplorerProps {
@@ -9,6 +9,8 @@ interface MusicExplorerProps {
   onPlayTrack: (item: MediaItem) => void;
   onImportFiles: (files: FileList | File[]) => void;
   onToggleFavorite: (id: string) => void;
+  onScanDevice?: () => void;
+  isScanning?: boolean;
 }
 
 export const MusicExplorer: React.FC<MusicExplorerProps> = ({
@@ -16,7 +18,9 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
   currentTrackId,
   onPlayTrack,
   onImportFiles,
-  onToggleFavorite
+  onToggleFavorite,
+  onScanDevice,
+  isScanning
 }) => {
   const [subTab, setSubTab] = useState<'TRACKS' | 'FOLDERS' | 'ARTISTS' | 'ALBUMS'>('TRACKS');
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,21 +51,43 @@ export const MusicExplorer: React.FC<MusicExplorerProps> = ({
           <span className="text-[10px] font-mono text-white/40">({tracks.length})</span>
         </div>
 
-        <label className="p-2 rounded-xl bg-white/5 border border-white/10 text-white active-press cursor-pointer">
-          <Plus className="w-4 h-4 text-[#D71921]" />
-          <input
-            type="file"
-            multiple
-            accept="audio/*"
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files && e.target.files.length > 0) {
+        <div className="flex items-center gap-1.5">
+          {/* Scan Device Button */}
+          {onScanDevice && (
+            <button
+              onClick={() => {
                 triggerHaptic('medium');
-                onImportFiles(e.target.files);
-              }
-            }}
-          />
-        </label>
+                onScanDevice();
+              }}
+              disabled={isScanning}
+              className={`p-2 rounded-xl border text-xs font-mono active-press flex items-center gap-1 ${
+                isScanning 
+                  ? 'bg-[#D71921]/20 border-[#D71921] text-[#D71921]' 
+                  : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/15'
+              }`}
+              title="Scan Phone Storage For Audio Tracks"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin text-[#D71921]' : ''}`} />
+              <span className="text-[10px] hidden sm:inline">{isScanning ? 'SCANNING...' : 'SCAN'}</span>
+            </button>
+          )}
+
+          <label className="p-2 rounded-xl bg-white/5 border border-white/10 text-white active-press cursor-pointer">
+            <Plus className="w-4 h-4 text-[#D71921]" />
+            <input
+              type="file"
+              multiple
+              accept="audio/*"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                  triggerHaptic('medium');
+                  onImportFiles(e.target.files);
+                }
+              }}
+            />
+          </label>
+        </div>
       </div>
 
       {/* Search Bar */}

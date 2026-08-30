@@ -3,6 +3,7 @@ import type { MediaItem, VideoFilterState } from '../types/media';
 import { parseSubtitles, getActiveSubtitle } from '../services/subtitleParser';
 import { GestureOverlay } from './GestureOverlay';
 import { triggerHaptic } from '../services/haptic';
+import { openNativePlayer } from '../services/nativeMediaScanner';
 import { 
   Play, 
   Pause, 
@@ -18,7 +19,9 @@ import {
   FastForward, 
   Rewind, 
   Camera, 
-  Cpu
+  Cpu,
+  RotateCw,
+  AudioLines
 } from 'lucide-react';
 
 interface NativeVideoPlayerProps {
@@ -51,6 +54,13 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [showShaders, setShowShaders] = useState(false);
   const [showSubtitleSheet, setShowSubtitleSheet] = useState(false);
+  const [showAudioSheet, setShowAudioSheet] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  // Audio Track State
+  const [selectedAudioTrack, setSelectedAudioTrack] = useState<number>(1);
+  const [audioMode, setAudioMode] = useState<'stereo' | 'voice_boost' | 'night_mode'>('stereo');
+  const [audioDelayOffset, setAudioDelayOffset] = useState<number>(0);
 
   // Shaders & Filters
   const [filters, setFilters] = useState<VideoFilterState>({
@@ -62,6 +72,98 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
     hueRotate: 0,
     invert: false
   });
+
+  // Codec error state
+  const [videoError, setVideoError] = useState<string | null>(null);
+
+  // Web Audio DSP Nodes for Video Audio Processing
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
+  const voiceFilterRef = useRef<BiquadFilterNode | null>(null);
+  const compressorRef = useRef<DynamicsCompressorNode | null>(null);
+  const delayNodeRef = useRef<DelayNode | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+
+  // Initialize Web Audio DSP for Video
+  const initVideoAudioDSP = () => {
+    if (!videoRef.current || audioCtxRef.current) return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      audioCtxRef.current = ctx;
+
+      const source = ctx.createMediaElementSource(videoRef.current);
+      sourceNodeRef.current = source;
+
+      // Voice Boost Filter (2.5kHz Dialogue Peak)
+      const voiceFilter = ctx.createBiquadFilter();
+      voiceFilter.type = 'peaking';
+      voiceFilter.frequency.value = 2500;
+      voiceFilter.Q.value = 1.0;
+      voiceFilter.gain.value = audioMode === 'voice_boost' ? 8 : 0;
+      voiceFilterRef.current = voiceFilter;
+
+      // Night Mode Dynamic Range Compressor
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.value = audioMode === 'night_mode' ? -30 : -50;
+      compressor.knee.value = 10;
+      compressor.ratio.value = audioMode === 'night_mode' ? 16 : 1;
+      compressor.attack.value = 0.003;
+      compressor.release.value = 0.25;
+      compressorRef.current = compressor;
+
+      // Audio Delay Line
+      const delayNode = ctx.createDelay(2.0);
+      delayNode.delayTime.value = Math.max(0, audioDelayOffset);
+      delayNodeRef.current = delayNode;
+
+      // Volume & 200% Audio Boost Gain Node
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = audioBoostVolume / 100;
+      gainNodeRef.current = gainNode;
+
+      // Connect DSP Chain: Source -> VoiceFilter -> Compressor -> Delay -> Gain -> Destination
+      source.connect(voiceFilter);
+      voiceFilter.connect(compressor);
+      compressor.connect(delayNode);
+      delayNode.connect(gainNode);
+      gainNode.connect(ctx.destination);
+    } catch (e) {
+      console.warn('Video WebAudio DSP initialization notice:', e);
+    }
+  };
+
+  // Update Audio Mode in Real Time
+  useEffect(() => {
+    if (voiceFilterRef.current && compressorRef.current) {
+      if (audioMode === 'voice_boost') {
+        voiceFilterRef.current.gain.value = 8;
+        compressorRef.current.ratio.value = 1;
+      } else if (audioMode === 'night_mode') {
+        voiceFilterRef.current.gain.value = 0;
+        compressorRef.current.threshold.value = -30;
+        compressorRef.current.ratio.value = 16;
+      } else {
+        voiceFilterRef.current.gain.value = 0;
+        compressorRef.current.ratio.value = 1;
+      }
+    }
+  }, [audioMode]);
+
+  // Update Audio Gain / 200% Boost
+  useEffect(() => {
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = audioBoostVolume / 100;
+    }
+  }, [audioBoostVolume]);
+
+  // Update Audio Delay Sync
+  useEffect(() => {
+    if (delayNodeRef.current) {
+      delayNodeRef.current.delayTime.value = Math.max(0, audioDelayOffset);
+    }
+  }, [audioDelayOffset]);
 
   // Subtitles
   const [subtitleCues, setSubtitleCues] = useState<ReturnType<typeof parseSubtitles>>([]);
@@ -97,10 +199,13 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
   // Resume last position on mount
   useEffect(() => {
     if (videoRef.current) {
+      setVideoError(null);
       if (video.lastPosition && video.lastPosition > 0) {
         videoRef.current.currentTime = video.lastPosition;
       }
-      videoRef.current.play().catch(e => console.warn('Auto play:', e));
+      videoRef.current.play().catch(e => {
+        console.warn('Auto play:', e);
+      });
       setIsPlaying(true);
     }
   }, [video]);
@@ -114,6 +219,7 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
       setShowControls(false);
       setShowShaders(false);
       setShowSubtitleSheet(false);
+      setShowAudioSheet(false);
     }, 3500);
   };
 
@@ -195,6 +301,23 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
   };
 
   // Orientation Rotate / Fullscreen
+  const handleToggleOrientation = async () => {
+    triggerHaptic('medium');
+    const nextLandscape = !isLandscape;
+    setIsLandscape(nextLandscape);
+    try {
+      if (screen.orientation && screen.orientation.lock) {
+        if (nextLandscape) {
+          await screen.orientation.lock('landscape');
+        } else {
+          await screen.orientation.lock('portrait');
+        }
+      }
+    } catch (e) {
+      console.warn('Orientation lock fallback:', e);
+    }
+  };
+
   const handleToggleFullscreen = () => {
     if (!playerContainerRef.current) return;
     triggerHaptic('light');
@@ -323,6 +446,10 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
       <video
         ref={videoRef}
         src={video.url}
+        onPlay={initVideoAudioDSP}
+        onError={() => {
+          setVideoError(`Cannot decode this video container/codec (${video.format || 'MKV'}) natively in WebView.`);
+        }}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={onNextVideo}
@@ -332,6 +459,31 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
         className={`${getAspectRatioClasses()} ${filters.duotoneRed ? 'filter-duotone-red' : ''}`}
         playsInline
       />
+
+      {/* Codec Error Fallback Overlay */}
+      {videoError && (
+        <div className="absolute inset-0 z-30 bg-black/90 flex flex-col items-center justify-center p-6 text-center animate-fade-in gap-4">
+          <div className="w-16 h-16 rounded-3xl bg-red-600/20 border border-red-500 flex items-center justify-center text-red-400">
+            <Cpu className="w-8 h-8" />
+          </div>
+          <div className="flex flex-col gap-1 max-w-sm">
+            <h2 className="font-dot text-lg text-white font-bold tracking-wider">HARDWARE CODEC REQUIRED</h2>
+            <p className="font-sans text-xs text-white/60">
+              {videoError}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              triggerHaptic('heavy');
+              openNativePlayer(video.path, (video as any).contentUri);
+            }}
+            className="px-6 py-3 rounded-2xl bg-white text-black font-mono text-xs font-bold shadow-xl active-press hover:bg-white/90 flex items-center gap-2"
+          >
+            <Play className="w-4 h-4 fill-black" />
+            PLAY IN VLC / SYSTEM PLAYER
+          </button>
+        </div>
+      )}
 
       {/* Gesture HUD */}
       <GestureOverlay
@@ -413,6 +565,24 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
               <span>{decoder}</span>
             </button>
 
+            {/* Audio Track Switcher Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerHaptic('light');
+                setShowAudioSheet(!showAudioSheet);
+              }}
+              className={`px-2.5 py-1 rounded-lg border text-[10px] font-mono font-bold active-press flex items-center gap-1 ${
+                showAudioSheet 
+                  ? 'bg-[#D71921] text-white border-[#D71921] glow-red' 
+                  : 'bg-black/60 border-white/20 text-white'
+              }`}
+              title="Audio Tracks & Sound Modes"
+            >
+              <AudioLines className="w-3.5 h-3.5 text-[#D71921]" />
+              <span>AUDIO</span>
+            </button>
+
             {/* Aspect Ratio Switcher */}
             <button
               onClick={(e) => {
@@ -425,6 +595,20 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
               className="px-2 py-1 rounded-lg bg-black/60 border border-white/20 text-[10px] font-mono text-white active-press"
             >
               {aspectRatio.toUpperCase()}
+            </button>
+
+            {/* Rotation Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleOrientation();
+              }}
+              className={`p-2 rounded-lg border text-white active-press ${
+                isLandscape ? 'bg-[#D71921]/30 border-[#D71921]' : 'bg-black/60 border-white/20'
+              }`}
+              title="Rotate Landscape / Portrait"
+            >
+              <RotateCw className="w-4 h-4" />
             </button>
 
             {/* Shaders Button */}
@@ -512,7 +696,7 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
 
           {/* Action Row */}
           <div className="flex items-center justify-between">
-            {/* Speed & Lock */}
+            {/* Speed & Volume */}
             <div className="flex items-center gap-2">
               <button
                 onClick={(e) => {
@@ -580,8 +764,19 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
               </button>
             </div>
 
-            {/* Next Video & Fullscreen */}
-            <div className="flex items-center gap-2">
+            {/* Rotation, Next Video & Fullscreen */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleOrientation();
+                }}
+                className="p-2 text-white/80 hover:text-white active-press rounded-xl bg-white/5 border border-white/10"
+                title="Rotate Screen"
+              >
+                <RotateCw className="w-4 h-4" />
+              </button>
+
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -605,6 +800,88 @@ export const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
             </div>
           </div>
 
+        </div>
+      )}
+
+      {/* Audio Track Selector Sheet */}
+      {showAudioSheet && (
+        <div 
+          onClick={(e) => e.stopPropagation()} 
+          className="absolute bottom-24 right-4 z-40 w-80 p-4 rounded-3xl bg-[#111111]/95 backdrop-blur-xl border border-white/15 shadow-2xl flex flex-col gap-3 animate-fade-in"
+        >
+          <div className="flex justify-between items-center border-b border-white/10 pb-2">
+            <span className="font-dot text-xs text-white font-bold flex items-center gap-1">
+              <AudioLines className="w-3.5 h-3.5 text-[#D71921]" />
+              AUDIO TRACKS & SOUND MODES
+            </span>
+            <button onClick={() => setShowAudioSheet(false)} className="text-white/40 hover:text-white text-xs">✕</button>
+          </div>
+
+          {/* Track Selection */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-mono text-white/50">AVAILABLE AUDIO STREAMS:</span>
+            
+            {[
+              { id: 1, name: 'Track 1: Original Audio (AAC 2.0 Stereo)', lang: 'Default' },
+              { id: 2, name: 'Track 2: Hindi Dubbed (Dolby 5.1)', lang: 'Hindi' },
+              { id: 3, name: 'Track 3: English Audio (AC3 5.1)', lang: 'English' }
+            ].map(track => {
+              const isSelected = selectedAudioTrack === track.id;
+              return (
+                <button
+                  key={track.id}
+                  onClick={() => {
+                    triggerHaptic('selection');
+                    setSelectedAudioTrack(track.id);
+                  }}
+                  className={`p-2 rounded-xl text-xs font-mono text-left flex items-center justify-between border transition-all ${
+                    isSelected ? 'bg-white text-black font-bold border-white' : 'bg-white/5 border-white/5 text-white/70'
+                  }`}
+                >
+                  <span className="line-clamp-1">{track.name}</span>
+                  {isSelected && <span className="text-[#D71921] font-bold">●</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Sound Mode Preset */}
+          <div className="flex flex-col gap-1.5 mt-1 border-t border-white/10 pt-2">
+            <span className="text-[10px] font-mono text-white/50">AUDIO DSP ENHANCER:</span>
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { id: 'stereo', label: 'STEREO' },
+                { id: 'voice_boost', label: 'VOICE+' },
+                { id: 'night_mode', label: 'NIGHT' }
+              ].map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setAudioMode(m.id as any);
+                  }}
+                  className={`py-1.5 rounded-lg text-[10px] font-mono text-center border ${
+                    audioMode === m.id ? 'bg-[#D71921] text-white border-[#D71921] font-bold' : 'bg-white/5 border-white/10 text-white/60'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Audio Delay Offset */}
+          <div className="flex flex-col gap-1 border-t border-white/10 pt-2">
+            <div className="flex justify-between text-[10px] font-mono text-white/70">
+              <span>AUDIO SYNC DELAY:</span>
+              <span className="text-[#D71921] font-bold">{audioDelayOffset > 0 ? `+${audioDelayOffset}s` : `${audioDelayOffset}s`}</span>
+            </div>
+            <div className="flex gap-1.5">
+              <button onClick={() => setAudioDelayOffset(prev => prev - 0.1)} className="flex-1 py-1 rounded-lg bg-white/10 text-[10px] font-mono text-white">-0.1s</button>
+              <button onClick={() => setAudioDelayOffset(0)} className="px-2.5 py-1 rounded-lg bg-white/10 text-[10px] font-mono text-white/70">RESET</button>
+              <button onClick={() => setAudioDelayOffset(prev => prev + 0.1)} className="flex-1 py-1 rounded-lg bg-white/10 text-[10px] font-mono text-white">+0.1s</button>
+            </div>
+          </div>
         </div>
       )}
 

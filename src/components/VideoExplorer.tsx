@@ -8,22 +8,28 @@ import {
   ArrowUpDown, 
   MoreVertical, 
   Play, 
-  Plus 
+  Plus,
+  RefreshCw
 } from 'lucide-react';
 import { triggerHaptic } from '../services/haptic';
+import { openNativePlayer } from '../services/nativeMediaScanner';
 
 interface VideoExplorerProps {
   videos: MediaItem[];
   onPlayVideo: (item: MediaItem) => void;
   onImportFiles: (files: FileList | File[]) => void;
   onDeleteVideo: (id: string) => void;
+  onScanDevice?: () => void;
+  isScanning?: boolean;
 }
 
 export const VideoExplorer: React.FC<VideoExplorerProps> = ({
   videos,
   onPlayVideo,
   onImportFiles,
-  onDeleteVideo
+  onDeleteVideo,
+  onScanDevice,
+  isScanning
 }) => {
   const [viewMode, setViewMode] = useState<'folders' | 'all'>('all');
   const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid');
@@ -102,7 +108,27 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          {/* Scan Device Storage Button */}
+          {onScanDevice && (
+            <button
+              onClick={() => {
+                triggerHaptic('medium');
+                onScanDevice();
+              }}
+              disabled={isScanning}
+              className={`p-2 rounded-xl border text-xs font-mono active-press flex items-center gap-1 ${
+                isScanning 
+                  ? 'bg-[#D71921]/20 border-[#D71921] text-[#D71921]' 
+                  : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/15'
+              }`}
+              title="Scan Phone Storage For Videos"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin text-[#D71921]' : ''}`} />
+              <span className="text-[10px] hidden sm:inline">{isScanning ? 'SCANNING...' : 'SCAN'}</span>
+            </button>
+          )}
+
           {/* File Picker Import */}
           <label className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 text-white active-press cursor-pointer">
             <Plus className="w-4 h-4 text-[#D71921]" />
@@ -461,27 +487,41 @@ export const VideoExplorer: React.FC<VideoExplorerProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 mt-2">
+            <div className="flex flex-col gap-2 mt-2">
               <button
                 onClick={() => {
                   triggerHaptic('heavy');
                   onPlayVideo(infoModalVideo);
                   setInfoModalVideo(null);
                 }}
-                className="py-2.5 rounded-xl bg-white text-black font-mono text-xs font-bold hover:bg-white/90 active-press"
+                className="py-2.5 rounded-xl bg-white text-black font-mono text-xs font-bold hover:bg-white/90 active-press flex items-center justify-center gap-2"
               >
-                PLAY NOW
+                <Play className="w-4 h-4 fill-black" />
+                PLAY IN NOTHING PLAYER
               </button>
-              <button
-                onClick={() => {
-                  triggerHaptic('heavy');
-                  onDeleteVideo(infoModalVideo.id);
-                  setInfoModalVideo(null);
-                }}
-                className="py-2.5 rounded-xl bg-red-600/20 text-red-400 border border-red-500/30 font-mono text-xs font-bold hover:bg-red-600/30 active-press"
-              >
-                DELETE VIDEO
-              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    triggerHaptic('medium');
+                    openNativePlayer(infoModalVideo.path, (infoModalVideo as any).contentUri);
+                    setInfoModalVideo(null);
+                  }}
+                  className="py-2 rounded-xl bg-white/10 text-white font-mono text-xs font-bold border border-white/20 hover:bg-white/20 active-press"
+                >
+                  OPEN IN VLC / SYSTEM
+                </button>
+                <button
+                  onClick={() => {
+                    triggerHaptic('heavy');
+                    onDeleteVideo(infoModalVideo.id);
+                    setInfoModalVideo(null);
+                  }}
+                  className="py-2 rounded-xl bg-red-600/20 text-red-400 border border-red-500/30 font-mono text-xs font-bold hover:bg-red-600/30 active-press"
+                >
+                  DELETE
+                </button>
+              </div>
             </div>
           </div>
         </div>

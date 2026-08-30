@@ -20,6 +20,8 @@ import { saveMediaItem, getAllMediaItems, deleteMediaItem, getMediaBlob } from '
 import { DEMO_MEDIA_ITEMS } from './services/demoData';
 import { triggerHaptic } from './services/haptic';
 
+import { scanDeviceStorage, playNativeExo } from './services/nativeMediaScanner';
+
 export const App: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -39,6 +41,7 @@ export const App: React.FC = () => {
   const [shuffle, setShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
   const [playbackRate, setPlaybackRate] = useState(1.0);
+  const [isScanning, setIsScanning] = useState(false);
 
   // Equalizer & Audio Boost State
   const [showEqualizer, setShowEqualizer] = useState(false);
@@ -48,6 +51,29 @@ export const App: React.FC = () => {
   const [eqBassBoost, setEqBassBoost] = useState<number>(3);
   const [eqPreset, setEqPreset] = useState<string>('NOTHING PUNCH');
   const [audioBoost, setAudioBoost] = useState<number>(100);
+
+  const handleScanDevice = async () => {
+    setIsScanning(true);
+    triggerHaptic('medium');
+    try {
+      const { videos: scannedVids, audios: scannedAuds } = await scanDeviceStorage();
+      if (scannedVids.length > 0 || scannedAuds.length > 0) {
+        const combined = [...scannedVids, ...scannedAuds];
+        for (const item of combined) {
+          await saveMediaItem(item);
+        }
+        setMediaList(prev => {
+          const existingIds = new Set(prev.map(i => i.id));
+          const newItems = combined.filter(i => !existingIds.has(i.id));
+          return [...newItems, ...prev];
+        });
+      }
+    } catch (err) {
+      console.warn('Device scan failed:', err);
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   // Initialize DB and load media
   useEffect(() => {
@@ -64,6 +90,8 @@ export const App: React.FC = () => {
           setMediaList(storedItems);
           setCurrentTrack(storedItems.find(m => m.type === 'audio') || storedItems[0]);
         }
+        // Auto-trigger device media scan
+        handleScanDevice();
       } catch (e) {
         console.warn('IndexedDB load error:', e);
         setMediaList(DEMO_MEDIA_ITEMS);
@@ -300,15 +328,20 @@ export const App: React.FC = () => {
         {activeTab === 'VIDEOS' && (
           <VideoExplorer
             videos={videos}
-            onPlayVideo={(v) => {
+            onPlayVideo={async (v) => {
               if (audioRef.current) {
                 audioRef.current.pause();
                 setIsPlaying(false);
               }
-              setActiveVideo(v);
+              const launched = await playNativeExo(v);
+              if (!launched) {
+                setActiveVideo(v);
+              }
             }}
             onImportFiles={handleImportFiles}
             onDeleteVideo={handleDeleteItem}
+            onScanDevice={handleScanDevice}
+            isScanning={isScanning}
           />
         )}
 
@@ -319,6 +352,8 @@ export const App: React.FC = () => {
             onPlayTrack={handleSelectTrack}
             onImportFiles={handleImportFiles}
             onToggleFavorite={handleToggleFavorite}
+            onScanDevice={handleScanDevice}
+            isScanning={isScanning}
           />
         )}
 
