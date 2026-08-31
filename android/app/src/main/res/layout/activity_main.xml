@@ -45,7 +45,7 @@
                     android:text="NOTHING PLAYER (01)"
                     android:textColor="@color/nothing_white"
                     android:textSize="17sp"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/ndot"
                     android:textStyle="bold"
                     android:letterSpacing="0.04"
                     android:includeFontPadding="true"
@@ -57,7 +57,7 @@
                     android:text="100% NATIVE DUAL-ENGINE // NOTHING OS"
                     android:textColor="@color/nothing_white_40"
                     android:textSize="9sp"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/ndot"
                     android:letterSpacing="0.03"
                     android:layout_marginTop="2dp" />
             </LinearLayout>
@@ -132,7 +132,7 @@
                 android:text="Track Title"
                 android:textColor="@color/nothing_white"
                 android:textSize="12sp"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/ndot"
                 android:textStyle="bold"
                 android:singleLine="true"
                 android:ellipsize="end" />
@@ -144,7 +144,7 @@
                 android:text="Artist"
                 android:textColor="@color/nothing_white_40"
                 android:textSize="10sp"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/ndot"
                 android:singleLine="true"
                 android:ellipsize="end" />
         </LinearLayout>

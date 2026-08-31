@@ -40,7 +40,7 @@
                 android:text="1080p"
                 android:textColor="@color/nothing_white"
                 android:textSize="8sp"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/ndot"
                 android:textStyle="bold" />
 
             <TextView
@@ -54,7 +54,7 @@
                 android:text="5.1"
                 android:textColor="@color/nothing_white"
                 android:textSize="8sp"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/ndot"
                 android:textStyle="bold"
                 android:visibility="gone" />
         </LinearLayout>
@@ -73,7 +73,7 @@
             android:text="00:00"
             android:textColor="@color/nothing_white"
             android:textSize="9sp"
-            android:fontFamily="monospace"
+            android:fontFamily="@font/ndot"
             android:textStyle="bold" />
 
         <!-- Selection Check Indicator -->
@@ -107,7 +107,7 @@
                 android:text="Video Title"
                 android:textColor="@color/nothing_white"
                 android:textSize="11sp"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/ndot"
                 android:textStyle="bold"
                 android:maxLines="2"
                 android:ellipsize="end" />
@@ -120,7 +120,7 @@
                 android:text="Movies • 1.2 GB"
                 android:textColor="@color/nothing_white_40"
                 android:textSize="9sp"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/ndot"
                 android:singleLine="true" />
         </LinearLayout>
 

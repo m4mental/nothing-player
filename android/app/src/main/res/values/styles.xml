@@ -12,6 +12,8 @@
         <item name="android:navigationBarColor">@color/nothing_black</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:fontFamily">@font/ndot</item>
+        <item name="fontFamily">@font/ndot</item>
     </style>
 
     <style name="AppTheme.NoActionBar" parent="AppTheme">
@@ -38,6 +40,8 @@
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:fontFamily">@font/ndot</item>
+        <item name="fontFamily">@font/ndot</item>
     </style>
 
 </resources>

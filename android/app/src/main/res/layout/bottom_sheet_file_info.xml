@@ -33,7 +33,7 @@
                 android:text="FILE SPECIFICATIONS &amp; INFO"
                 android:textColor="@color/nothing_white"
                 android:textSize="13sp"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/ndot"
                 android:textStyle="bold"
                 android:letterSpacing="0.08" />
         </LinearLayout>
@@ -64,7 +64,7 @@
             android:text="FILE NAME"
             android:textColor="@color/nothing_white_40"
             android:textSize="9sp"
-            android:fontFamily="monospace" />
+            android:fontFamily="@font/ndot" />
 
         <TextView
             android:id="@+id/info_file_name"
@@ -74,7 +74,7 @@
             android:text="Sample_Movie_Dolby_5.1.mkv"
             android:textColor="@color/nothing_white"
             android:textSize="12sp"
-            android:fontFamily="monospace"
+            android:fontFamily="@font/ndot"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -97,7 +97,7 @@
                 android:text="EXACT STORAGE LOCATION"
                 android:textColor="@color/nothing_white_40"
                 android:textSize="9sp"
-                android:fontFamily="monospace" />
+                android:fontFamily="@font/ndot" />
 
             <Button
                 android:id="@+id/btn_copy_path"
@@ -108,7 +108,7 @@
                 android:text="COPY PATH"
                 android:textColor="@color/nothing_white"
                 android:textSize="9sp"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/ndot"
                 android:paddingHorizontal="8dp" />
         </RelativeLayout>
 
@@ -120,7 +120,7 @@
             android:text="/storage/emulated/0/Movies/Sample_Movie.mkv"
             android:textColor="@color/nothing_white_70"
             android:textSize="10sp"
-            android:fontFamily="monospace" />
+            android:fontFamily="@font/ndot" />
     </LinearLayout>
 
     <!-- Codec & Format Card -->
@@ -142,7 +142,7 @@
                 android:text="AUDIO CODEC &amp; SOUND FORMAT"
                 android:textColor="@color/nothing_white_40"
                 android:textSize="9sp"
-                android:fontFamily="monospace" />
+                android:fontFamily="@font/ndot" />
 
             <TextView
                 android:id="@+id/badge_audio_format"
@@ -155,7 +155,7 @@
                 android:text="DOLBY 5.1"
                 android:textColor="@color/nothing_red"
                 android:textSize="9sp"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/ndot"
                 android:textStyle="bold" />
         </RelativeLayout>
 
@@ -167,7 +167,7 @@
             android:text="Dolby Digital Plus (E-AC-3 5.1 Surround)"
             android:textColor="@color/nothing_white"
             android:textSize="12sp"
-            android:fontFamily="monospace"
+            android:fontFamily="@font/ndot"
             android:textStyle="bold" />
 
         <TextView
@@ -178,7 +178,7 @@
             android:text="Configuration: 6 Channels (5.1 Surround, 48 kHz)"
             android:textColor="@color/nothing_white_40"
             android:textSize="10sp"
-            android:fontFamily="monospace" />
+            android:fontFamily="@font/ndot" />
     </LinearLayout>
 
     <!-- Play Action Button -->
@@ -190,7 +190,7 @@
         android:text="PLAY NOW"
         android:textColor="@color/nothing_black"
         android:textSize="12sp"
-        android:fontFamily="monospace"
+        android:fontFamily="@font/ndot"
         android:textStyle="bold" />
 
 </LinearLayout>

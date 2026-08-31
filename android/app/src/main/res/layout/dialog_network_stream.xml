@@ -21,7 +21,7 @@
             android:text="NETWORK STREAM"
             android:textColor="@color/nothing_white"
             android:textSize="15sp"
-            android:fontFamily="monospace"
+            android:fontFamily="@font/ndot"
             android:textStyle="bold"
             android:letterSpacing="0.05" />
 
@@ -65,7 +65,7 @@
             android:textColorHint="@color/nothing_white_40"
             android:textColor="@color/nothing_white"
             android:textSize="12sp"
-            android:fontFamily="monospace"
+            android:fontFamily="@font/ndot"
             android:imeOptions="actionGo"
             android:inputType="textUri"
             android:singleLine="true" />
@@ -79,7 +79,7 @@
             android:text="PASTE"
             android:textColor="@color/nothing_white"
             android:textSize="11sp"
-            android:fontFamily="monospace"
+            android:fontFamily="@font/ndot"
             android:textStyle="bold"
             android:paddingHorizontal="12dp"
             android:layout_marginStart="4dp" />
@@ -93,7 +93,7 @@
             android:text="▶ PLAY"
             android:textColor="@color/nothing_white"
             android:textSize="11sp"
-            android:fontFamily="monospace"
+            android:fontFamily="@font/ndot"
             android:textStyle="bold"
             android:paddingHorizontal="14dp"
             android:layout_marginStart="6dp" />
@@ -110,7 +110,7 @@
         android:text="▶ START STREAMING NOW"
         android:textColor="@color/nothing_white"
         android:textSize="13sp"
-        android:fontFamily="monospace"
+        android:fontFamily="@font/ndot"
         android:textStyle="bold"
         android:letterSpacing="0.05" />
 
@@ -124,7 +124,7 @@
         android:text="RECENT STREAMS"
         android:textColor="@color/nothing_white_70"
         android:textSize="10sp"
-        android:fontFamily="monospace"
+        android:fontFamily="@font/ndot"
         android:textStyle="bold" />
 
     <LinearLayout
@@ -143,6 +143,6 @@
         android:text="CANCEL"
         android:textColor="@color/nothing_white_70"
         android:textSize="11sp"
-        android:fontFamily="monospace"
+        android:fontFamily="@font/ndot"
         android:textStyle="bold" />
 </LinearLayout>

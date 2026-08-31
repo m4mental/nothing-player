@@ -3,7 +3,8 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- Dot Matrix LED Soundwave / Audio Tracks -->
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M12,3v10.55c-0.59,-0.34 -1.27,-0.55 -2,-0.55 -2.21,0 -4,1.79 -4,4s1.79,4 4,4 4,-1.79 4,-4V7h4V3h-6z"/>
+        android:pathData="M4,10a2,2 0 1,0 0,4a2,2 0 1,0 0,-4zm0,-5a2,2 0 1,0 0,4a2,2 0 1,0 0,-4zm0,10a2,2 0 1,0 0,4a2,2 0 1,0 0,-4zm8,-8a2,2 0 1,0 0,4a2,2 0 1,0 0,-4zm0,5a2,2 0 1,0 0,4a2,2 0 1,0 0,-4zm0,5a2,2 0 1,0 0,4a2,2 0 1,0 0,-4zm0,-15a2,2 0 1,0 0,4a2,2 0 1,0 0,-4zm0,20a2,2 0 1,0 0,4a2,2 0 1,0 0,-4zm8,-12a2,2 0 1,0 0,4a2,2 0 1,0 0,-4zm0,5a2,2 0 1,0 0,4a2,2 0 1,0 0,-4zm0,5a2,2 0 1,0 0,4a2,2 0 1,0 0,-4z"/>
 </vector>

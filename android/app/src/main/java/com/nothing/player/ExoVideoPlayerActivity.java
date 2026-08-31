@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
@@ -82,18 +83,23 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private View bottomControlsBar;
     private ImageButton btnScreenLock;
     private View gestureHudContainer;
+    private TextView gestureHudTag;
+    private DotMatrixIconView gestureHudDotMatrixIcon;
+    private DotMatrixTextView gestureHudDotMatrixText;
+    private ImageView gestureHudIconImg;
     private TextView gestureHudIcon;
     private TextView gestureHudText;
+    private DotMatrixProgressBar gestureHudDotMatrixProgress;
     private ProgressBar gestureHudProgress;
 
     private TextView videoTitleText;
     private TextView videoSubtitleCodec;
-    private TextView timeCurrentText;
-    private TextView timeTotalText;
-    private SeekBar videoSeekBar;
+    private DotMatrixTextView timeCurrentText;
+    private DotMatrixTextView timeTotalText;
+    private DotMatrixSeekBar videoSeekBar;
     private FrameLayout seekbarPreviewCard;
     private ImageView previewThumbnail;
-    private TextView previewTimeText;
+    private DotMatrixTextView previewTimeText;
     private boolean showRemainingTime = true;
     private MediaMetadataRetriever previewRetriever;
     private final ExecutorService previewExecutor = Executors.newSingleThreadExecutor();
@@ -241,8 +247,13 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         btnScreenLock = findViewById(R.id.btn_screen_lock);
         
         gestureHudContainer = findViewById(R.id.gesture_hud_container);
+        gestureHudTag = findViewById(R.id.gesture_hud_tag);
+        gestureHudDotMatrixIcon = findViewById(R.id.gesture_hud_dot_matrix_icon);
+        gestureHudDotMatrixText = findViewById(R.id.gesture_hud_dot_matrix_text);
+        gestureHudIconImg = findViewById(R.id.gesture_hud_icon_img);
         gestureHudIcon = findViewById(R.id.gesture_hud_icon);
         gestureHudText = findViewById(R.id.gesture_hud_text);
+        gestureHudDotMatrixProgress = findViewById(R.id.gesture_hud_dot_matrix_progress);
         gestureHudProgress = findViewById(R.id.gesture_hud_progress);
 
         videoTitleText = findViewById(R.id.video_title_text);
@@ -581,7 +592,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             long target = Math.max(0, cur - 10000);
             if (isVlcActive && vlcPlayer != null) vlcPlayer.setTime(target);
             else if (exoPlayer != null) exoPlayer.seekTo(target);
-            showGestureHud("⏪ -10s", "REWIND", (int) (target * 100 / Math.max(1, totalDurationMs)));
+            showGestureHud("● 10s REWIND", DotMatrixIconView.TYPE_SEEK_REWIND, "-10s", (int) (target * 100 / Math.max(1, totalDurationMs)));
         });
 
         findViewById(R.id.btn_forward).setOnClickListener(v -> {
@@ -589,7 +600,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             long target = Math.min(totalDurationMs, cur + 10000);
             if (isVlcActive && vlcPlayer != null) vlcPlayer.setTime(target);
             else if (exoPlayer != null) exoPlayer.seekTo(target);
-            showGestureHud("⏩ +10s", "FORWARD", (int) (target * 100 / Math.max(1, totalDurationMs)));
+            showGestureHud("● 10s FORWARD", DotMatrixIconView.TYPE_SEEK_FORWARD, "+10s", (int) (target * 100 / Math.max(1, totalDurationMs)));
         });
 
         if (btnExpandControls != null) {
@@ -630,7 +641,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 topControlsBar.setVisibility(View.GONE);
                 bottomControlsBar.setVisibility(View.GONE);
                 if (topExpandableControlsBar != null) topExpandableControlsBar.setVisibility(View.GONE);
-                showGestureHud("🔒", "LOCKED", 100);
+                showGestureHud("● SCREEN LOCK", DotMatrixIconView.TYPE_LOCK, "LOCKED", 100);
                 hideHandler.postDelayed(() -> {
                     if (isLocked) btnScreenLock.setVisibility(View.GONE);
                 }, 2500);
@@ -638,7 +649,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 topControlsBar.setVisibility(View.VISIBLE);
                 bottomControlsBar.setVisibility(View.VISIBLE);
                 btnScreenLock.setVisibility(View.VISIBLE);
-                showGestureHud("🔓", "UNLOCKED", 100);
+                showGestureHud("● SCREEN LOCK", DotMatrixIconView.TYPE_LOCK, "UNLOCKED", 100);
                 scheduleHideControls();
             }
         });
@@ -661,7 +672,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
                 btnAspectRatio.setText("FILL");
-                showGestureHud("📺", "STRETCH / FULLSCREEN", 100);
+                showGestureHud("● ASPECT RATIO", DotMatrixIconView.TYPE_SEEK_FORWARD, "STRETCH / FULL", 100);
                 if (isVlcActive && vlcPlayer != null) {
                     vlcPlayer.setAspectRatio("16:9");
                     vlcPlayer.setScale(0);
@@ -669,7 +680,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
                 btnAspectRatio.setText("ZOOM");
-                showGestureHud("🔍", "ZOOM / CROP FULLSCREEN", 100);
+                showGestureHud("● ASPECT RATIO", DotMatrixIconView.TYPE_SEEK_FORWARD, "ZOOM / CROP", 100);
                 if (isVlcActive && vlcPlayer != null) {
                     vlcPlayer.setAspectRatio(null);
                     vlcPlayer.setScale(1.25f);
@@ -677,7 +688,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             } else {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
                 btnAspectRatio.setText("FIT");
-                showGestureHud("📐", "FIT TO SCREEN", 100);
+                showGestureHud("● ASPECT RATIO", DotMatrixIconView.TYPE_SEEK_FORWARD, "FIT TO SCREEN", 100);
                 if (isVlcActive && vlcPlayer != null) {
                     vlcPlayer.setAspectRatio(null);
                     vlcPlayer.setScale(0);
@@ -699,7 +710,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             if (isVlcActive && vlcPlayer != null) vlcPlayer.setRate(playbackSpeed);
             else if (exoPlayer != null) exoPlayer.setPlaybackSpeed(playbackSpeed);
             btnSpeed.setText(playbackSpeed + "x");
-            showGestureHud("⚡", "SPEED: " + playbackSpeed + "x", (int)(playbackSpeed * 50));
+            showGestureHud("● PLAY SPEED", DotMatrixIconView.TYPE_SEEK_FORWARD, playbackSpeed + "x", (int)(playbackSpeed * 50));
         });
 
         btnAudioBoost.setOnClickListener(v -> {
@@ -710,7 +721,8 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 exoPlayer.setVolume(isAudioBoosted ? 2.0f : 1.0f);
             }
             btnAudioBoost.setText(isAudioBoosted ? "BOOST ON" : "200%");
-            showGestureHud("🔊", isAudioBoosted ? "AUDIO BOOST 200%" : "AUDIO 100%", isAudioBoosted ? 100 : 50);
+            int dotType = isAudioBoosted ? DotMatrixIconView.TYPE_AUDIO_BOOST : DotMatrixIconView.TYPE_VOLUME;
+            showGestureHud("● AUDIO BOOST", dotType, isAudioBoosted ? "200% BOOST ON" : "100% STANDARD", isAudioBoosted ? 100 : 50);
         });
 
         btnMute.setOnClickListener(v -> {
@@ -722,7 +734,8 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             }
             btnMute.setText(isMuted ? "MUTED" : "MUTE");
             btnMute.setCompoundDrawablesWithIntrinsicBounds(isMuted ? android.R.drawable.ic_lock_silent_mode : android.R.drawable.ic_lock_silent_mode_off, 0, 0, 0);
-            showGestureHud(isMuted ? "🔇" : "🔊", isMuted ? "MUTED" : "UNMUTED", isMuted ? 0 : 100);
+            int dotType = isMuted ? DotMatrixIconView.TYPE_VOLUME_MUTE : DotMatrixIconView.TYPE_VOLUME;
+            showGestureHud("● AUDIO OUTPUT", dotType, isMuted ? "MUTED" : "UNMUTED", isMuted ? 0 : 100);
         });
 
         btnPip.setOnClickListener(v -> {
@@ -1022,13 +1035,13 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                     long target = Math.max(0, cur - 10000);
                     if (isVlcActive && vlcPlayer != null) vlcPlayer.setTime(target);
                     else if (exoPlayer != null) exoPlayer.seekTo(target);
-                    showGestureHud("⏪ -10s", "REWIND", (int) (target * 100 / Math.max(1, totalDurationMs)));
+                    showGestureHud("● 10s REWIND", DotMatrixIconView.TYPE_SEEK_REWIND, "-10s", (int) (target * 100 / Math.max(1, totalDurationMs)));
                 } else {
                     // Double Tap Right: Forward 10s
                     long target = Math.min(totalDurationMs, cur + 10000);
                     if (isVlcActive && vlcPlayer != null) vlcPlayer.setTime(target);
                     else if (exoPlayer != null) exoPlayer.seekTo(target);
-                    showGestureHud("⏩ +10s", "FORWARD", (int) (target * 100 / Math.max(1, totalDurationMs)));
+                    showGestureHud("● 10s FORWARD", DotMatrixIconView.TYPE_SEEK_FORWARD, "+10s", (int) (target * 100 / Math.max(1, totalDurationMs)));
                 }
                 return true;
             }
@@ -1071,7 +1084,8 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                                 int newVol = Math.max(0, Math.min(maxVolume, currentVol + step));
                                 audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0);
                                 int percent = (int) ((float) newVol / maxVolume * 100);
-                                showGestureHud(newVol == 0 ? "🔇" : "🔊", "VOLUME: " + percent + "%", percent);
+                                int dotType = newVol == 0 ? DotMatrixIconView.TYPE_VOLUME_MUTE : (isAudioBoosted ? DotMatrixIconView.TYPE_AUDIO_BOOST : DotMatrixIconView.TYPE_VOLUME);
+                                showGestureHud("● VOLUME", dotType, percent + "%", percent);
                             }
                         }
                     } else {
@@ -1081,7 +1095,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                         lp.screenBrightness = currentBrightness;
                         getWindow().setAttributes(lp);
                         int percent = (int) (currentBrightness * 100);
-                        showGestureHud("☀️", "BRIGHTNESS: " + percent + "%", percent);
+                        showGestureHud("● BRIGHTNESS", DotMatrixIconView.TYPE_BRIGHTNESS, percent + "%", percent);
                     }
                     return true;
                 } else if (gestureMode[0] == GESTURE_HORIZONTAL) {
@@ -1093,11 +1107,12 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
                     long diffSec = (targetSeekPosition[0] - seekStartPosition[0]) / 1000;
                     String sign = diffSec >= 0 ? "+" : "";
-                    String icon = diffSec >= 0 ? "⏩" : "⏪";
-                    String text = sign + diffSec + "s (" + formatTime(targetSeekPosition[0]) + " / " + formatTime(totalDurationMs) + ")";
+                    String text = sign + diffSec + "s";
+                    String tag = "● " + formatTime(targetSeekPosition[0]) + " / " + formatTime(totalDurationMs);
                     int progress = (int) (targetSeekPosition[0] * 100 / Math.max(1, totalDurationMs));
+                    int dotType = diffSec >= 0 ? DotMatrixIconView.TYPE_SEEK_FORWARD : DotMatrixIconView.TYPE_SEEK_REWIND;
 
-                    showGestureHud(icon, text, progress);
+                    showGestureHud(tag, dotType, text, progress);
                     return true;
                 }
                 return false;
@@ -1122,7 +1137,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 }
 
                 int percent = (int) (currentVideoScale * 100);
-                showGestureHud("🔍", "ZOOM: " + percent + "%", Math.min(100, (int) ((currentVideoScale - 0.5f) / 3.0f * 100)));
+                showGestureHud("● PINCH ZOOM", DotMatrixIconView.TYPE_SEEK_FORWARD, percent + "%", Math.min(100, (int) ((currentVideoScale - 0.5f) / 3.0f * 100)));
                 return true;
             }
         });
@@ -1153,17 +1168,65 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         vlcVideoLayout.setOnTouchListener(touchListener);
     }
 
-    private void showGestureHud(String icon, String text, int progress) {
-        gestureHudIcon.setText(icon);
-        gestureHudText.setText(text);
-        gestureHudProgress.setProgress(Math.max(0, Math.min(100, progress)));
-        gestureHudContainer.setVisibility(View.VISIBLE);
+    private void showGestureHud(String tag, int dotMatrixType, String text, int progress) {
+        if (gestureHudTag != null) {
+            gestureHudTag.setText(tag);
+        }
+        if (gestureHudDotMatrixIcon != null) {
+            gestureHudDotMatrixIcon.setIconType(dotMatrixType);
+        }
+        if (gestureHudDotMatrixText != null) {
+            gestureHudDotMatrixText.setText(text);
+            if (progress > 100 || (tag != null && tag.contains("BOOST"))) {
+                gestureHudDotMatrixText.setTextColor(Color.parseColor("#D71921"));
+            } else {
+                gestureHudDotMatrixText.setTextColor(Color.WHITE);
+            }
+        }
+        if (gestureHudText != null) {
+            gestureHudText.setText(text);
+        }
+        if (gestureHudDotMatrixProgress != null) {
+            gestureHudDotMatrixProgress.setProgress(progress);
+        }
+        if (gestureHudProgress != null) {
+            gestureHudProgress.setProgress(Math.max(0, Math.min(100, progress)));
+        }
+
+        if (gestureHudContainer != null) {
+            if (gestureHudContainer.getVisibility() != View.VISIBLE) {
+                gestureHudContainer.setAlpha(0f);
+                gestureHudContainer.setScaleX(0.92f);
+                gestureHudContainer.setScaleY(0.92f);
+                gestureHudContainer.setVisibility(View.VISIBLE);
+                gestureHudContainer.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(120)
+                    .start();
+            }
+        }
 
         hideHandler.removeCallbacks(hideHudRunnable);
         hideHandler.postDelayed(hideHudRunnable, 1200);
     }
 
-    private final Runnable hideHudRunnable = () -> gestureHudContainer.setVisibility(View.GONE);
+    private void showGestureHud(String icon, String text, int progress) {
+        showGestureHud("● CONTROLS", DotMatrixIconView.TYPE_VOLUME, text, progress);
+    }
+
+    private final Runnable hideHudRunnable = () -> {
+        if (gestureHudContainer != null && gestureHudContainer.getVisibility() == View.VISIBLE) {
+            gestureHudContainer.animate()
+                .alpha(0f)
+                .scaleX(0.92f)
+                .scaleY(0.92f)
+                .setDuration(160)
+                .withEndAction(() -> gestureHudContainer.setVisibility(View.GONE))
+                .start();
+        }
+    };
 
     private void toggleControlsVisibility() {
         if (areControlsVisible) {

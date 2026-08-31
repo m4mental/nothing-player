@@ -24,7 +24,7 @@
         android:layout_height="match_parent"
         android:visibility="gone" />
 
-    <!-- Center Gesture HUD Box (Like XPlayer & MX Player) -->
+    <!-- Authentic Nothing OS Gesture HUD Box -->
     <LinearLayout
         android:id="@+id/gesture_hud_container"
         android:layout_width="wrap_content"
@@ -32,37 +32,90 @@
         android:layout_gravity="center"
         android:orientation="vertical"
         android:gravity="center"
-        android:background="#DD111111"
-        android:paddingHorizontal="24dp"
-        android:paddingVertical="16dp"
+        android:background="@drawable/bg_hud_nothing"
+        android:paddingHorizontal="28dp"
+        android:paddingVertical="18dp"
+        android:minWidth="180dp"
+        android:elevation="12dp"
         android:visibility="gone">
 
+        <!-- Nothing OS Top Tag Label (e.g. ● BRIGHTNESS // ● VOLUME) -->
         <TextView
-            android:id="@+id/gesture_hud_icon"
+            android:id="@+id/gesture_hud_tag"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🔊"
-            android:textSize="28sp" />
-
-        <TextView
-            android:id="@+id/gesture_hud_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="50%"
-            android:textColor="#FFFFFF"
-            android:textSize="18sp"
+            android:text="● VOLUME"
+            android:textColor="#D71921"
+            android:textSize="10sp"
             android:textStyle="bold"
             android:fontFamily="monospace"
-            android:layout_marginTop="4dp" />
+            android:letterSpacing="0.15" />
 
-        <!-- Mini Progress Bar for Brightness/Volume/Seek -->
+        <!-- Icon + Large Percentage Value Row -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="12dp">
+
+            <!-- Authentic Nothing OS Dot Matrix LED Icon -->
+            <com.nothing.player.DotMatrixIconView
+                android:id="@+id/gesture_hud_dot_matrix_icon"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginEnd="12dp" />
+
+            <ImageView
+                android:id="@+id/gesture_hud_icon_img"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_volume_high"
+                android:layout_marginEnd="10dp"
+                android:visibility="gone"
+                app:tint="#FFFFFF" />
+
+            <TextView
+                android:id="@+id/gesture_hud_icon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔊"
+                android:textSize="22sp"
+                android:visibility="gone" />
+
+            <!-- Authentic Nothing OS Dot Matrix LED Percentage / Value Display -->
+            <com.nothing.player.DotMatrixTextView
+                android:id="@+id/gesture_hud_dot_matrix_text"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp" />
+
+            <TextView
+                android:id="@+id/gesture_hud_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="50%"
+                android:textColor="#FFFFFF"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.05"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Authentic Nothing OS Dot Matrix LED Progress Dots -->
+        <com.nothing.player.DotMatrixProgressBar
+            android:id="@+id/gesture_hud_dot_matrix_progress"
+            android:layout_width="160dp"
+            android:layout_height="14dp" />
+
         <ProgressBar
             android:id="@+id/gesture_hud_progress"
             style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="140dp"
-            android:layout_height="6dp"
-            android:layout_marginTop="6dp"
-            android:progressTint="#D71921"
+            android:layout_width="160dp"
+            android:layout_height="8dp"
+            android:visibility="gone"
+            android:progressDrawable="@drawable/bg_hud_progress_nothing"
             android:progress="50"
             android:max="100" />
     </LinearLayout>
@@ -115,7 +168,7 @@
                     android:textColor="#FFFFFF"
                     android:textSize="14sp"
                     android:textStyle="bold"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/ndot"
                     android:singleLine="true"
                     android:ellipsize="end" />
 
@@ -126,7 +179,7 @@
                     android:text="EXOPLAYER / HW+ DECODER"
                     android:textColor="#D71921"
                     android:textSize="10sp"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/ndot"
                     android:textStyle="bold" />
             </LinearLayout>
 
@@ -167,7 +220,7 @@
                     android:textColor="#D71921"
                     android:textSize="11sp"
                     android:textStyle="bold"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_player_pill_button"
                     android:paddingHorizontal="12dp"
                     android:layout_marginEnd="8dp" />
@@ -181,7 +234,7 @@
                     android:textColor="#FFFFFF"
                     android:textSize="11sp"
                     android:textStyle="bold"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/ndot"
                     android:drawableStart="@drawable/ic_audio_track"
                     android:drawablePadding="6dp"
                     android:drawableTint="#FFFFFF"
@@ -198,7 +251,7 @@
                     android:textColor="#FFFFFF"
                     android:textSize="11sp"
                     android:textStyle="bold"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/ndot"
                     android:drawableStart="@drawable/ic_subtitles"
                     android:drawablePadding="6dp"
                     android:drawableTint="#FFFFFF"
@@ -215,7 +268,7 @@
                     android:textColor="#FFFFFF"
                     android:textSize="11sp"
                     android:textStyle="bold"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/ndot"
                     android:drawableStart="@drawable/ic_rotate"
                     android:drawablePadding="6dp"
                     android:drawableTint="#FFFFFF"
@@ -232,7 +285,7 @@
                     android:textColor="#FFFFFF"
                     android:textSize="11sp"
                     android:textStyle="bold"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/ndot"
                     android:drawableStart="@drawable/ic_pip"
                     android:drawablePadding="6dp"
                     android:drawableTint="#FFFFFF"
@@ -249,7 +302,7 @@
                     android:textColor="#FFFFFF"
                     android:textSize="11sp"
                     android:textStyle="bold"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/ndot"
                     android:drawableStart="@android:drawable/ic_lock_silent_mode_off"
                     android:drawablePadding="6dp"
                     android:drawableTint="#FFFFFF"
@@ -265,7 +318,7 @@
                     android:text="1.0x"
                     android:textColor="#FFFFFF"
                     android:textSize="11sp"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/ndot"
                     android:drawableStart="@drawable/ic_speed"
                     android:drawablePadding="6dp"
                     android:drawableTint="#FFFFFF"
@@ -282,7 +335,7 @@
                     android:textColor="#D71921"
                     android:textSize="11sp"
                     android:textStyle="bold"
-                    android:fontFamily="monospace"
+                    android:fontFamily="@font/ndot"
                     android:drawableStart="@drawable/ic_audio_boost"
                     android:drawablePadding="6dp"
                     android:drawableTint="#D71921"
@@ -336,58 +389,47 @@
                 android:scaleType="centerCrop"
                 android:background="#111111" />
 
-            <TextView
+            <com.nothing.player.DotMatrixTextView
                 android:id="@+id/preview_time_text"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="14dp"
                 android:layout_gravity="bottom|center_horizontal"
                 android:background="#CC000000"
                 android:paddingHorizontal="6dp"
                 android:paddingVertical="2dp"
-                android:layout_marginBottom="4dp"
-                android:text="00:00"
-                android:textColor="#FFFFFF"
-                android:textSize="10sp"
-                android:fontFamily="monospace"
-                android:textStyle="bold" />
+                android:layout_marginBottom="4dp" />
         </FrameLayout>
 
-        <!-- Row 1: Time & Scrubber Seek Bar -->
+        <!-- Row 1: Dot Matrix Time & Scrubber Seek Bar -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
+            <!-- Current Playback Time (Dot Matrix Digital LED) -->
+            <com.nothing.player.DotMatrixTextView
                 android:id="@+id/time_current_text"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="00:00"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:fontFamily="monospace"
-                android:minWidth="48dp" />
+                android:layout_height="14dp"
+                android:layout_marginEnd="6dp" />
 
-            <SeekBar
+            <!-- Dot Matrix LED Timeline Scrubber Track -->
+            <com.nothing.player.DotMatrixSeekBar
                 android:id="@+id/video_seek_bar"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="24dp"
                 android:layout_weight="1"
-                android:progressTint="#D71921"
-                android:thumbTint="#FFFFFF"
-                android:layout_marginHorizontal="6dp" />
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:layout_marginHorizontal="2dp" />
 
-            <TextView
+            <!-- Total Duration (Dot Matrix Digital LED) -->
+            <com.nothing.player.DotMatrixTextView
                 android:id="@+id/time_total_text"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="00:00"
-                android:textColor="#88FFFFFF"
-                android:textSize="12sp"
-                android:fontFamily="monospace"
-                android:minWidth="48dp"
-                android:gravity="end" />
+                android:layout_height="14dp"
+                android:layout_marginStart="6dp" />
         </LinearLayout>
 
         <!-- Row 2: Single Unified Transport & Aspect Ratio Line -->
@@ -407,7 +449,7 @@
                 android:textColor="#FFFFFF"
                 android:textSize="11sp"
                 android:textStyle="bold"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/ndot"
                 android:drawableStart="@drawable/ic_aspect_ratio"
                 android:drawablePadding="6dp"
                 android:drawableTint="#FFFFFF"
