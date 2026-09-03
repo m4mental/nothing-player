@@ -71,7 +71,7 @@
                 android:text="›"
                 android:textColor="@color/nothing_white_40"
                 android:textSize="20sp"
-                android:fontFamily="monospace" />
+                android:fontFamily="@font/ndot" />
         </RelativeLayout>
 
         <!-- Hardware Acceleration (HW+) -->

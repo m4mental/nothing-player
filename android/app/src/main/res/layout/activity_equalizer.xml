@@ -81,17 +81,18 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <Button
-                android:id="@+id/btn_eq_power"
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_eq_power"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:background="@drawable/bg_chip_selected"
+                android:layout_height="wrap_content"
                 android:text="ON"
-                android:textColor="@color/nothing_black"
-                android:textSize="10sp"
-                android:fontFamily="monospace"
+                android:textColor="@color/nothing_white"
+                android:textSize="11sp"
+                android:fontFamily="@font/ndot"
                 android:textStyle="bold"
-                android:paddingHorizontal="10dp"
+                app:thumbTint="@color/switch_thumb_color"
+                app:trackTint="@color/switch_track_color"
+                android:checked="true"
                 android:layout_marginEnd="6dp" />
 
             <Button
@@ -102,17 +103,24 @@
                 android:text="RESET"
                 android:textColor="@color/nothing_white_70"
                 android:textSize="10sp"
-                android:fontFamily="monospace"
+                android:fontFamily="@font/ndot"
                 android:paddingHorizontal="8dp" />
         </LinearLayout>
     </RelativeLayout>
 
-    <!-- Preset Chips -->
-    <HorizontalScrollView
+    <!-- Controls Container (Dimmed when EQ is OFF) -->
+    <LinearLayout
+        android:id="@+id/eq_controls_container"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:scrollbars="none"
-        android:layout_marginVertical="8dp">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Preset Chips -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:layout_marginVertical="8dp">
 
         <LinearLayout
             android:id="@+id/eq_preset_container"
@@ -559,5 +567,7 @@
 
         </LinearLayout>
     </ScrollView>
+
+    </LinearLayout>
 
 </LinearLayout>

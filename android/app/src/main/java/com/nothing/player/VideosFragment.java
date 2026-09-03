@@ -33,6 +33,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -144,6 +145,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         if (ctx == null) return;
         ContentResolver resolver = ctx.getContentResolver();
         int deletedCount = 0;
+        Set<String> deletedPaths = new HashSet<>();
 
         for (Object item : selected) {
             if (item instanceof MediaItem) {
@@ -161,7 +163,10 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                         if (f.exists() && f.delete()) deleted = true;
                     } catch (Exception ignored) {}
                 }
-                if (deleted) deletedCount++;
+                if (deleted) {
+                    deletedCount++;
+                    if (video.path != null) deletedPaths.add(video.path);
+                }
             } else if (item instanceof VideoAdapter.FolderItem) {
                 VideoAdapter.FolderItem folder = (VideoAdapter.FolderItem) item;
                 // Delete all videos in this folder
@@ -169,7 +174,10 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                     if (folder.name.equalsIgnoreCase(v.folder)) {
                         try {
                             if (v.contentUri != null) resolver.delete(Uri.parse(v.contentUri), null, null);
-                            if (v.path != null) new File(v.path).delete();
+                            if (v.path != null) {
+                                new File(v.path).delete();
+                                deletedPaths.add(v.path);
+                            }
                             deletedCount++;
                         } catch (Exception ignored) {}
                     }
@@ -177,21 +185,54 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             }
         }
 
-        Toast.makeText(ctx, "Deleted " + deletedCount + " item(s)", Toast.LENGTH_SHORT).show();
+        // Immediately update cache and local list
+        MediaRepository.removeItemsFromCache(ctx.getApplicationContext(), deletedPaths);
+        List<MediaItem> remaining = new ArrayList<>();
+        for (MediaItem v : allVideos) {
+            if (!deletedPaths.contains(v.path)) remaining.add(v);
+        }
+        allVideos = remaining;
         adapter.clearSelection();
-        loadVideos();
+        filterAndDisplay();
+
+        Toast.makeText(ctx, "Deleted " + deletedCount + " item(s)", Toast.LENGTH_SHORT).show();
+        loadVideos(false);
     }
 
     public void loadVideos() {
+        loadVideos(true);
+    }
+
+    public void loadVideos(boolean allowSpinner) {
         android.content.Context ctx = getContext();
         if (ctx == null) return;
-        if (swipeRefresh != null) swipeRefresh.setRefreshing(true);
+
+        // 1. Instant 0ms load from cache on startup
+        if (allVideos == null || allVideos.isEmpty()) {
+            List<MediaItem> cached = MediaRepository.getCachedVideos(ctx.getApplicationContext());
+            if (!cached.isEmpty()) {
+                allVideos = cached;
+                filterAndDisplay();
+            }
+        }
+
+        // Only show spinner if explicitly pulled by user and list was already populated
+        if (swipeRefresh != null && allowSpinner && (allVideos == null || allVideos.isEmpty())) {
+            swipeRefresh.setRefreshing(true);
+        }
+
+        // 2. Perform background scan asynchronously without blocking UI
         MediaRepository.scanMedia(ctx.getApplicationContext(), (videos, audios) -> {
             if (getActivity() != null && isAdded()) {
                 getActivity().runOnUiThread(() -> {
-                    allVideos = videos != null ? videos : new ArrayList<>();
                     if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
-                    filterAndDisplay();
+                    if (videos != null) {
+                        // Check if list changed
+                        if (allVideos == null || allVideos.size() != videos.size() || !allVideos.equals(videos)) {
+                            allVideos = videos;
+                            filterAndDisplay();
+                        }
+                    }
                 });
             }
         });
@@ -250,6 +291,42 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         intent.putExtra("video_uri", video.contentUri);
         intent.putExtra("title", video.title);
         intent.putExtra("video_title", video.title);
+
+        // Build folder / active queue
+        ArrayList<String> queuePaths = new ArrayList<>();
+        ArrayList<String> queueUris = new ArrayList<>();
+        ArrayList<String> queueTitles = new ArrayList<>();
+        ArrayList<Long> queueDurations = new ArrayList<>();
+        int clickedIndex = 0;
+
+        List<MediaItem> activeList = new ArrayList<>();
+        if (allVideos != null) {
+            for (MediaItem v : allVideos) {
+                if (currentSelectedFolder != null && !currentSelectedFolder.equalsIgnoreCase(v.folder)) {
+                    continue;
+                }
+                activeList.add(v);
+            }
+        }
+
+        for (int i = 0; i < activeList.size(); i++) {
+            MediaItem item = activeList.get(i);
+            queuePaths.add(item.path != null ? item.path : "");
+            queueUris.add(item.contentUri != null ? item.contentUri : "");
+            queueTitles.add(item.title != null ? item.title : "");
+            queueDurations.add(item.duration);
+            if (video.path != null && video.path.equals(item.path)) {
+                clickedIndex = i;
+            } else if (video.contentUri != null && video.contentUri.equals(item.contentUri)) {
+                clickedIndex = i;
+            }
+        }
+
+        intent.putStringArrayListExtra("playlist_paths", queuePaths);
+        intent.putStringArrayListExtra("playlist_uris", queueUris);
+        intent.putStringArrayListExtra("playlist_titles", queueTitles);
+        intent.putExtra("playlist_index", clickedIndex);
+
         startActivity(intent);
     }
 
@@ -346,8 +423,9 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             intent.putExtra("video_uri", url);
             intent.putExtra("contentUri", url);
             intent.putExtra("path", url);
-            intent.putExtra("title", getFileNameFromUrl(url));
-            intent.putExtra("video_title", getFileNameFromUrl(url));
+            String title = YouTubeStreamResolver.isYouTubeUrl(url) ? "YouTube Stream" : getFileNameFromUrl(url);
+            intent.putExtra("title", title);
+            intent.putExtra("video_title", title);
             startActivity(intent);
         };
 

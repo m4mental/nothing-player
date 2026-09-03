@@ -24,6 +24,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -113,6 +114,7 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
         if (ctx == null) return;
         ContentResolver resolver = ctx.getContentResolver();
         int deletedCount = 0;
+        Set<String> deletedPaths = new HashSet<>();
 
         for (MediaItem track : selected) {
             boolean deleted = false;
@@ -128,24 +130,57 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
                     if (f.exists() && f.delete()) deleted = true;
                 } catch (Exception ignored) {}
             }
-            if (deleted) deletedCount++;
+                if (deleted) {
+                    deletedCount++;
+                    if (track.path != null) deletedPaths.add(track.path);
+                }
+            }
+
+            MediaRepository.removeItemsFromCache(ctx.getApplicationContext(), deletedPaths);
+            List<MediaItem> remaining = new ArrayList<>();
+            for (MediaItem m : allTracks) {
+                if (!deletedPaths.contains(m.path)) remaining.add(m);
+            }
+            allTracks = remaining;
+            adapter.clearSelection();
+            filterTracks();
+
+            Toast.makeText(ctx, "Deleted " + deletedCount + " track(s)", Toast.LENGTH_SHORT).show();
+            loadTracks(false);
         }
 
-        Toast.makeText(ctx, "Deleted " + deletedCount + " track(s)", Toast.LENGTH_SHORT).show();
-        adapter.clearSelection();
-        loadTracks();
+    public void loadTracks() {
+        loadTracks(true);
     }
 
-    public void loadTracks() {
+    public void loadTracks(boolean allowSpinner) {
         android.content.Context ctx = getContext();
         if (ctx == null) return;
-        if (swipeRefresh != null) swipeRefresh.setRefreshing(true);
+
+        // 1. Instant 0ms load from cache on startup
+        if (allTracks == null || allTracks.isEmpty()) {
+            List<MediaItem> cached = MediaRepository.getCachedAudios(ctx.getApplicationContext());
+            if (!cached.isEmpty()) {
+                allTracks = cached;
+                filterTracks();
+            }
+        }
+
+        if (swipeRefresh != null && allowSpinner && (allTracks == null || allTracks.isEmpty())) {
+            swipeRefresh.setRefreshing(true);
+        }
+
+        // 2. Perform background scan asynchronously without blocking UI
         MediaRepository.scanMedia(ctx.getApplicationContext(), (videos, audios) -> {
             if (getActivity() != null && isAdded()) {
                 getActivity().runOnUiThread(() -> {
-                    allTracks = audios != null ? audios : new ArrayList<>();
                     if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
-                    filterTracks();
+                    if (audios != null) {
+                        if (allTracks == null || allTracks.size() != audios.size() || !allTracks.equals(audios)) {
+                            allTracks = audios;
+                            filterTracks();
+                        }
+                    }
                 });
             }
         });

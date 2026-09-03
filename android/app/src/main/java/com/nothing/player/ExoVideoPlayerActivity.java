@@ -1,12 +1,18 @@
 package com.nothing.player;
 
 import android.app.AlertDialog;
+import android.app.PendingIntent;
 import android.app.PictureInPictureParams;
+import android.app.RemoteAction;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.Icon;
 import android.media.AudioManager;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
@@ -32,10 +38,18 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import org.json.JSONArray;
+
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -49,8 +63,10 @@ import androidx.media3.common.TrackGroup;
 import androidx.media3.common.TrackSelectionOverride;
 import androidx.media3.common.Tracks;
 import androidx.media3.datasource.DefaultDataSource;
+import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.SeekParameters;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
 import androidx.media3.ui.AspectRatioFrameLayout;
@@ -79,6 +95,41 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private boolean isVlcActive = false;
 
     // UI Controls
+    private WebView youtubeStreamView;
+    private ImageView videoTransitionOverlay;
+    private boolean isYouTubeActive = false;
+    private boolean isYouTubePlaying = true;
+    private long youtubeDurationMs = 0;
+    private long youtubeCurrentPositionMs = 0;
+
+    // PiP Actions
+    private static final String ACTION_PIP_PLAY_PAUSE = "com.nothing.player.PIP_PLAY_PAUSE";
+    private static final String ACTION_PIP_REWIND = "com.nothing.player.PIP_REWIND";
+    private static final String ACTION_PIP_FORWARD = "com.nothing.player.PIP_FORWARD";
+    private static final String ACTION_PIP_PREV = "com.nothing.player.PIP_PREV";
+    private static final String ACTION_PIP_NEXT = "com.nothing.player.PIP_NEXT";
+
+    private final BroadcastReceiver pipReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent == null || intent.getAction() == null) return;
+            String action = intent.getAction();
+            if (ACTION_PIP_PLAY_PAUSE.equals(action)) {
+                togglePlayPause();
+            } else if (ACTION_PIP_REWIND.equals(action)) {
+                seekBy(-10000);
+            } else if (ACTION_PIP_FORWARD.equals(action)) {
+                seekBy(10000);
+            } else if (ACTION_PIP_PREV.equals(action)) {
+                playPreviousVideo();
+                updatePipActions();
+            } else if (ACTION_PIP_NEXT.equals(action)) {
+                playNextVideo();
+                updatePipActions();
+            }
+        }
+    };
+
     private View topControlsBar;
     private View bottomControlsBar;
     private ImageButton btnScreenLock;
@@ -103,9 +154,25 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private boolean showRemainingTime = true;
     private MediaMetadataRetriever previewRetriever;
     private final ExecutorService previewExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService titleExecutor = Executors.newFixedThreadPool(4);
     private volatile long lastRequestedPreviewTime = -1;
 
     private ImageButton btnPlayPause;
+    private ImageButton btnPrev;
+    private ImageButton btnNext;
+    private Button btnPlaylistQueue;
+    private View playlistQueuePanel;
+    private TextView queueHeaderTitle;
+    private ImageButton btnCloseQueue;
+    private RecyclerView playlistRecyclerView;
+    private PlaylistQueueAdapter queueAdapter;
+    private ArrayList<String> playlistPaths = new ArrayList<>();
+    private ArrayList<String> playlistUris = new ArrayList<>();
+    private ArrayList<String> playlistTitles = new ArrayList<>();
+    private int playlistIndex = 0;
+    private String youtubePlaylistId = null;
+    private boolean isYouTubeLoaded = false;
+
     private Button btnDecoderMode;
     private Button btnSpeed;
     private Button btnAspectRatio;
@@ -122,6 +189,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private boolean areControlsVisible = true;
     private boolean isMuted = false;
     private boolean isAudioBoosted = false;
+    private boolean isTrackingTouch = false;
     private String currentDecoder = "HW+";
 
     private final Handler hideHandler = new Handler(Looper.getMainLooper());
@@ -190,10 +258,38 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
         currentPositionMs = getIntent().getLongExtra("position", 0);
 
+        // Parse Playlist Queue
+        ArrayList<String> paths = getIntent().getStringArrayListExtra("playlist_paths");
+        ArrayList<String> uris = getIntent().getStringArrayListExtra("playlist_uris");
+        ArrayList<String> titles = getIntent().getStringArrayListExtra("playlist_titles");
+        int index = getIntent().getIntExtra("playlist_index", 0);
+
+        if (paths != null && !paths.isEmpty()) {
+            playlistPaths = paths;
+            playlistUris = uris != null ? uris : new ArrayList<>();
+            playlistTitles = titles != null ? titles : new ArrayList<>();
+            playlistIndex = Math.max(0, Math.min(playlistPaths.size() - 1, index));
+            if (videoPath == null && !playlistPaths.isEmpty()) videoPath = playlistPaths.get(playlistIndex);
+            if (videoUriStr == null && playlistUris.size() > playlistIndex) videoUriStr = playlistUris.get(playlistIndex);
+            if (videoTitle == null && playlistTitles.size() > playlistIndex) videoTitle = playlistTitles.get(playlistIndex);
+        } else {
+            playlistPaths = new ArrayList<>();
+            if (videoPath != null) playlistPaths.add(videoPath);
+            playlistUris = new ArrayList<>();
+            if (videoUriStr != null) playlistUris.add(videoUriStr);
+            playlistTitles = new ArrayList<>();
+            if (videoTitle != null) playlistTitles.add(videoTitle);
+            playlistIndex = 0;
+        }
+
+        youtubePlaylistId = YouTubeStreamResolver.extractPlaylistId(videoUriStr != null ? videoUriStr : videoPath);
+
         initViews();
         
-        // Auto-select optimal engine: If Dolby 5.1 / EAC3 / AC3 / DTS / MKV is detected, use Universal VLC directly
-        if (isSurroundOrEac3File()) {
+        // Auto-select optimal engine: If YouTube stream is detected, use direct YouTube stream engine
+        if (isYouTubeStream()) {
+            startYouTubePlayer();
+        } else if (isSurroundOrEac3File()) {
             startVlcPlayer(currentPositionMs);
         } else {
             startExoPlayer(currentPositionMs);
@@ -201,6 +297,23 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         
         setupGestures();
         setupListeners();
+
+        IntentFilter pipFilter = new IntentFilter();
+        pipFilter.addAction(ACTION_PIP_PLAY_PAUSE);
+        pipFilter.addAction(ACTION_PIP_REWIND);
+        pipFilter.addAction(ACTION_PIP_FORWARD);
+        pipFilter.addAction(ACTION_PIP_PREV);
+        pipFilter.addAction(ACTION_PIP_NEXT);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(pipReceiver, pipFilter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(pipReceiver, pipFilter);
+        }
+    }
+
+    private boolean isYouTubeStream() {
+        String testStr = ((videoTitle != null ? videoTitle : "") + " " + (videoPath != null ? videoPath : "") + " " + (videoUriStr != null ? videoUriStr : "")).toLowerCase();
+        return YouTubeStreamResolver.isYouTubeUrl(testStr);
     }
 
     private boolean isSurroundOrEac3File() {
@@ -238,7 +351,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
     private void initViews() {
         exoPlayerView = findViewById(R.id.exo_player_view);
+        if (exoPlayerView != null) {
+            exoPlayerView.setKeepContentOnPlayerReset(true);
+            exoPlayerView.setShutterBackgroundColor(Color.TRANSPARENT);
+            exoPlayerView.setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER);
+        }
         vlcVideoLayout = findViewById(R.id.vlc_video_layout);
+        youtubeStreamView = findViewById(R.id.youtube_stream_view);
+        videoTransitionOverlay = findViewById(R.id.video_transition_overlay);
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
@@ -265,6 +385,26 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         previewThumbnail = findViewById(R.id.preview_thumbnail);
         previewTimeText = findViewById(R.id.preview_time_text);
         btnPlayPause = findViewById(R.id.btn_play_pause);
+        btnPrev = findViewById(R.id.btn_prev);
+        btnNext = findViewById(R.id.btn_next);
+        btnPlaylistQueue = findViewById(R.id.btn_playlist_queue);
+        playlistQueuePanel = findViewById(R.id.playlist_queue_panel);
+        queueHeaderTitle = findViewById(R.id.queue_header_title);
+        btnCloseQueue = findViewById(R.id.btn_close_queue);
+        playlistRecyclerView = findViewById(R.id.playlist_recycler_view);
+
+        if (playlistRecyclerView != null) {
+            playlistRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+            queueAdapter = new PlaylistQueueAdapter(this, pos -> {
+                playVideoAtIndex(pos);
+                if (playlistQueuePanel != null) {
+                    playlistQueuePanel.setVisibility(View.GONE);
+                }
+            });
+            playlistRecyclerView.setAdapter(queueAdapter);
+            updateQueueUI();
+        }
+
         btnDecoderMode = findViewById(R.id.btn_decoder_mode);
         btnSpeed = findViewById(R.id.btn_speed);
         btnAspectRatio = findViewById(R.id.btn_aspect_ratio);
@@ -286,17 +426,332 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     }
 
     // ==========================================
+    // YOUTUBE STREAM ENGINE (Native Inside Default Player)
+    // ==========================================
+    private void startYouTubePlayer() {
+        releaseExoPlayer();
+        releaseVlcPlayer();
+        isVlcActive = false;
+        isYouTubeActive = true;
+
+        if (exoPlayerView != null) exoPlayerView.setVisibility(View.GONE);
+        if (vlcVideoLayout != null) vlcVideoLayout.setVisibility(View.GONE);
+        if (youtubeStreamView != null) youtubeStreamView.setVisibility(View.VISIBLE);
+
+        currentDecoder = "YouTube Engine";
+        btnDecoderMode.setText("YT");
+        videoSubtitleCodec.setText(currentDecoder + " • DIRECT STREAM");
+
+        String rawUrl = videoUriStr != null ? videoUriStr : videoPath;
+        String videoId = YouTubeStreamResolver.extractVideoId(rawUrl);
+        if (videoId == null || videoId.isEmpty()) {
+            videoId = "dQw4w9WgXcQ";
+        }
+
+        if (isYouTubeLoaded && youtubeStreamView != null) {
+            youtubeStreamView.evaluateJavascript("if (player && player.loadVideoById) { player.loadVideoById('" + videoId + "'); }", null);
+            scheduleHideControls();
+            return;
+        }
+
+        if (youtubeStreamView != null) {
+            WebSettings ws = youtubeStreamView.getSettings();
+            ws.setJavaScriptEnabled(true);
+            ws.setDomStorageEnabled(true);
+            ws.setDatabaseEnabled(true);
+            ws.setMediaPlaybackRequiresUserGesture(false);
+            ws.setUseWideViewPort(true);
+            ws.setLoadWithOverviewMode(true);
+            ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            ws.setCacheMode(WebSettings.LOAD_DEFAULT);
+            youtubeStreamView.setBackgroundColor(0xFF000000);
+            youtubeStreamView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+
+            youtubeStreamView.setWebChromeClient(new WebChromeClient());
+            youtubeStreamView.setWebViewClient(new WebViewClient() {
+                @Override
+                public void onPageFinished(WebView view, String url) {
+                    isYouTubeLoaded = true;
+                    scheduleHideControls();
+                }
+            });
+
+            youtubeStreamView.addJavascriptInterface(new Object() {
+                @android.webkit.JavascriptInterface
+                public void onTimeUpdate(float current, float duration) {
+                    runOnUiThread(() -> {
+                        youtubeCurrentPositionMs = (long) (current * 1000f);
+                        youtubeDurationMs = (long) (duration * 1000f);
+                        totalDurationMs = youtubeDurationMs;
+                        if (!isTrackingTouch) {
+                            updateTimeDisplay(youtubeCurrentPositionMs);
+                            if (youtubeDurationMs > 0) {
+                                videoSeekBar.setMax((int) youtubeDurationMs);
+                                videoSeekBar.setProgress((int) youtubeCurrentPositionMs);
+                            }
+                        }
+                    });
+                }
+
+                @android.webkit.JavascriptInterface
+                public void onVideoTitle(String title) {
+                    runOnUiThread(() -> {
+                        if (title != null && !title.isEmpty() && !title.equals("undefined")) {
+                            videoTitle = title;
+                            if (videoTitleText != null) videoTitleText.setText(title);
+                            if (playlistTitles != null && playlistTitles.size() > playlistIndex) {
+                                playlistTitles.set(playlistIndex, title);
+                            }
+                            updateQueueUI();
+                        }
+                    });
+                }
+
+                @android.webkit.JavascriptInterface
+                public void onPlaylistLoaded(String jsonIds, int activeIdx) {
+                    runOnUiThread(() -> {
+                        try {
+                            JSONArray arr = new JSONArray(jsonIds);
+                            if (arr.length() > 0) {
+                                boolean countChanged = (playlistPaths == null || playlistPaths.size() != arr.length());
+                                if (countChanged) {
+                                    playlistPaths = new ArrayList<>();
+                                    playlistUris = new ArrayList<>();
+                                    playlistTitles = new ArrayList<>();
+                                    List<String> vids = new ArrayList<>();
+                                    for (int i = 0; i < arr.length(); i++) {
+                                        String vid = arr.getString(i);
+                                        vids.add(vid);
+                                        String fullUrl = "https://www.youtube.com/watch?v=" + vid;
+                                        playlistPaths.add(fullUrl);
+                                        playlistUris.add(fullUrl);
+                                        playlistTitles.add("Track #" + (i + 1) + " • " + vid);
+                                    }
+                                    fetchYouTubePlaylistTitles(vids);
+                                }
+                                playlistIndex = Math.max(0, Math.min(arr.length() - 1, activeIdx));
+                                updateQueueUI();
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    });
+                }
+
+                @android.webkit.JavascriptInterface
+                public void onPlaylistIndexChange(int activeIdx) {
+                    runOnUiThread(() -> {
+                        if (activeIdx >= 0 && playlistPaths != null && activeIdx < playlistPaths.size() && playlistIndex != activeIdx) {
+                            playlistIndex = activeIdx;
+                            if (playlistTitles.size() > playlistIndex && videoTitleText != null) {
+                                videoTitle = playlistTitles.get(playlistIndex);
+                                videoTitleText.setText(videoTitle);
+                            }
+                            updateQueueUI();
+                        }
+                    });
+                }
+
+                @android.webkit.JavascriptInterface
+                public void onStateChange(int state) {
+                    runOnUiThread(() -> {
+                        // state: 1 = PLAYING, 2 = PAUSED, 0 = ENDED, 3 = BUFFERING
+                        if (state == 1) {
+                            hideTransitionOverlay();
+                            isYouTubePlaying = true;
+                            btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
+                        } else if (state == 2) {
+                            isYouTubePlaying = false;
+                            btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
+                        } else if (state == 0) {
+                            isYouTubePlaying = false;
+                            btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
+                            if (youtubePlaylistId == null && playlistPaths != null && playlistIndex < playlistPaths.size() - 1) {
+                                playNextVideo();
+                            }
+                        }
+                    });
+                }
+            }, "AndroidYT");
+
+            String ytListParam = (youtubePlaylistId != null && !youtubePlaylistId.isEmpty()) ?
+                    ", 'listType': 'playlist', 'list': '" + youtubePlaylistId + "'" : "";
+
+            String html = "<!DOCTYPE html><html><head>" +
+                    "<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'>" +
+                    "<style>" +
+                    "* { margin:0; padding:0; box-sizing:border-box; background:#000000; overflow:hidden; user-select:none; -webkit-user-select:none; }" +
+                    "html, body { width:100%; height:100%; background:#000000; overflow:hidden; }" +
+                    "#player { width:100% !important; height:100% !important; pointer-events:none !important; border:none !important; }" +
+                    "iframe { width:100% !important; height:100% !important; pointer-events:none !important; border:none !important; }" +
+                    "</style></head><body>" +
+                    "<div id='player'></div>" +
+                    "<script src='https://www.youtube.com/iframe_api'></script>" +
+                    "<script>" +
+                    "var player;" +
+                    "var lastTitle = '';" +
+                    "var lastIdx = -1;" +
+                    "function onYouTubeIframeAPIReady() {" +
+                    "  player = new YT.Player('player', {" +
+                    "    videoId: '" + videoId + "'," +
+                    "    playerVars: { 'autoplay': 1, 'controls': 0, 'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'fs': 0, 'iv_load_policy': 3, 'disablekb': 1, 'showinfo': 0, 'showsearch': 0, 'enablejsapi': 1, 'origin': 'https://www.youtube-nocookie.com'" + ytListParam + " }," +
+                    "    events: {" +
+                    "      'onReady': onPlayerReady," +
+                    "      'onStateChange': onPlayerStateChange" +
+                    "    }" +
+                    "  });" +
+                    "}" +
+                    "function syncPlaylist() {" +
+                    "  try {" +
+                    "    if (player && player.getPlaylist) {" +
+                    "      var pl = player.getPlaylist();" +
+                    "      if (pl && pl.length) {" +
+                    "        var idx = (player.getPlaylistIndex && player.getPlaylistIndex() >= 0) ? player.getPlaylistIndex() : 0;" +
+                    "        AndroidYT.onPlaylistLoaded(JSON.stringify(pl), idx);" +
+                    "      }" +
+                    "    }" +
+                    "  } catch(e) {}" +
+                    "}" +
+                    "function onPlayerReady(event) {" +
+                    "  event.target.playVideo();" +
+                    "  syncPlaylist();" +
+                    "  setInterval(function() {" +
+                    "    if (player && player.getCurrentTime) {" +
+                    "      AndroidYT.onTimeUpdate(player.getCurrentTime(), player.getDuration());" +
+                    "      if (player.getVideoData) {" +
+                    "        var vd = player.getVideoData();" +
+                    "        if (vd && vd.title && vd.title !== lastTitle) {" +
+                    "          lastTitle = vd.title;" +
+                    "          AndroidYT.onVideoTitle(lastTitle);" +
+                    "        }" +
+                    "      }" +
+                    "      if (player.getPlaylistIndex) {" +
+                    "        var idx = player.getPlaylistIndex();" +
+                    "        if (idx !== undefined && idx >= 0 && idx !== lastIdx) {" +
+                    "          lastIdx = idx;" +
+                    "          AndroidYT.onPlaylistIndexChange(idx);" +
+                    "        }" +
+                    "      }" +
+                    "    }" +
+                    "  }, 400);" +
+                    "}" +
+                    "function onPlayerStateChange(event) {" +
+                    "  AndroidYT.onStateChange(event.data);" +
+                    "  syncPlaylist();" +
+                    "}" +
+                    "</script></body></html>";
+
+            youtubeStreamView.loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "UTF-8", null);
+        }
+        scheduleHideControls();
+    }
+
+    private void fetchYouTubePlaylistTitles(List<String> videoIds) {
+        if (videoIds == null || videoIds.isEmpty()) return;
+        for (int i = 0; i < videoIds.size(); i++) {
+            final int index = i;
+            final String vid = videoIds.get(i);
+            titleExecutor.execute(() -> {
+                try {
+                    String oembedUrl = "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=" + vid + "&format=json";
+                    java.net.URL url = new java.net.URL(oembedUrl);
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(4000);
+                    conn.setReadTimeout(4000);
+                    if (conn.getResponseCode() == 200) {
+                        java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream()));
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            sb.append(line);
+                        }
+                        reader.close();
+                        org.json.JSONObject obj = new org.json.JSONObject(sb.toString());
+                        String realTitle = obj.optString("title", "");
+                        if (!realTitle.isEmpty()) {
+                            runOnUiThread(() -> {
+                                if (playlistTitles != null && playlistTitles.size() > index) {
+                                    playlistTitles.set(index, realTitle);
+                                    if (playlistIndex == index && videoTitleText != null) {
+                                        videoTitle = realTitle;
+                                        videoTitleText.setText(realTitle);
+                                    }
+                                    if (queueAdapter != null) {
+                                        queueAdapter.updateTitle(index, realTitle);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    conn.disconnect();
+                } catch (Exception ignored) {}
+            });
+        }
+    }
+
+    private void showTransitionOverlay() {
+        if (videoTransitionOverlay == null) return;
+        videoTransitionOverlay.animate().cancel();
+        videoTransitionOverlay.setAlpha(1.0f);
+        videoTransitionOverlay.setVisibility(View.VISIBLE);
+
+        if (isYouTubeStream()) {
+            String rawUrl = videoUriStr != null ? videoUriStr : videoPath;
+            String vid = YouTubeStreamResolver.extractVideoId(rawUrl);
+            if (vid != null && !vid.isEmpty()) {
+                Glide.with(this)
+                    .load("https://img.youtube.com/vi/" + vid + "/mqdefault.jpg")
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .into(videoTransitionOverlay);
+            }
+        } else {
+            Uri uri = resolveMediaUri();
+            if (uri != null) {
+                Glide.with(this)
+                    .load(uri)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .into(videoTransitionOverlay);
+            }
+        }
+    }
+
+    private void hideTransitionOverlay() {
+        if (videoTransitionOverlay != null && videoTransitionOverlay.getVisibility() == View.VISIBLE) {
+            videoTransitionOverlay.animate()
+                .alpha(0f)
+                .setDuration(220)
+                .withEndAction(() -> videoTransitionOverlay.setVisibility(View.GONE))
+                .start();
+        }
+    }
+
+    // ==========================================
     // EXOPLAYER ENGINE (Hardware Accelerated)
     // ==========================================
     private void startExoPlayer(long resumePos) {
+        showTransitionOverlay();
         releaseVlcPlayer();
         isVlcActive = false;
-        vlcVideoLayout.setVisibility(View.GONE);
-        exoPlayerView.setVisibility(View.VISIBLE);
+        isYouTubeActive = false;
+        if (youtubeStreamView != null) youtubeStreamView.setVisibility(View.GONE);
+        if (vlcVideoLayout != null) vlcVideoLayout.setVisibility(View.GONE);
+        if (exoPlayerView != null) exoPlayerView.setVisibility(View.VISIBLE);
 
         if (exoPlayer != null) {
-            exoPlayer.release();
-            exoPlayer = null;
+            Uri targetUri = resolveMediaUri();
+            if (targetUri != null) {
+                MediaItem mediaItem = MediaItem.fromUri(targetUri);
+                exoPlayer.setMediaItem(mediaItem, resumePos > 0 ? resumePos : 0);
+                exoPlayer.prepare();
+                exoPlayer.play();
+                exoPlayer.setPlaybackSpeed(playbackSpeed);
+                currentDecoder = "HW+ (Exo)";
+                btnDecoderMode.setText("HW+");
+                updateCodecInfo();
+                scheduleHideControls();
+            }
+            return;
         }
 
         DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
@@ -311,11 +766,24 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 .setTunnelingEnabled(false)
         );
 
+        DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                20000,
+                60000,
+                1000,
+                2000
+            )
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build();
+
         exoPlayer = new ExoPlayer.Builder(this, renderersFactory)
             .setTrackSelector(trackSelector)
+            .setLoadControl(loadControl)
             .setSeekBackIncrementMs(10000)
             .setSeekForwardIncrementMs(10000)
             .build();
+
+        exoPlayer.setSeekParameters(SeekParameters.CLOSEST_SYNC);
 
         AudioAttributes audioAttributes = new AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
@@ -348,12 +816,18 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
         exoPlayer.addListener(new Player.Listener() {
             @Override
+            public void onRenderedFirstFrame() {
+                hideTransitionOverlay();
+            }
+
+            @Override
             public void onIsPlayingChanged(boolean isPlaying) {
                 if (!isVlcActive) {
                     btnPlayPause.setImageResource(isPlaying ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
                     if (isPlaying) {
                         startProgressTracker();
                         scheduleHideControls();
+                        hideTransitionOverlay();
                     } else {
                         stopProgressTracker();
                     }
@@ -364,13 +838,16 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             public void onPlaybackStateChanged(int playbackState) {
                 if (!isVlcActive) {
                     if (playbackState == Player.STATE_READY) {
+                        hideTransitionOverlay();
                         totalDurationMs = exoPlayer.getDuration();
                         videoSeekBar.setMax((int) totalDurationMs);
                         updateTimeDisplay(exoPlayer.getCurrentPosition());
                         AudioEffectManager.getInstance().attachAudioSession(exoPlayer.getAudioSessionId(), ExoVideoPlayerActivity.this);
                         updateCodecInfo();
                     } else if (playbackState == Player.STATE_ENDED) {
-                        if (totalDurationMs > 5000 && exoPlayer.getCurrentPosition() >= totalDurationMs - 2500) {
+                        if (playlistPaths != null && playlistIndex < playlistPaths.size() - 1) {
+                            playNextVideo();
+                        } else if (totalDurationMs > 5000 && exoPlayer.getCurrentPosition() >= totalDurationMs - 2500) {
                             finish();
                         }
                     }
@@ -394,10 +871,33 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     // LIBVLC NATIVE ENGINE (Universal EAC3, AC3, DTS, TrueHD)
     // =======================================================
     private void startVlcPlayer(long resumePos) {
+        showTransitionOverlay();
         releaseExoPlayer();
         isVlcActive = true;
+        isYouTubeActive = false;
+        if (youtubeStreamView != null) youtubeStreamView.setVisibility(View.GONE);
         exoPlayerView.setVisibility(View.GONE);
         vlcVideoLayout.setVisibility(View.VISIBLE);
+
+        if (vlcPlayer != null) {
+            Media media = createVlcMedia();
+            if (media != null) {
+                media.setHWDecoderEnabled(true, true);
+                media.addOption(":file-caching=2000");
+                vlcPlayer.setMedia(media);
+                media.release();
+                vlcPlayer.play();
+                if (resumePos > 0) {
+                    vlcPlayer.setTime(resumePos);
+                }
+                vlcPlayer.setRate(playbackSpeed);
+                currentDecoder = "Universal VLC";
+                btnDecoderMode.setText("VLC");
+                videoSubtitleCodec.setText(currentDecoder + " • DOLBY 5.1 / EAC3");
+                scheduleHideControls();
+            }
+            return;
+        }
 
         ArrayList<String> options = new ArrayList<>();
         options.add("--no-drop-late-frames");
@@ -431,6 +931,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             vlcPlayer.setEventListener(event -> {
                 runOnUiThread(() -> {
                     if (event.type == MediaPlayer.Event.Playing) {
+                        hideTransitionOverlay();
                         btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
                         startProgressTracker();
                         scheduleHideControls();
@@ -446,7 +947,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                         updateTimeDisplay(pos);
                         videoSeekBar.setProgress((int) pos);
                     } else if (event.type == MediaPlayer.Event.EndReached) {
-                        if (totalDurationMs > 5000 && currentPositionMs >= totalDurationMs - 2500) {
+                        if (playlistPaths != null && playlistIndex < playlistPaths.size() - 1) {
+                            playNextVideo();
+                        } else if (totalDurationMs > 5000 && currentPositionMs >= totalDurationMs - 2500) {
                             finish();
                         }
                     } else if (event.type == MediaPlayer.Event.EncounteredError) {
@@ -573,21 +1076,21 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
-        btnPlayPause.setOnClickListener(v -> {
-            if (isVlcActive) {
-                if (vlcPlayer != null) {
-                    if (vlcPlayer.isPlaying()) vlcPlayer.pause();
-                    else vlcPlayer.play();
-                }
-            } else {
-                if (exoPlayer != null) {
-                    if (exoPlayer.isPlaying()) exoPlayer.pause();
-                    else exoPlayer.play();
-                }
-            }
+        btnPlayPause.setOnClickListener(v -> togglePlayPause());
+        if (btnPrev != null) btnPrev.setOnClickListener(v -> playPreviousVideo());
+        if (btnNext != null) btnNext.setOnClickListener(v -> playNextVideo());
+        if (btnPlaylistQueue != null) btnPlaylistQueue.setOnClickListener(v -> togglePlaylistQueuePanel());
+        if (btnCloseQueue != null) btnCloseQueue.setOnClickListener(v -> {
+            if (playlistQueuePanel != null) playlistQueuePanel.setVisibility(View.GONE);
         });
 
         findViewById(R.id.btn_rewind).setOnClickListener(v -> {
+            if (isYouTubeActive) {
+                long target = Math.max(0, youtubeCurrentPositionMs - 10000);
+                if (youtubeStreamView != null) youtubeStreamView.evaluateJavascript("if (player && player.seekTo) player.seekTo(" + (target / 1000f) + ", true);", null);
+                showGestureHud("● 10s REWIND", DotMatrixIconView.TYPE_SEEK_REWIND, "-10s", (int) (target * 100 / Math.max(1, youtubeDurationMs)));
+                return;
+            }
             long cur = isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0);
             long target = Math.max(0, cur - 10000);
             if (isVlcActive && vlcPlayer != null) vlcPlayer.setTime(target);
@@ -596,6 +1099,12 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         });
 
         findViewById(R.id.btn_forward).setOnClickListener(v -> {
+            if (isYouTubeActive) {
+                long target = Math.min(youtubeDurationMs, youtubeCurrentPositionMs + 10000);
+                if (youtubeStreamView != null) youtubeStreamView.evaluateJavascript("if (player && player.seekTo) player.seekTo(" + (target / 1000f) + ", true);", null);
+                showGestureHud("● 10s FORWARD", DotMatrixIconView.TYPE_SEEK_FORWARD, "+10s", (int) (target * 100 / Math.max(1, youtubeDurationMs)));
+                return;
+            }
             long cur = isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0);
             long target = Math.min(totalDurationMs, cur + 10000);
             if (isVlcActive && vlcPlayer != null) vlcPlayer.setTime(target);
@@ -669,11 +1178,22 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 exoPlayerView.getVideoSurfaceView().setScaleX(1.0f);
                 exoPlayerView.getVideoSurfaceView().setScaleY(1.0f);
             }
+
+            int sw = getResources().getDisplayMetrics().widthPixels;
+            int sh = getResources().getDisplayMetrics().heightPixels;
+            float screenAspect = Math.max(sw, sh) / (float) Math.min(sw, sh);
+            float videoAspect = 16f / 9f;
+            float zoomRatio = screenAspect / videoAspect;
+            if (zoomRatio < 1.1f) zoomRatio = 1.28f;
+
             if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
                 btnAspectRatio.setText("FILL");
                 showGestureHud("● ASPECT RATIO", DotMatrixIconView.TYPE_SEEK_FORWARD, "STRETCH / FULL", 100);
-                if (isVlcActive && vlcPlayer != null) {
+                if (isYouTubeActive && youtubeStreamView != null) {
+                    youtubeStreamView.setScaleX(zoomRatio);
+                    youtubeStreamView.setScaleY(1.0f);
+                } else if (isVlcActive && vlcPlayer != null) {
                     vlcPlayer.setAspectRatio("16:9");
                     vlcPlayer.setScale(0);
                 }
@@ -681,7 +1201,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
                 btnAspectRatio.setText("ZOOM");
                 showGestureHud("● ASPECT RATIO", DotMatrixIconView.TYPE_SEEK_FORWARD, "ZOOM / CROP", 100);
-                if (isVlcActive && vlcPlayer != null) {
+                if (isYouTubeActive && youtubeStreamView != null) {
+                    youtubeStreamView.setScaleX(zoomRatio);
+                    youtubeStreamView.setScaleY(zoomRatio);
+                } else if (isVlcActive && vlcPlayer != null) {
                     vlcPlayer.setAspectRatio(null);
                     vlcPlayer.setScale(1.25f);
                 }
@@ -689,7 +1212,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
                 btnAspectRatio.setText("FIT");
                 showGestureHud("● ASPECT RATIO", DotMatrixIconView.TYPE_SEEK_FORWARD, "FIT TO SCREEN", 100);
-                if (isVlcActive && vlcPlayer != null) {
+                if (isYouTubeActive && youtubeStreamView != null) {
+                    youtubeStreamView.setScaleX(1.0f);
+                    youtubeStreamView.setScaleY(1.0f);
+                } else if (isVlcActive && vlcPlayer != null) {
                     vlcPlayer.setAspectRatio(null);
                     vlcPlayer.setScale(0);
                 }
@@ -707,7 +1233,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 }
             }
             playbackSpeed = speeds[nextIndex];
-            if (isVlcActive && vlcPlayer != null) vlcPlayer.setRate(playbackSpeed);
+            if (isYouTubeActive && youtubeStreamView != null) {
+                youtubeStreamView.evaluateJavascript("if (player && player.setPlaybackRate) player.setPlaybackRate(" + playbackSpeed + ");", null);
+            } else if (isVlcActive && vlcPlayer != null) vlcPlayer.setRate(playbackSpeed);
             else if (exoPlayer != null) exoPlayer.setPlaybackSpeed(playbackSpeed);
             btnSpeed.setText(playbackSpeed + "x");
             showGestureHud("● PLAY SPEED", DotMatrixIconView.TYPE_SEEK_FORWARD, playbackSpeed + "x", (int)(playbackSpeed * 50));
@@ -738,20 +1266,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             showGestureHud("● AUDIO OUTPUT", dotType, isMuted ? "MUTED" : "UNMUTED", isMuted ? 0 : 100);
         });
 
-        btnPip.setOnClickListener(v -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                try {
-                    int w = getWindow().getDecorView().getWidth();
-                    int h = getWindow().getDecorView().getHeight();
-                    Rational aspectRatio = new Rational(w > 0 ? w : 16, h > 0 ? h : 9);
-                    PictureInPictureParams.Builder pipBuilder = new PictureInPictureParams.Builder();
-                    pipBuilder.setAspectRatio(aspectRatio);
-                    enterPictureInPictureMode(pipBuilder.build());
-                } catch (Exception e) {
-                    Toast.makeText(this, "PiP Mode not available", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
+        btnPip.setOnClickListener(v -> enterPipMode());
 
         timeTotalText.setOnClickListener(v -> {
             showRemainingTime = !showRemainingTime;
@@ -771,6 +1286,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
+                isTrackingTouch = true;
                 stopProgressTracker();
                 if (seekbarPreviewCard != null) {
                     seekbarPreviewCard.setVisibility(View.VISIBLE);
@@ -781,11 +1297,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
+                isTrackingTouch = false;
                 if (seekbarPreviewCard != null) {
                     seekbarPreviewCard.setVisibility(View.GONE);
                 }
                 int target = seekBar.getProgress();
-                if (isVlcActive && vlcPlayer != null) {
+                if (isYouTubeActive) {
+                    if (youtubeStreamView != null) youtubeStreamView.evaluateJavascript("if (player && player.seekTo) player.seekTo(" + (target / 1000f) + ", true);", null);
+                } else if (isVlcActive && vlcPlayer != null) {
                     vlcPlayer.setTime(target);
                 } else if (exoPlayer != null) {
                     exoPlayer.seekTo(target);
@@ -1028,20 +1547,25 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             public boolean onDoubleTap(MotionEvent e) {
                 if (isLocked) return false;
                 int screenWidth = getResources().getDisplayMetrics().widthPixels;
-                long cur = isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0);
+                long cur = isYouTubeActive ? youtubeCurrentPositionMs : (isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0));
+                long dur = isYouTubeActive ? youtubeDurationMs : totalDurationMs;
 
                 if (e.getX() < screenWidth / 2f) {
                     // Double Tap Left: Rewind 10s
                     long target = Math.max(0, cur - 10000);
-                    if (isVlcActive && vlcPlayer != null) vlcPlayer.setTime(target);
+                    if (isYouTubeActive && youtubeStreamView != null) {
+                        youtubeStreamView.evaluateJavascript("if (player && player.seekTo) player.seekTo(" + (target / 1000f) + ", true);", null);
+                    } else if (isVlcActive && vlcPlayer != null) vlcPlayer.setTime(target);
                     else if (exoPlayer != null) exoPlayer.seekTo(target);
-                    showGestureHud("● 10s REWIND", DotMatrixIconView.TYPE_SEEK_REWIND, "-10s", (int) (target * 100 / Math.max(1, totalDurationMs)));
+                    showGestureHud("● 10s REWIND", DotMatrixIconView.TYPE_SEEK_REWIND, "-10s", (int) (target * 100 / Math.max(1, dur)));
                 } else {
                     // Double Tap Right: Forward 10s
-                    long target = Math.min(totalDurationMs, cur + 10000);
-                    if (isVlcActive && vlcPlayer != null) vlcPlayer.setTime(target);
+                    long target = Math.min(dur, cur + 10000);
+                    if (isYouTubeActive && youtubeStreamView != null) {
+                        youtubeStreamView.evaluateJavascript("if (player && player.seekTo) player.seekTo(" + (target / 1000f) + ", true);", null);
+                    } else if (isVlcActive && vlcPlayer != null) vlcPlayer.setTime(target);
                     else if (exoPlayer != null) exoPlayer.seekTo(target);
-                    showGestureHud("● 10s FORWARD", DotMatrixIconView.TYPE_SEEK_FORWARD, "+10s", (int) (target * 100 / Math.max(1, totalDurationMs)));
+                    showGestureHud("● 10s FORWARD", DotMatrixIconView.TYPE_SEEK_FORWARD, "+10s", (int) (target * 100 / Math.max(1, dur)));
                 }
                 return true;
             }
@@ -1126,7 +1650,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 float scaleFactor = detector.getScaleFactor();
                 currentVideoScale = Math.max(0.5f, Math.min(3.5f, currentVideoScale * scaleFactor));
 
-                if (isVlcActive && vlcPlayer != null) {
+                if (isYouTubeActive && youtubeStreamView != null) {
+                    youtubeStreamView.setScaleX(currentVideoScale);
+                    youtubeStreamView.setScaleY(currentVideoScale);
+                } else if (isVlcActive && vlcPlayer != null) {
                     vlcPlayer.setScale(currentVideoScale);
                 } else if (exoPlayerView != null) {
                     View surface = exoPlayerView.getVideoSurfaceView();
@@ -1150,7 +1677,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
                 if (gestureMode[0] == GESTURE_HORIZONTAL) {
                     long target = targetSeekPosition[0];
-                    if (isVlcActive && vlcPlayer != null) {
+                    if (isYouTubeActive && youtubeStreamView != null) {
+                        youtubeStreamView.evaluateJavascript("if (player && player.seekTo) player.seekTo(" + (target / 1000f) + ", true);", null);
+                    } else if (isVlcActive && vlcPlayer != null) {
                         vlcPlayer.setTime(target);
                     } else if (exoPlayer != null) {
                         exoPlayer.seekTo(target);
@@ -1166,6 +1695,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
         exoPlayerView.setOnTouchListener(touchListener);
         vlcVideoLayout.setOnTouchListener(touchListener);
+        if (youtubeStreamView != null) {
+            youtubeStreamView.setOnTouchListener(touchListener);
+        }
     }
 
     private void showGestureHud(String tag, int dotMatrixType, String text, int progress) {
@@ -1334,53 +1866,16 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (previewThumbnail == null) return;
         lastRequestedPreviewTime = timeMs;
 
-        previewExecutor.execute(() -> {
-            if (timeMs != lastRequestedPreviewTime) return;
-            Bitmap frame = null;
-            try {
-                if (previewRetriever == null) {
-                    if (videoPath != null && new File(videoPath).exists()) {
-                        previewRetriever = new MediaMetadataRetriever();
-                        previewRetriever.setDataSource(videoPath);
-                    } else if (videoUriStr != null) {
-                        previewRetriever = new MediaMetadataRetriever();
-                        previewRetriever.setDataSource(getApplicationContext(), Uri.parse(videoUriStr));
-                    }
-                }
-                if (previewRetriever != null) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                        frame = previewRetriever.getScaledFrameAtTime(timeMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 300, 180);
-                    }
-                    if (frame == null) {
-                        frame = previewRetriever.getFrameAtTime(timeMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
-                    }
-                }
-            } catch (Exception ignored) {}
-
-            if (frame != null && timeMs == lastRequestedPreviewTime) {
-                final Bitmap finalFrame = frame;
-                runOnUiThread(() -> {
-                    if (previewThumbnail != null && seekbarPreviewCard != null && seekbarPreviewCard.getVisibility() == View.VISIBLE) {
-                        previewThumbnail.setImageBitmap(finalFrame);
-                    }
-                });
-            } else {
-                runOnUiThread(() -> {
-                    try {
-                        Uri uri = resolveMediaUri();
-                        if (uri != null && previewThumbnail != null) {
-                            Glide.with(ExoVideoPlayerActivity.this)
-                                .asBitmap()
-                                .load(uri)
-                                .override(300, 180)
-                                .frame(timeMs * 1000)
-                                .diskCacheStrategy(DiskCacheStrategy.ALL)
-                                .into(previewThumbnail);
-                        }
-                    } catch (Exception ignored) {}
-                });
-            }
-        });
+        Uri uri = resolveMediaUri();
+        if (uri != null) {
+            Glide.with(ExoVideoPlayerActivity.this)
+                .asBitmap()
+                .load(uri)
+                .override(300, 180)
+                .frame(timeMs * 1000)
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                .into(previewThumbnail);
+        }
     }
 
     private int dpToPx(int dp) {
@@ -1398,13 +1893,286 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         return String.format("%02d:%02d", m, s);
     }
 
+    private void playNextVideo() {
+        if (isYouTubeActive && youtubePlaylistId != null && youtubeStreamView != null) {
+            youtubeStreamView.evaluateJavascript("if (player && player.nextVideo) player.nextVideo();", null);
+            showGestureHud("● PLAYLIST NEXT", DotMatrixIconView.TYPE_SEEK_FORWARD, "NEXT VIDEO", 100);
+            return;
+        }
+
+        if (playlistPaths != null && playlistIndex < playlistPaths.size() - 1) {
+            playVideoAtIndex(playlistIndex + 1);
+        } else {
+            showGestureHud("● QUEUE ENDED", DotMatrixIconView.TYPE_SEEK_FORWARD, "LAST VIDEO", 100);
+        }
+    }
+
+    private void playPreviousVideo() {
+        long cur = isYouTubeActive ? youtubeCurrentPositionMs : (isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0));
+        if (cur > 3500) {
+            seekBy(-cur);
+            showGestureHud("● RESTART", DotMatrixIconView.TYPE_SEEK_REWIND, "RESTARTING", 0);
+            return;
+        }
+
+        if (isYouTubeActive && youtubePlaylistId != null && youtubeStreamView != null) {
+            youtubeStreamView.evaluateJavascript("if (player && player.previousVideo) player.previousVideo();", null);
+            showGestureHud("● PLAYLIST PREV", DotMatrixIconView.TYPE_SEEK_REWIND, "PREV VIDEO", 100);
+            return;
+        }
+
+        if (playlistPaths != null && playlistIndex > 0) {
+            playVideoAtIndex(playlistIndex - 1);
+        } else {
+            seekBy(-cur);
+            showGestureHud("● QUEUE START", DotMatrixIconView.TYPE_SEEK_REWIND, "FIRST VIDEO", 0);
+        }
+    }
+
+    private void playVideoAtIndex(int index) {
+        if (playlistPaths == null || index < 0 || index >= playlistPaths.size()) return;
+        playlistIndex = index;
+        showTransitionOverlay();
+
+        videoPath = playlistPaths.get(index);
+        videoUriStr = playlistUris.size() > index ? playlistUris.get(index) : "";
+        videoTitle = playlistTitles.size() > index ? playlistTitles.get(index) : new File(videoPath).getName();
+
+        if (videoTitleText != null) {
+            videoTitleText.setText(videoTitle);
+        }
+        updateQueueUI();
+
+        if (isYouTubeActive && isYouTubeLoaded && youtubeStreamView != null) {
+            if (youtubePlaylistId != null && !youtubePlaylistId.isEmpty()) {
+                youtubeStreamView.evaluateJavascript("if (player && player.playVideoAt) player.playVideoAt(" + index + ");", null);
+            } else {
+                String rawUrl = videoUriStr != null ? videoUriStr : videoPath;
+                String vid = YouTubeStreamResolver.extractVideoId(rawUrl);
+                if (vid != null && !vid.isEmpty()) {
+                    youtubeStreamView.evaluateJavascript("if (player && player.loadVideoById) player.loadVideoById('" + vid + "');", null);
+                }
+            }
+            showGestureHud("● NOW PLAYING", DotMatrixIconView.TYPE_SEEK_FORWARD, videoTitle, (playlistIndex + 1) * 100 / Math.max(1, playlistPaths.size()));
+            return;
+        }
+
+        if (isYouTubeStream()) {
+            startYouTubePlayer();
+        } else if (isSurroundOrEac3File()) {
+            startVlcPlayer(0);
+        } else {
+            startExoPlayer(0);
+        }
+
+        showGestureHud("● NOW PLAYING", DotMatrixIconView.TYPE_SEEK_FORWARD, videoTitle, (playlistIndex + 1) * 100 / Math.max(1, playlistPaths.size()));
+    }
+
+    private void togglePlaylistQueuePanel() {
+        if (playlistQueuePanel == null) return;
+        boolean isVisible = playlistQueuePanel.getVisibility() == View.VISIBLE;
+        if (isVisible) {
+            playlistQueuePanel.animate()
+                    .translationX(playlistQueuePanel.getWidth() > 0 ? playlistQueuePanel.getWidth() : dpToPx(320))
+                    .setDuration(200)
+                    .withEndAction(() -> playlistQueuePanel.setVisibility(View.GONE))
+                    .start();
+        } else {
+            updateQueueUI();
+            if (playlistRecyclerView != null && playlistPaths != null && playlistIndex >= 0 && playlistIndex < playlistPaths.size()) {
+                playlistRecyclerView.scrollToPosition(playlistIndex);
+            }
+            playlistQueuePanel.setTranslationX(dpToPx(320));
+            playlistQueuePanel.setVisibility(View.VISIBLE);
+            playlistQueuePanel.animate()
+                    .translationX(0)
+                    .setDuration(220)
+                    .start();
+        }
+    }
+
+    private void updateQueueUI() {
+        if (queueHeaderTitle != null) {
+            int total = playlistPaths != null ? playlistPaths.size() : 1;
+            int current = playlistIndex + 1;
+            queueHeaderTitle.setText(String.format("QUEUE • %02d / %02d", current, total));
+        }
+        if (queueAdapter != null && playlistPaths != null) {
+            List<PlaylistQueueAdapter.QueueItem> items = new ArrayList<>();
+            for (int i = 0; i < playlistPaths.size(); i++) {
+                String p = playlistPaths.get(i);
+                String u = playlistUris.size() > i ? playlistUris.get(i) : "";
+                String t = playlistTitles.size() > i ? playlistTitles.get(i) : new File(p).getName();
+                items.add(new PlaylistQueueAdapter.QueueItem(p, u, t, 0));
+            }
+            queueAdapter.setItems(items, playlistIndex);
+        }
+    }
+
+    private void togglePlayPause() {
+        if (isYouTubeActive) {
+            if (isYouTubePlaying) {
+                if (youtubeStreamView != null) youtubeStreamView.evaluateJavascript("if (player && player.pauseVideo) player.pauseVideo();", null);
+                isYouTubePlaying = false;
+                btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
+            } else {
+                if (youtubeStreamView != null) youtubeStreamView.evaluateJavascript("if (player && player.playVideo) player.playVideo();", null);
+                isYouTubePlaying = true;
+                btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
+            }
+        } else if (isVlcActive) {
+            if (vlcPlayer != null) {
+                if (vlcPlayer.isPlaying()) {
+                    vlcPlayer.pause();
+                    btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
+                } else {
+                    vlcPlayer.play();
+                    btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
+                }
+            }
+        } else {
+            if (exoPlayer != null) {
+                if (exoPlayer.isPlaying()) {
+                    exoPlayer.pause();
+                    btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
+                } else {
+                    exoPlayer.play();
+                    btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
+                }
+            }
+        }
+        updatePipActions();
+    }
+
+    private void seekBy(long deltaMs) {
+        long cur = isYouTubeActive ? youtubeCurrentPositionMs : (isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0));
+        long dur = isYouTubeActive ? youtubeDurationMs : totalDurationMs;
+        long target = Math.max(0, Math.min(dur > 0 ? dur : Long.MAX_VALUE, cur + deltaMs));
+
+        if (isYouTubeActive && youtubeStreamView != null) {
+            youtubeStreamView.evaluateJavascript("if (player && player.seekTo) player.seekTo(" + (target / 1000f) + ", true);", null);
+        } else if (isVlcActive && vlcPlayer != null) {
+            vlcPlayer.setTime(target);
+        } else if (exoPlayer != null) {
+            exoPlayer.seekTo(target);
+        }
+        updateTimeDisplay(target);
+        videoSeekBar.setProgress((int) target);
+    }
+
+    private void updatePipActions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                boolean isPlaying = isYouTubeActive ? isYouTubePlaying : (isVlcActive ? (vlcPlayer != null && vlcPlayer.isPlaying()) : (exoPlayer != null && exoPlayer.isPlaying()));
+                boolean hasMultiple = (playlistPaths != null && playlistPaths.size() > 1) || youtubePlaylistId != null;
+                java.util.ArrayList<RemoteAction> actions = new java.util.ArrayList<>();
+
+                // Left Action: Previous Track or Rewind 10s
+                if (hasMultiple) {
+                    Intent prevIntent = new Intent(ACTION_PIP_PREV).setPackage(getPackageName());
+                    PendingIntent prevPending = PendingIntent.getBroadcast(this, 100, prevIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                    Icon prevIcon = Icon.createWithResource(this, android.R.drawable.ic_media_previous);
+                    actions.add(new RemoteAction(prevIcon, "Previous Video", "Previous Video", prevPending));
+                } else {
+                    Intent rewindIntent = new Intent(ACTION_PIP_REWIND).setPackage(getPackageName());
+                    PendingIntent rewindPending = PendingIntent.getBroadcast(this, 101, rewindIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                    Icon rewindIcon = Icon.createWithResource(this, android.R.drawable.ic_media_rew);
+                    actions.add(new RemoteAction(rewindIcon, "Rewind 10s", "Rewind 10s", rewindPending));
+                }
+
+                // Center Action: Play / Pause
+                Intent playPauseIntent = new Intent(ACTION_PIP_PLAY_PAUSE).setPackage(getPackageName());
+                PendingIntent playPausePending = PendingIntent.getBroadcast(this, 102, playPauseIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                Icon playPauseIcon = Icon.createWithResource(this, isPlaying ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
+                actions.add(new RemoteAction(playPauseIcon, isPlaying ? "Pause" : "Play", isPlaying ? "Pause" : "Play", playPausePending));
+
+                // Right Action: Next Track or Forward 10s
+                if (hasMultiple) {
+                    Intent nextIntent = new Intent(ACTION_PIP_NEXT).setPackage(getPackageName());
+                    PendingIntent nextPending = PendingIntent.getBroadcast(this, 104, nextIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                    Icon nextIcon = Icon.createWithResource(this, android.R.drawable.ic_media_next);
+                    actions.add(new RemoteAction(nextIcon, "Next Video", "Next Video", nextPending));
+                } else {
+                    Intent forwardIntent = new Intent(ACTION_PIP_FORWARD).setPackage(getPackageName());
+                    PendingIntent forwardPending = PendingIntent.getBroadcast(this, 103, forwardIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                    Icon forwardIcon = Icon.createWithResource(this, android.R.drawable.ic_media_ff);
+                    actions.add(new RemoteAction(forwardIcon, "Forward 10s", "Forward 10s", forwardPending));
+                }
+
+                int w = getWindow().getDecorView().getWidth();
+                int h = getWindow().getDecorView().getHeight();
+                Rational aspectRatio = new Rational(w > 0 ? w : 16, h > 0 ? h : 9);
+
+                PictureInPictureParams.Builder pipBuilder = new PictureInPictureParams.Builder();
+                pipBuilder.setAspectRatio(aspectRatio);
+                pipBuilder.setActions(actions);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    pipBuilder.setAutoEnterEnabled(true);
+                    pipBuilder.setSeamlessResizeEnabled(true);
+                }
+                setPictureInPictureParams(pipBuilder.build());
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private void enterPipMode() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                updatePipActions();
+                int w = getWindow().getDecorView().getWidth();
+                int h = getWindow().getDecorView().getHeight();
+                Rational aspectRatio = new Rational(w > 0 ? w : 16, h > 0 ? h : 9);
+                PictureInPictureParams.Builder pipBuilder = new PictureInPictureParams.Builder();
+                pipBuilder.setAspectRatio(aspectRatio);
+                enterPictureInPictureMode(pipBuilder.build());
+            } catch (Exception e) {
+                Toast.makeText(this, "PiP Mode not available", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    @Override
+    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
+        if (isInPictureInPictureMode) {
+            if (topControlsBar != null) topControlsBar.setVisibility(View.GONE);
+            if (bottomControlsBar != null) bottomControlsBar.setVisibility(View.GONE);
+            if (btnScreenLock != null) btnScreenLock.setVisibility(View.GONE);
+            if (topExpandableControlsBar != null) topExpandableControlsBar.setVisibility(View.GONE);
+            if (gestureHudContainer != null) gestureHudContainer.setVisibility(View.GONE);
+            if (playlistQueuePanel != null) playlistQueuePanel.setVisibility(View.GONE);
+            updatePipActions();
+        } else {
+            hideSystemUI();
+            if (areControlsVisible) {
+                if (topControlsBar != null) topControlsBar.setVisibility(View.VISIBLE);
+                if (bottomControlsBar != null) bottomControlsBar.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                updatePipActions();
+                enterPipMode();
+            } catch (Exception ignored) {}
+        }
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
-        if (isVlcActive && vlcPlayer != null && vlcPlayer.isPlaying()) {
-            vlcPlayer.pause();
-        } else if (exoPlayer != null && exoPlayer.isPlaying()) {
-            exoPlayer.pause();
+        if (!isInPictureInPictureMode()) {
+            if (isYouTubeActive && youtubeStreamView != null) {
+                youtubeStreamView.evaluateJavascript("if (player && player.pauseVideo) player.pauseVideo();", null);
+            } else if (isVlcActive && vlcPlayer != null && vlcPlayer.isPlaying()) {
+                vlcPlayer.pause();
+            } else if (exoPlayer != null && exoPlayer.isPlaying()) {
+                exoPlayer.pause();
+            }
         }
     }
 
@@ -1414,11 +2182,19 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         stopProgressTracker();
         hideHandler.removeCallbacksAndMessages(null);
         try {
+            unregisterReceiver(pipReceiver);
+        } catch (Exception ignored) {}
+        if (youtubeStreamView != null) {
+            youtubeStreamView.destroy();
+            youtubeStreamView = null;
+        }
+        try {
             if (previewRetriever != null) {
                 previewRetriever.release();
                 previewRetriever = null;
             }
             previewExecutor.shutdownNow();
+            titleExecutor.shutdownNow();
         } catch (Exception ignored) {}
         releaseExoPlayer();
         releaseVlcPlayer();

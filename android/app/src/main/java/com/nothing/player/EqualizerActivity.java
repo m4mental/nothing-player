@@ -20,8 +20,9 @@ public class EqualizerActivity extends AppCompatActivity {
     private static final String KEY_VIRTUALIZER = "eq_virtualizer";
     private static final String KEY_PREAMP = "eq_preamp";
 
-    private View eqPowerLed;
-    private Button btnEqPower, btnReset;
+    private View eqPowerLed, eqControlsContainer;
+    private androidx.appcompat.widget.SwitchCompat switchEqPower;
+    private Button btnReset;
     private TextView tvBassVal, tvVirtualizerVal, tvPreampVal;
     private SeekBar seekbarBass, seekbarVirtualizer, seekbarPreamp;
     private TextView chipPunch, chipCinema, chipBass, chipEdm, chipRock, chipPop, chipVocal, chipFlat;
@@ -41,8 +42,9 @@ public class EqualizerActivity extends AppCompatActivity {
 
         ImageButton btnBack = findViewById(R.id.btn_back_eq);
         btnReset = findViewById(R.id.btn_reset_eq);
-        btnEqPower = findViewById(R.id.btn_eq_power);
+        switchEqPower = findViewById(R.id.switch_eq_power);
         eqPowerLed = findViewById(R.id.eq_power_led);
+        eqControlsContainer = findViewById(R.id.eq_controls_container);
 
         tvBassVal = findViewById(R.id.tv_bass_boost_val);
         tvVirtualizerVal = findViewById(R.id.tv_virtualizer_val);
@@ -77,12 +79,12 @@ public class EqualizerActivity extends AppCompatActivity {
 
         // Setup Power Switch
         updatePowerUI();
-        btnEqPower.setOnClickListener(v -> {
-            isEqEnabled = !isEqEnabled;
+        switchEqPower.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            isEqEnabled = isChecked;
             prefs.edit().putBoolean(KEY_ENABLED, isEqEnabled).apply();
             updatePowerUI();
             applyEffects();
-            Toast.makeText(this, isEqEnabled ? "Equalizer Enabled" : "Equalizer Disabled (Bypass)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, isEqEnabled ? "Equalizer ON (DSP Active)" : "Equalizer OFF (DSP Bypass)", Toast.LENGTH_SHORT).show();
         });
 
         // Setup Reset
@@ -247,22 +249,25 @@ public class EqualizerActivity extends AppCompatActivity {
     }
 
     private void updatePowerUI() {
-        if (isEqEnabled) {
-            btnEqPower.setText("ON");
-            btnEqPower.setBackgroundResource(R.drawable.bg_chip_selected);
-            btnEqPower.setTextColor(getResources().getColor(R.color.nothing_black));
-            eqPowerLed.setAlpha(1.0f);
-        } else {
-            btnEqPower.setText("OFF");
-            btnEqPower.setBackgroundResource(R.drawable.bg_chip_unselected);
-            btnEqPower.setTextColor(getResources().getColor(R.color.nothing_white_70));
-            eqPowerLed.setAlpha(0.2f);
+        if (switchEqPower != null) {
+            switchEqPower.setChecked(isEqEnabled);
+            switchEqPower.setText(isEqEnabled ? "ON" : "OFF");
+            switchEqPower.setTextColor(getResources().getColor(isEqEnabled ? R.color.nothing_white : R.color.nothing_white_40));
         }
 
-        for (SeekBar sb : bandSeekbars) sb.setEnabled(isEqEnabled);
-        seekbarBass.setEnabled(isEqEnabled);
-        seekbarVirtualizer.setEnabled(isEqEnabled);
-        seekbarPreamp.setEnabled(isEqEnabled);
+        if (eqPowerLed != null) {
+            eqPowerLed.setAlpha(isEqEnabled ? 1.0f : 0.15f);
+        }
+
+        if (eqControlsContainer != null) {
+            eqControlsContainer.setAlpha(isEqEnabled ? 1.0f : 0.35f);
+        }
+
+        for (SeekBar sb : bandSeekbars) if (sb != null) sb.setEnabled(isEqEnabled);
+        if (seekbarBass != null) seekbarBass.setEnabled(isEqEnabled);
+        if (seekbarVirtualizer != null) seekbarVirtualizer.setEnabled(isEqEnabled);
+        if (seekbarPreamp != null) seekbarPreamp.setEnabled(isEqEnabled);
+        if (btnReset != null) btnReset.setEnabled(isEqEnabled);
     }
 
     private void selectPreset(TextView selected) {

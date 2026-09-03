@@ -15,13 +15,32 @@
         android:background="#000000"
         app:use_controller="false"
         app:resize_mode="fit"
-        app:surface_type="surface_view" />
+        app:surface_type="texture_view"
+        app:keep_content_on_player_reset="true"
+        app:shutter_background_color="@android:color/transparent" />
 
     <!-- LibVLC Video Layout for Universal EAC3 / Dolby 5.1 / DTS Playback -->
     <org.videolan.libvlc.util.VLCVideoLayout
         android:id="@+id/vlc_video_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <!-- YouTube Stream Video Surface (Inside Default Player) -->
+    <WebView
+        android:id="@+id/youtube_stream_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:visibility="gone" />
+
+    <!-- Seamless Video Transition Overlay (Eliminates ALL black frames during track switch/load) -->
+    <ImageView
+        android:id="@+id/video_transition_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter"
+        android:background="#000000"
         android:visibility="gone" />
 
     <!-- Authentic Nothing OS Gesture HUD Box -->
@@ -432,7 +451,7 @@
                 android:layout_marginStart="6dp" />
         </LinearLayout>
 
-        <!-- Row 2: Single Unified Transport & Aspect Ratio Line -->
+        <!-- Row 2: Single Unified Transport, Prev/Next & Queue Line -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -456,7 +475,7 @@
                 android:background="@drawable/bg_player_pill_button"
                 android:paddingHorizontal="10dp" />
 
-            <!-- Center Controls: Rewind 10s, Big Play/Pause, Forward 10s -->
+            <!-- Center Controls: Prev Video, Rewind 10s, Big Play/Pause, Forward 10s, Next Video -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -465,13 +484,23 @@
                 android:orientation="horizontal">
 
                 <ImageButton
+                    android:id="@+id/btn_prev"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_media_previous"
+                    app:tint="#FFFFFF"
+                    android:layout_marginEnd="6dp"
+                    android:contentDescription="Previous Video" />
+
+                <ImageButton
                     android:id="@+id/btn_rewind"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:src="@android:drawable/ic_media_rew"
                     app:tint="#FFFFFF"
-                    android:layout_marginEnd="16dp"
+                    android:layout_marginEnd="10dp"
                     android:contentDescription="Rewind 10 seconds" />
 
                 <ImageButton
@@ -485,15 +514,102 @@
 
                 <ImageButton
                     android:id="@+id/btn_forward"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:src="@android:drawable/ic_media_ff"
                     app:tint="#FFFFFF"
-                    android:layout_marginStart="16dp"
+                    android:layout_marginStart="10dp"
                     android:contentDescription="Forward 10 seconds" />
+
+                <ImageButton
+                    android:id="@+id/btn_next"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_media_next"
+                    app:tint="#FFFFFF"
+                    android:layout_marginStart="6dp"
+                    android:contentDescription="Next Video" />
             </LinearLayout>
+
+            <!-- Playlist Queue Drawer Button (Right side of transport) -->
+            <Button
+                android:id="@+id/btn_playlist_queue"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:text="QUEUE"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:drawableStart="@drawable/ic_playlist"
+                android:drawablePadding="6dp"
+                android:drawableTint="#FFFFFF"
+                android:background="@drawable/bg_player_pill_button"
+                android:paddingHorizontal="10dp" />
         </RelativeLayout>
+    </LinearLayout>
+
+    <!-- Playlist Queue Slide-over Panel (Nothing OS Pitch Black Glass) -->
+    <LinearLayout
+        android:id="@+id/playlist_queue_panel"
+        android:layout_width="320dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="#F0000000"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:visibility="gone"
+        android:elevation="20dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <!-- Header -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:id="@+id/queue_header_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="QUEUE • 01 / 05"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:layout_centerVertical="true" />
+
+            <ImageButton
+                android:id="@+id/btn_close_queue"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                app:tint="#FFFFFF"
+                android:contentDescription="Close Queue" />
+        </RelativeLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#22FFFFFF"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Queue RecyclerView -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/playlist_recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:overScrollMode="never" />
     </LinearLayout>
 
 </FrameLayout>

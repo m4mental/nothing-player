@@ -76,12 +76,16 @@ public class DotMatrixSeekBar extends AppCompatSeekBar {
         float ratio = progressVal / maxVal;
         float thumbX = paddingL + (ratio * availableWidth);
 
-        // 1. Draw Discrete LED Dot Matrix Track
-        float dotSpacing = availableWidth / (float) DOT_COUNT;
-        float dotRadius = 2.5f * getResources().getDisplayMetrics().density;
+        // 1. Draw Discrete High-Density Micro-LED Dot Matrix Track
+        // Tightly spaced micro-dots for authentic Nothing OS Dot Matrix aesthetic
+        float density = getResources().getDisplayMetrics().density;
+        float dotSpacing = 5.2f * density; // Paas paas dots (tight ~5dp pitch)
+        int dotCount = Math.max(10, (int) (availableWidth / dotSpacing));
+        float actualSpacing = availableWidth / (float) dotCount;
+        float dotRadius = 1.15f * density; // Micro-LED dots (small, crisp, authentic)
 
-        for (int i = 0; i <= DOT_COUNT; i++) {
-            float dotX = paddingL + (i * dotSpacing);
+        for (int i = 0; i <= dotCount; i++) {
+            float dotX = paddingL + (i * actualSpacing);
             if (dotX <= thumbX) {
                 canvas.drawCircle(dotX, cy, dotRadius, paintActive);
             } else {
@@ -89,15 +93,15 @@ public class DotMatrixSeekBar extends AppCompatSeekBar {
             }
         }
 
-        // 2. Draw Connected Fine LED Center Glow Line
-        paintActive.setStrokeWidth(2f * getResources().getDisplayMetrics().density);
+        // 2. Draw Connected Hairline LED Center Track
+        paintActive.setStrokeWidth(1.0f * density);
         paintActive.setStyle(Paint.Style.STROKE);
         canvas.drawLine(paddingL, cy, thumbX, cy, paintActive);
         paintActive.setStyle(Paint.Style.FILL);
 
-        // 3. Draw Nothing OS LED Scrubber Thumb
-        float thumbRadiusOuter = 7f * getResources().getDisplayMetrics().density;
-        float thumbRadiusInner = 3f * getResources().getDisplayMetrics().density;
+        // 3. Draw Nothing OS Micro Scrubber Thumb (Clean concentric circular LED)
+        float thumbRadiusOuter = 5.5f * density;
+        float thumbRadiusInner = 2.2f * density;
 
         canvas.drawCircle(thumbX, cy, thumbRadiusOuter, paintThumbOuter);
         canvas.drawCircle(thumbX, cy, thumbRadiusInner, paintThumbInner);

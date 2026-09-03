@@ -10,26 +10,208 @@ import android.os.Build;
 import android.provider.MediaStore;
 import android.util.Log;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class MediaRepository {
     private static final String TAG = "MediaRepository";
+    private static final String CACHE_VIDEOS_FILE = "cached_videos.json";
+    private static final String CACHE_AUDIOS_FILE = "cached_audios.json";
+
+    private static List<MediaItem> cachedVideos = null;
+    private static List<MediaItem> cachedAudios = null;
 
     public interface ScanCallback {
         void onScanComplete(List<MediaItem> videos, List<MediaItem> audios);
     }
 
+    /**
+     * Instantly returns cached videos (from memory or disk) with 0ms delay on startup.
+     */
+    public static synchronized List<MediaItem> getCachedVideos(Context context) {
+        if (cachedVideos != null) {
+            return new ArrayList<>(cachedVideos);
+        }
+        cachedVideos = loadListFromDisk(context, CACHE_VIDEOS_FILE);
+        return new ArrayList<>(cachedVideos);
+    }
+
+    /**
+     * Instantly returns cached audios (from memory or disk) with 0ms delay on startup.
+     */
+    public static synchronized List<MediaItem> getCachedAudios(Context context) {
+        if (cachedAudios != null) {
+            return new ArrayList<>(cachedAudios);
+        }
+        cachedAudios = loadListFromDisk(context, CACHE_AUDIOS_FILE);
+        return new ArrayList<>(cachedAudios);
+    }
+
+    /**
+     * Background scanning that updates cache when differences are detected.
+     */
     public static void scanMedia(Context context, ScanCallback callback) {
         new Thread(() -> {
-            List<MediaItem> videos = scanVideos(context);
-            List<MediaItem> audios = scanAudios(context);
+            List<MediaItem> freshVideos = scanVideos(context);
+            List<MediaItem> freshAudios = scanAudios(context);
+
+            boolean videosChanged = hasListChanged(cachedVideos, freshVideos);
+            boolean audiosChanged = hasListChanged(cachedAudios, freshAudios);
+
+            if (videosChanged || audiosChanged || cachedVideos == null || cachedAudios == null) {
+                synchronized (MediaRepository.class) {
+                    cachedVideos = freshVideos;
+                    cachedAudios = freshAudios;
+                }
+                saveListToDisk(context, CACHE_VIDEOS_FILE, freshVideos);
+                saveListToDisk(context, CACHE_AUDIOS_FILE, freshAudios);
+            }
+
             if (callback != null) {
-                callback.onScanComplete(videos, audios);
+                callback.onScanComplete(freshVideos, freshAudios);
+            }
+        }).start();
+    }
+
+    /**
+     * Explicitly update cache when items are deleted.
+     */
+    public static synchronized void removeItemsFromCache(Context context, Set<String> deletedPaths) {
+        if (deletedPaths == null || deletedPaths.isEmpty()) return;
+
+        if (cachedVideos != null) {
+            List<MediaItem> updated = new ArrayList<>();
+            for (MediaItem item : cachedVideos) {
+                if (!deletedPaths.contains(item.path)) updated.add(item);
+            }
+            cachedVideos = updated;
+            saveListToDisk(context, CACHE_VIDEOS_FILE, updated);
+        }
+
+        if (cachedAudios != null) {
+            List<MediaItem> updated = new ArrayList<>();
+            for (MediaItem item : cachedAudios) {
+                if (!deletedPaths.contains(item.path)) updated.add(item);
+            }
+            cachedAudios = updated;
+            saveListToDisk(context, CACHE_AUDIOS_FILE, updated);
+        }
+    }
+
+    private static boolean hasListChanged(List<MediaItem> oldList, List<MediaItem> newList) {
+        if (oldList == null || newList == null) return true;
+        if (oldList.size() != newList.size()) return true;
+
+        // Quick check first and last item
+        if (!oldList.isEmpty()) {
+            if (!oldList.get(0).path.equals(newList.get(0).path)) return true;
+            int lastIdx = oldList.size() - 1;
+            if (!oldList.get(lastIdx).path.equals(newList.get(lastIdx).path)) return true;
+        }
+
+        Set<String> oldPaths = new HashSet<>(oldList.size());
+        for (MediaItem m : oldList) oldPaths.add(m.path);
+        for (MediaItem m : newList) {
+            if (!oldPaths.contains(m.path)) return true;
+        }
+        return false;
+    }
+
+    private static List<MediaItem> loadListFromDisk(Context context, String fileName) {
+        List<MediaItem> list = new ArrayList<>();
+        if (context == null) return list;
+        File file = new File(context.getFilesDir(), fileName);
+        if (!file.exists()) return list;
+
+        try (FileInputStream fis = new FileInputStream(file);
+             InputStreamReader isr = new InputStreamReader(fis, StandardCharsets.UTF_8);
+             BufferedReader reader = new BufferedReader(isr)) {
+
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+
+            JSONArray arr = new JSONArray(sb.toString());
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject obj = arr.getJSONObject(i);
+                MediaItem item = new MediaItem();
+                item.id = obj.optString("id");
+                item.title = obj.optString("title");
+                item.path = obj.optString("path");
+                item.contentUri = obj.optString("contentUri");
+                item.duration = obj.optLong("duration");
+                item.size = obj.optLong("size");
+                item.format = obj.optString("format");
+                item.resolution = obj.optString("resolution");
+                item.folder = obj.optString("folder");
+                item.artist = obj.optString("artist");
+                item.album = obj.optString("album");
+                item.audioCodec = obj.optString("audioCodec");
+                item.audioChannels = obj.optString("audioChannels");
+                item.type = obj.optString("type", "video");
+                item.addedAt = obj.optLong("addedAt");
+
+                // Verify file still exists on disk before adding
+                if (item.path != null && new File(item.path).exists()) {
+                    list.add(item);
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed reading cache file: " + fileName, e);
+        }
+        return list;
+    }
+
+    private static void saveListToDisk(Context context, String fileName, List<MediaItem> list) {
+        if (context == null || list == null) return;
+        new Thread(() -> {
+            try {
+                File file = new File(context.getFilesDir(), fileName);
+                JSONArray arr = new JSONArray();
+                for (MediaItem item : list) {
+                    JSONObject obj = new JSONObject();
+                    obj.put("id", item.id);
+                    obj.put("title", item.title);
+                    obj.put("path", item.path);
+                    obj.put("contentUri", item.contentUri);
+                    obj.put("duration", item.duration);
+                    obj.put("size", item.size);
+                    obj.put("format", item.format);
+                    obj.put("resolution", item.resolution);
+                    obj.put("folder", item.folder);
+                    obj.put("artist", item.artist);
+                    obj.put("album", item.album);
+                    obj.put("audioCodec", item.audioCodec);
+                    obj.put("audioChannels", item.audioChannels);
+                    obj.put("type", item.type);
+                    obj.put("addedAt", item.addedAt);
+                    arr.put(obj);
+                }
+
+                try (FileOutputStream fos = new FileOutputStream(file);
+                     OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8)) {
+                    osw.write(arr.toString());
+                    osw.flush();
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed saving cache file: " + fileName, e);
             }
         }).start();
     }
