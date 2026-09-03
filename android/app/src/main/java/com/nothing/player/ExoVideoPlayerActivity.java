@@ -1938,6 +1938,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         videoUriStr = playlistUris.size() > index ? playlistUris.get(index) : "";
         videoTitle = playlistTitles.size() > index ? playlistTitles.get(index) : new File(videoPath).getName();
 
+        String openedTarget = videoPath != null && !videoPath.isEmpty() ? videoPath : videoUriStr;
+        MediaStateManager.markVideoOpened(this, openedTarget);
+
         if (videoTitleText != null) {
             videoTitleText.setText(videoTitle);
         }

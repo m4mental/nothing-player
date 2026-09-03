@@ -23,6 +23,10 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.IntentSenderRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
+import android.app.Activity;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -54,6 +58,21 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     private List<MediaItem> allVideos = new ArrayList<>();
     private boolean isFoldersMode = true;
     private String currentSelectedFolder = null;
+    private ActivityResultLauncher<IntentSenderRequest> deleteLauncher;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        deleteLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartIntentSenderForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    Toast.makeText(getContext(), "Items deleted successfully", Toast.LENGTH_SHORT).show();
+                    loadVideos(false);
+                }
+            }
+        );
+    }
 
     @Nullable
     @Override
@@ -141,62 +160,37 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     }
 
     private void deleteSelectedItems(Set<Object> selected) {
-        android.content.Context ctx = getContext();
-        if (ctx == null) return;
-        ContentResolver resolver = ctx.getContentResolver();
-        int deletedCount = 0;
-        Set<String> deletedPaths = new HashSet<>();
+        if (getActivity() == null) return;
+        List<MediaItem> itemsToDelete = new ArrayList<>();
 
         for (Object item : selected) {
             if (item instanceof MediaItem) {
-                MediaItem video = (MediaItem) item;
-                boolean deleted = false;
-                if (video.contentUri != null) {
-                    try {
-                        int rows = resolver.delete(Uri.parse(video.contentUri), null, null);
-                        if (rows > 0) deleted = true;
-                    } catch (Exception ignored) {}
-                }
-                if (!deleted && video.path != null) {
-                    try {
-                        File f = new File(video.path);
-                        if (f.exists() && f.delete()) deleted = true;
-                    } catch (Exception ignored) {}
-                }
-                if (deleted) {
-                    deletedCount++;
-                    if (video.path != null) deletedPaths.add(video.path);
-                }
+                itemsToDelete.add((MediaItem) item);
             } else if (item instanceof VideoAdapter.FolderItem) {
                 VideoAdapter.FolderItem folder = (VideoAdapter.FolderItem) item;
-                // Delete all videos in this folder
                 for (MediaItem v : allVideos) {
                     if (folder.name.equalsIgnoreCase(v.folder)) {
-                        try {
-                            if (v.contentUri != null) resolver.delete(Uri.parse(v.contentUri), null, null);
-                            if (v.path != null) {
-                                new File(v.path).delete();
-                                deletedPaths.add(v.path);
-                            }
-                            deletedCount++;
-                        } catch (Exception ignored) {}
+                        itemsToDelete.add(v);
                     }
                 }
             }
         }
 
-        // Immediately update cache and local list
-        MediaRepository.removeItemsFromCache(ctx.getApplicationContext(), deletedPaths);
-        List<MediaItem> remaining = new ArrayList<>();
-        for (MediaItem v : allVideos) {
-            if (!deletedPaths.contains(v.path)) remaining.add(v);
-        }
-        allVideos = remaining;
-        adapter.clearSelection();
-        filterAndDisplay();
+        FileDeleteHelper.deleteMediaFiles(getActivity(), itemsToDelete, deleteLauncher, (deletedCount, deletedPaths) -> {
+            if (getContext() == null) return;
+            List<MediaItem> remaining = new ArrayList<>();
+            for (MediaItem v : allVideos) {
+                if (!deletedPaths.contains(v.path)) remaining.add(v);
+            }
+            allVideos = remaining;
+            adapter.clearSelection();
+            filterAndDisplay();
 
-        Toast.makeText(ctx, "Deleted " + deletedCount + " item(s)", Toast.LENGTH_SHORT).show();
-        loadVideos(false);
+            if (deletedCount > 0) {
+                Toast.makeText(getContext(), "Deleted " + deletedCount + " item(s)", Toast.LENGTH_SHORT).show();
+            }
+            loadVideos(false);
+        });
     }
 
     public void loadVideos() {
@@ -252,6 +246,14 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         }
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (adapter != null) {
+            filterAndDisplay();
+        }
+    }
+
     private void filterAndDisplay() {
         String query = etSearch.getText().toString().trim().toLowerCase();
         List<Object> displayItems = new ArrayList<>();
@@ -264,7 +266,10 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 folderMap.put(folder, folderMap.getOrDefault(folder, 0) + 1);
             }
             for (Map.Entry<String, Integer> entry : folderMap.entrySet()) {
-                displayItems.add(new VideoAdapter.FolderItem(entry.getKey(), entry.getValue()));
+                String folderName = entry.getKey();
+                int count = entry.getValue();
+                boolean hasNew = MediaStateManager.folderHasNewVideos(getContext(), folderName, allVideos);
+                displayItems.add(new VideoAdapter.FolderItem(folderName, count, hasNew));
             }
             adapter.setItems(displayItems, true);
         } else {
@@ -284,6 +289,11 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
 
     @Override
     public void onVideoClick(MediaItem video) {
+        if (getContext() != null) {
+            String path = video.path != null ? video.path : video.contentUri;
+            MediaStateManager.markVideoOpened(getContext(), path);
+        }
+
         Intent intent = new Intent(getContext(), ExoVideoPlayerActivity.class);
         intent.putExtra("path", video.path);
         intent.putExtra("video_path", video.path);

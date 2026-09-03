@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
 
         pagerAdapter = new MainPagerAdapter(this);
         viewPager.setAdapter(pagerAdapter);
-        viewPager.setOffscreenPageLimit(3);
+        viewPager.setOffscreenPageLimit(2);
 
         // Start Red LED pulse
         AlphaAnimation pulse = new AlphaAnimation(0.3f, 1.0f);
@@ -106,16 +106,10 @@ public class MainActivity extends AppCompatActivity {
             public void onPageSelected(int position) {
                 if (isPageChanging[0]) return;
                 isPageChanging[0] = true;
-                switch (position) {
-                    case 0:
-                        bottomNav.setSelectedItemId(R.id.nav_videos);
-                        break;
-                    case 1:
-                        bottomNav.setSelectedItemId(R.id.nav_music);
-                        break;
-                    case 2:
-                        bottomNav.setSelectedItemId(R.id.nav_settings);
-                        break;
+                if (position == 0) {
+                    bottomNav.setSelectedItemId(R.id.nav_videos);
+                } else if (position == 1) {
+                    bottomNav.setSelectedItemId(R.id.nav_music);
                 }
                 isPageChanging[0] = false;
             }
@@ -129,8 +123,6 @@ public class MainActivity extends AppCompatActivity {
                 viewPager.setCurrentItem(0, true);
             } else if (itemId == R.id.nav_music) {
                 viewPager.setCurrentItem(1, true);
-            } else if (itemId == R.id.nav_settings) {
-                viewPager.setCurrentItem(2, true);
             }
             isPageChanging[0] = false;
             return true;
@@ -146,10 +138,8 @@ public class MainActivity extends AppCompatActivity {
         miniPlayerBtnPlay.setOnClickListener(v -> togglePlayPause());
         miniPlayerBtnNext.setOnClickListener(v -> playNext());
 
-        findViewById(R.id.btn_scan_refresh).setOnClickListener(v -> {
-            if (pagerAdapter.getVideosFragment() != null) pagerAdapter.getVideosFragment().loadVideos();
-            if (pagerAdapter.getMusicFragment() != null) pagerAdapter.getMusicFragment().loadTracks();
-            Toast.makeText(this, "Refreshing Media Library...", Toast.LENGTH_SHORT).show();
+        findViewById(R.id.btn_settings_top).setOnClickListener(v -> {
+            startActivity(new Intent(this, SettingsActivity.class));
         });
 
         checkAndRequestPermissions();

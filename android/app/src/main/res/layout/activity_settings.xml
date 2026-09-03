@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/nothing_black">
+
+    <!-- Top App Bar -->
+    <RelativeLayout
+        android:id="@+id/settings_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:paddingHorizontal="14dp"
+        android:background="@color/nothing_black">
+
+        <ImageButton
+            android:id="@+id/btn_back_settings"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:background="@drawable/bg_circle_button"
+            android:src="@android:drawable/ic_menu_revert"
+            android:rotation="0"
+            android:contentDescription="Back"
+            app:tint="@color/nothing_white" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toEndOf="@id/btn_back_settings"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="12dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Pulsing Nothing Red LED -->
+            <View
+                android:id="@+id/settings_red_led"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/led_red"
+                android:layout_marginEnd="10dp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SETTINGS (01)"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="17sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.04" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SYSTEM AUDIO &amp; CODEC PREFERENCES"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="9sp"
+                    android:fontFamily="@font/ndot"
+                    android:letterSpacing="0.03"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+        </LinearLayout>
+    </RelativeLayout>
+
+    <!-- Settings Content Fragment Container / ScrollView -->
+    <FrameLayout
+        android:id="@+id/settings_fragment_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+</LinearLayout>

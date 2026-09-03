@@ -41,10 +41,12 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     public static class FolderItem {
         public String name;
         public int count;
+        public boolean hasNew;
 
-        public FolderItem(String name, int count) {
+        public FolderItem(String name, int count, boolean hasNew) {
             this.name = name;
             this.count = count;
+            this.hasNew = hasNew;
         }
     }
 
@@ -89,21 +91,14 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         } else {
             selectedItems.add(item);
         }
-        if (selectedItems.isEmpty()) {
-            isSelectionMode = false;
-        } else {
-            isSelectionMode = true;
-        }
+        isSelectionMode = !selectedItems.isEmpty();
         notifyDataSetChanged();
         if (listener != null) listener.onSelectionChanged(selectedItems.size());
     }
 
     @Override
     public int getItemViewType(int position) {
-        if (items.get(position) instanceof FolderItem) {
-            return TYPE_FOLDER;
-        }
-        return TYPE_VIDEO;
+        return items.get(position) instanceof FolderItem ? TYPE_FOLDER : TYPE_VIDEO;
     }
 
     @NonNull
@@ -128,6 +123,9 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             FolderViewHolder fHolder = (FolderViewHolder) holder;
             fHolder.folderName.setText(folder.name);
             fHolder.folderCount.setText(folder.count + " Videos");
+            if (fHolder.badgeNew != null) {
+                fHolder.badgeNew.setVisibility(folder.hasNew ? View.VISIBLE : View.GONE);
+            }
 
             if (fHolder.selectionCheck != null) {
                 fHolder.selectionCheck.setVisibility(isSelectionMode ? (isSelected ? View.VISIBLE : View.INVISIBLE) : View.GONE);
@@ -155,6 +153,12 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             vHolder.subtext.setText(video.folder + " • " + formatSize(video.size));
             vHolder.duration.setText(formatDuration(video.duration));
             vHolder.badgeRes.setText(video.resolution != null ? video.resolution : video.format);
+
+            if (vHolder.badgeNew != null) {
+                String path = video.path != null ? video.path : video.contentUri;
+                boolean isNew = MediaStateManager.isVideoNew(context, path);
+                vHolder.badgeNew.setVisibility(isNew ? View.VISIBLE : View.GONE);
+            }
 
             if (vHolder.selectionCheck != null) {
                 vHolder.selectionCheck.setVisibility(isSelectionMode ? (isSelected ? View.VISIBLE : View.INVISIBLE) : View.GONE);
@@ -197,7 +201,7 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     }
 
     static class FolderViewHolder extends RecyclerView.ViewHolder {
-        TextView folderName, folderCount, folderArrow;
+        TextView folderName, folderCount, folderArrow, badgeNew;
         ImageView selectionCheck;
 
         FolderViewHolder(View v) {
@@ -206,12 +210,13 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             folderCount = v.findViewById(R.id.folder_video_count);
             folderArrow = v.findViewById(R.id.folder_arrow);
             selectionCheck = v.findViewById(R.id.selection_check);
+            badgeNew = v.findViewById(R.id.folder_badge_new);
         }
     }
 
     static class VideoViewHolder extends RecyclerView.ViewHolder {
         ImageView thumb, selectionCheck;
-        TextView title, subtext, duration, badgeRes, badgeSurround;
+        TextView title, subtext, duration, badgeRes, badgeSurround, badgeNew;
         ImageButton btnMenu;
 
         VideoViewHolder(View v) {
@@ -222,6 +227,7 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             duration = v.findViewById(R.id.video_duration);
             badgeRes = v.findViewById(R.id.badge_resolution);
             badgeSurround = v.findViewById(R.id.badge_surround);
+            badgeNew = v.findViewById(R.id.badge_new);
             btnMenu = v.findViewById(R.id.btn_video_menu);
             selectionCheck = v.findViewById(R.id.selection_check);
         }

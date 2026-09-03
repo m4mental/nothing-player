@@ -20,7 +20,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentStart="true"
-            android:layout_toStartOf="@id/btn_scan_refresh"
+            android:layout_toStartOf="@id/btn_settings_top"
             android:layout_centerVertical="true"
             android:orientation="horizontal"
             android:gravity="center_vertical">
@@ -33,46 +33,30 @@
                 android:background="@drawable/led_red"
                 android:layout_marginEnd="10dp" />
 
-            <LinearLayout
+            <TextView
+                android:id="@+id/app_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/app_title"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="NOTHING PLAYER (01)"
-                    android:textColor="@color/nothing_white"
-                    android:textSize="17sp"
-                    android:fontFamily="@font/ndot"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.04"
-                    android:includeFontPadding="true"
-                    android:singleLine="true" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="100% NATIVE DUAL-ENGINE // NOTHING OS"
-                    android:textColor="@color/nothing_white_40"
-                    android:textSize="9sp"
-                    android:fontFamily="@font/ndot"
-                    android:letterSpacing="0.03"
-                    android:layout_marginTop="2dp" />
-            </LinearLayout>
+                android:text="NOTHING PLAYER"
+                android:textColor="@color/nothing_white"
+                android:textSize="18sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold"
+                android:letterSpacing="0.04"
+                android:includeFontPadding="true"
+                android:singleLine="true" />
         </LinearLayout>
 
-        <!-- Search & Refresh Button -->
+        <!-- Settings Top Button -->
         <ImageButton
-            android:id="@+id/btn_scan_refresh"
+            android:id="@+id/btn_settings_top"
             android:layout_width="38dp"
             android:layout_height="38dp"
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
             android:background="@drawable/bg_circle_button"
-            android:src="@android:drawable/ic_menu_rotate"
-            android:contentDescription="Refresh Scan"
+            android:src="@drawable/ic_settings"
+            android:contentDescription="Settings"
             app:tint="@color/nothing_white" />
     </RelativeLayout>
 

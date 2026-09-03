@@ -8,7 +8,6 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 public class MainPagerAdapter extends FragmentStateAdapter {
     private final VideosFragment videosFragment = new VideosFragment();
     private final MusicFragment musicFragment = new MusicFragment();
-    private final SettingsFragment settingsFragment = new SettingsFragment();
 
     public MainPagerAdapter(@NonNull FragmentActivity fragmentActivity) {
         super(fragmentActivity);
@@ -17,20 +16,15 @@ public class MainPagerAdapter extends FragmentStateAdapter {
     @NonNull
     @Override
     public Fragment createFragment(int position) {
-        switch (position) {
-            case 1:
-                return musicFragment;
-            case 2:
-                return settingsFragment;
-            case 0:
-            default:
-                return videosFragment;
+        if (position == 1) {
+            return musicFragment;
         }
+        return videosFragment;
     }
 
     @Override
     public int getItemCount() {
-        return 3;
+        return 2;
     }
 
     public VideosFragment getVideosFragment() {

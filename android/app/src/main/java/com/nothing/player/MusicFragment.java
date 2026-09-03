@@ -17,6 +17,12 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.IntentSenderRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
+import android.app.Activity;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -42,6 +48,21 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
     private ImageButton btnCloseSelection;
 
     private List<MediaItem> allTracks = new ArrayList<>();
+    private ActivityResultLauncher<IntentSenderRequest> deleteLauncher;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        deleteLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartIntentSenderForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    Toast.makeText(getContext(), "Tracks deleted successfully", Toast.LENGTH_SHORT).show();
+                    loadTracks(false);
+                }
+            }
+        );
+    }
 
     @Nullable
     @Override
@@ -110,33 +131,10 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
     }
 
     private void deleteSelectedTracks(Set<MediaItem> selected) {
-        android.content.Context ctx = getContext();
-        if (ctx == null) return;
-        ContentResolver resolver = ctx.getContentResolver();
-        int deletedCount = 0;
-        Set<String> deletedPaths = new HashSet<>();
+        if (getActivity() == null || selected == null || selected.isEmpty()) return;
 
-        for (MediaItem track : selected) {
-            boolean deleted = false;
-            if (track.contentUri != null) {
-                try {
-                    int rows = resolver.delete(Uri.parse(track.contentUri), null, null);
-                    if (rows > 0) deleted = true;
-                } catch (Exception ignored) {}
-            }
-            if (!deleted && track.path != null) {
-                try {
-                    File f = new File(track.path);
-                    if (f.exists() && f.delete()) deleted = true;
-                } catch (Exception ignored) {}
-            }
-                if (deleted) {
-                    deletedCount++;
-                    if (track.path != null) deletedPaths.add(track.path);
-                }
-            }
-
-            MediaRepository.removeItemsFromCache(ctx.getApplicationContext(), deletedPaths);
+        FileDeleteHelper.deleteMediaFiles(getActivity(), selected, deleteLauncher, (deletedCount, deletedPaths) -> {
+            if (getContext() == null) return;
             List<MediaItem> remaining = new ArrayList<>();
             for (MediaItem m : allTracks) {
                 if (!deletedPaths.contains(m.path)) remaining.add(m);
@@ -145,9 +143,12 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
             adapter.clearSelection();
             filterTracks();
 
-            Toast.makeText(ctx, "Deleted " + deletedCount + " track(s)", Toast.LENGTH_SHORT).show();
+            if (deletedCount > 0) {
+                Toast.makeText(getContext(), "Deleted " + deletedCount + " track(s)", Toast.LENGTH_SHORT).show();
+            }
             loadTracks(false);
-        }
+        });
+    }
 
     public void loadTracks() {
         loadTracks(true);
