@@ -253,7 +253,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             Uri data = getIntent().getData();
             if (videoUriStr == null) videoUriStr = data.toString();
             if (videoPath == null) videoPath = data.getPath();
-            if (videoTitle == null) videoTitle = data.getLastPathSegment();
+            if (videoTitle == null || videoTitle.isEmpty()) videoTitle = resolveTitleFromUri(data);
+        } else if (getIntent().getClipData() != null && getIntent().getClipData().getItemCount() > 0) {
+            Uri data = getIntent().getClipData().getItemAt(0).getUri();
+            if (data != null) {
+                if (videoUriStr == null) videoUriStr = data.toString();
+                if (videoPath == null) videoPath = data.getPath();
+                if (videoTitle == null || videoTitle.isEmpty()) videoTitle = resolveTitleFromUri(data);
+            }
         }
 
         currentPositionMs = getIntent().getLongExtra("position", 0);
@@ -309,6 +316,28 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         } else {
             registerReceiver(pipReceiver, pipFilter);
         }
+    }
+
+    private String resolveTitleFromUri(Uri uri) {
+        if (uri == null) return "Nothing Media Player";
+        String displayName = null;
+        if ("content".equalsIgnoreCase(uri.getScheme())) {
+            try (android.database.Cursor cursor = getContentResolver().query(uri, new String[]{android.provider.OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                    if (nameIndex != -1) {
+                        displayName = cursor.getString(nameIndex);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        if (displayName == null || displayName.isEmpty()) {
+            displayName = uri.getLastPathSegment();
+            if (displayName != null && displayName.contains("/")) {
+                displayName = displayName.substring(displayName.lastIndexOf('/') + 1);
+            }
+        }
+        return (displayName != null && !displayName.isEmpty()) ? displayName : "Nothing Media Player";
     }
 
     private boolean isYouTubeStream() {
