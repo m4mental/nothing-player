@@ -65,16 +65,26 @@ jobs:
         working-directory: ./android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK Artifact
+      - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: NothingPlayer-v2.0-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: NothingPlayer-v2.0-APKs
+          path: android/app/build/outputs/apk/debug/*.apk
 
       - name: Prepare Release Assets
         run: |
           mkdir -p release-assets
-          cp android/app/build/outputs/apk/debug/app-debug.apk release-assets/NothingPlayer-v2.0.apk
+          cd android/app/build/outputs/apk/debug/
+          for f in *.apk; do
+            if [ -f "$f" ]; then
+              cp "$f" "../../../../../release-assets/${f/app-/NothingPlayer-}"
+            fi
+          done
+          cd ../../../../../
+          # Also create default standard name pointing to arm64-v8a for quick single-click downloads
+          if [ -f "release-assets/NothingPlayer-arm64-v8a-debug.apk" ]; then
+            cp release-assets/NothingPlayer-arm64-v8a-debug.apk release-assets/NothingPlayer-v2.0-arm64.apk
+          fi
           cd dist && zip -r ../release-assets/nothing-player-web-bundle.zip . && cd ..
 
       - name: Setup Pages
@@ -96,7 +106,7 @@ jobs:
           COMMITS_LOG=$(git log -n 10 --pretty=format:"- [%h] %s (%an)")
 
           cat << 'EOF' > release_notes.md
-          # 🔴 NOTHING PLAYER v2.0 // ANDROID RELEASE
+          # 🔴 NOTHING PLAYER v2.0 // MULTI-ARCH ANDROID RELEASE
 
           > **Build Timestamp:** $DATE  
           > **Commit:** `$COMMIT_HASH` by @$COMMIT_AUTHOR  
@@ -104,8 +114,15 @@ jobs:
 
           ---
 
-          ### 📲 Download Android APK
-          - **[NothingPlayer-v2.0.apk](NothingPlayer-v2.0.apk)** *(Direct install on any Android phone)*
+          ### 📲 Download APK (Choose by Architecture)
+
+          | Architecture | Target Devices | Typical Size | Download |
+          |:---|:---|:---|:---|
+          | **ARM64 (arm64-v8a)** ⭐ *(Recommended)* | Nothing Phone 1/2/2a, Pixel, Samsung, OnePlus, modern 64-bit phones | **~30 MB** | [Download arm64-v8a APK](NothingPlayer-arm64-v8a-debug.apk) |
+          | **ARMv7 (armeabi-v7a)** | Older 32-bit Android phones & budget devices | **~28 MB** | [Download armeabi-v7a APK](NothingPlayer-armeabi-v7a-debug.apk) |
+          | **x86_64** | 64-bit Android Emulators (PC, Android Studio, WSA) | **~35 MB** | [Download x86_64 APK](NothingPlayer-x86_64-debug.apk) |
+          | **x86** | 32-bit PC Emulators | **~32 MB** | [Download x86 APK](NothingPlayer-x86-debug.apk) |
+          | **Universal All-in-One** | Universal bundle with all 4 engines combined | **~180 MB** | [Download Universal APK](NothingPlayer-universal-debug.apk) |
 
           ---
 
@@ -142,7 +159,7 @@ jobs:
           name: "🔴 Nothing Player v2.0 (Build #${{ github.run_number }})"
           body_path: release_notes.md
           files: |
-            release-assets/NothingPlayer-v2.0.apk
+            release-assets/*.apk
             release-assets/nothing-player-web-bundle.zip
           draft: false
           prerelease: false
