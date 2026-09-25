@@ -5,8 +5,11 @@ import android.content.Context;
 import android.database.Cursor;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.media.MediaMetadataRetriever;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 
@@ -218,6 +221,7 @@ public class MediaRepository {
 
     public static List<MediaItem> scanVideos(Context context) {
         List<MediaItem> list = new ArrayList<>();
+        Set<String> knownPaths = new HashSet<>();
         Uri uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
         String[] projection = {
                 MediaStore.Video.Media._ID,
@@ -252,6 +256,7 @@ public class MediaRepository {
                     long added = cursor.getLong(dateCol) * 1000L;
 
                     if (path == null) continue;
+                    knownPaths.add(path);
 
                     File f = new File(path);
                     String folder = "Storage";
@@ -294,13 +299,40 @@ public class MediaRepository {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error scanning videos", e);
+            Log.e(TAG, "Error scanning MediaStore videos", e);
         }
+
+        // Direct Disk Fallback Scan (for custom folders like Download/speeddown/videos that MediaStore hasn't indexed yet)
+        try {
+            File storageRoot = Environment.getExternalStorageDirectory();
+            if (storageRoot != null && storageRoot.exists()) {
+                File[] targetDirs = new File[] {
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
+                    new File(storageRoot, "Download"),
+                    new File(storageRoot, "Movies"),
+                    new File(storageRoot, "Videos"),
+                    new File(storageRoot, "Telegram"),
+                    new File(storageRoot, "WhatsApp/Media/WhatsApp Video"),
+                    new File(storageRoot, "Android/media")
+                };
+                for (File dir : targetDirs) {
+                    if (dir != null && dir.exists()) {
+                        scanDirectoryForVideos(context, dir, knownPaths, list, 0);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error performing direct disk video scan", e);
+        }
+
         return list;
     }
 
     public static List<MediaItem> scanAudios(Context context) {
         List<MediaItem> list = new ArrayList<>();
+        Set<String> knownPaths = new HashSet<>();
         Uri uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
         String[] projection = {
                 MediaStore.Audio.Media._ID,
@@ -337,6 +369,7 @@ public class MediaRepository {
                     long added = cursor.getLong(dateCol) * 1000L;
 
                     if (path == null) continue;
+                    knownPaths.add(path);
 
                     File f = new File(path);
                     String folder = "Music";
@@ -382,9 +415,159 @@ public class MediaRepository {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error scanning audios", e);
+            Log.e(TAG, "Error scanning MediaStore audios", e);
         }
+
+        // Direct Disk Fallback Scan for Audios
+        try {
+            File storageRoot = Environment.getExternalStorageDirectory();
+            if (storageRoot != null && storageRoot.exists()) {
+                File[] targetDirs = new File[] {
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PODCASTS),
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_AUDIOBOOKS),
+                    new File(storageRoot, "Music"),
+                    new File(storageRoot, "Download"),
+                    new File(storageRoot, "Telegram")
+                };
+                for (File dir : targetDirs) {
+                    if (dir != null && dir.exists()) {
+                        scanDirectoryForAudios(context, dir, knownPaths, list, 0);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error performing direct disk audio scan", e);
+        }
+
         return list;
+    }
+
+    private static void scanDirectoryForVideos(Context context, File dir, Set<String> knownPaths, List<MediaItem> list, int depth) {
+        if (dir == null || !dir.exists() || !dir.canRead() || depth > 6) return;
+        File[] files = dir.listFiles();
+        if (files == null) return;
+
+        if (new File(dir, ".nomedia").exists()) return;
+
+        for (File f : files) {
+            if (f.isDirectory()) {
+                String name = f.getName();
+                if (!name.startsWith(".") && !name.equalsIgnoreCase("Android/data") && !name.equalsIgnoreCase("Android/obb")) {
+                    scanDirectoryForVideos(context, f, knownPaths, list, depth + 1);
+                }
+            } else if (f.isFile() && f.length() > 1024) {
+                String path = f.getAbsolutePath();
+                if (knownPaths.contains(path)) continue;
+
+                String lower = f.getName().toLowerCase();
+                if (lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".webm") ||
+                    lower.endsWith(".avi") || lower.endsWith(".mov") || lower.endsWith(".3gp") ||
+                    lower.endsWith(".ts") || lower.endsWith(".m4v") || lower.endsWith(".flv") ||
+                    lower.endsWith(".wmv") || lower.endsWith(".vob") || lower.endsWith(".ogv")) {
+
+                    knownPaths.add(path);
+                    MediaItem item = createMediaItemFromDiskFile(context, f, "video");
+                    if (item != null) {
+                        list.add(item);
+                        try {
+                            MediaScannerConnection.scanFile(context, new String[]{path}, null, null);
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
+        }
+    }
+
+    private static void scanDirectoryForAudios(Context context, File dir, Set<String> knownPaths, List<MediaItem> list, int depth) {
+        if (dir == null || !dir.exists() || !dir.canRead() || depth > 6) return;
+        File[] files = dir.listFiles();
+        if (files == null) return;
+
+        if (new File(dir, ".nomedia").exists()) return;
+
+        for (File f : files) {
+            if (f.isDirectory()) {
+                String name = f.getName();
+                if (!name.startsWith(".") && !name.equalsIgnoreCase("Android/data") && !name.equalsIgnoreCase("Android/obb")) {
+                    scanDirectoryForAudios(context, f, knownPaths, list, depth + 1);
+                }
+            } else if (f.isFile() && f.length() > 1024) {
+                String path = f.getAbsolutePath();
+                if (knownPaths.contains(path)) continue;
+
+                String lower = f.getName().toLowerCase();
+                if (lower.endsWith(".mp3") || lower.endsWith(".flac") || lower.endsWith(".wav") ||
+                    lower.endsWith(".m4a") || lower.endsWith(".aac") || lower.endsWith(".ogg") ||
+                    lower.endsWith(".opus") || lower.endsWith(".wma")) {
+
+                    knownPaths.add(path);
+                    MediaItem item = createMediaItemFromDiskFile(context, f, "audio");
+                    if (item != null) {
+                        list.add(item);
+                        try {
+                            MediaScannerConnection.scanFile(context, new String[]{path}, null, null);
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
+        }
+    }
+
+    private static MediaItem createMediaItemFromDiskFile(Context context, File f, String type) {
+        try {
+            String path = f.getAbsolutePath();
+            String name = f.getName();
+            String title = name.contains(".") ? name.substring(0, name.lastIndexOf('.')) : name;
+            String format = name.contains(".") ? name.substring(name.lastIndexOf('.') + 1).toUpperCase() : "MEDIA";
+            String folder = f.getParentFile() != null ? f.getParentFile().getName() : "Storage";
+            long size = f.length();
+            long added = f.lastModified();
+            long duration = 0;
+            String res = "HD";
+
+            try (MediaMetadataRetriever mmr = new MediaMetadataRetriever()) {
+                mmr.setDataSource(path);
+                String durStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                if (durStr != null) duration = Long.parseLong(durStr);
+
+                if ("video".equals(type)) {
+                    String wStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH);
+                    String hStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);
+                    int w = wStr != null ? Integer.parseInt(wStr) : 0;
+                    int h = hStr != null ? Integer.parseInt(hStr) : 0;
+                    if (w >= 3840 || h >= 2160) res = "4K UHD";
+                    else if (w >= 1920 || h >= 1080) res = "1080p FHD";
+                    else if (w >= 1280 || h >= 720) res = "720p HD";
+                    else if (w > 0 && h > 0) res = w + "x" + h;
+                }
+            } catch (Exception ignored) {}
+
+            MediaItem item = new MediaItem(
+                "file_" + Math.abs(path.hashCode()),
+                title,
+                path,
+                Uri.fromFile(f).toString(),
+                duration,
+                size,
+                format,
+                folder,
+                type
+            );
+            item.addedAt = added;
+            item.resolution = res;
+
+            if ("video".equals(type)) {
+                extractAudioFormat(item);
+            } else {
+                item.artist = "Local Audio";
+                item.album = folder;
+            }
+            return item;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static void extractAudioFormat(MediaItem item) {
