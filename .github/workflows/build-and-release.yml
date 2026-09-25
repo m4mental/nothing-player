@@ -67,7 +67,7 @@ jobs:
 
       - name: Build Android APKs
         working-directory: ./android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -76,35 +76,42 @@ jobs:
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: NothingPlayer-v2.0-APKs
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: NothingPlayer-APKs
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/release/*.apk
 
       - name: Prepare Release Assets
         run: |
           ROOT_DIR=$(pwd)
           mkdir -p release-assets
-          cd android/app/build/outputs/apk/debug/
-          for f in *.apk; do
-            if [ -f "$f" ]; then
-              echo "Copying $f to $ROOT_DIR/release-assets/"
-              cp "$f" "$ROOT_DIR/release-assets/${f/app-/NothingPlayer-}"
-            fi
-          done
-          cd "$ROOT_DIR"
-          if [ -f "release-assets/NothingPlayer-arm64-v8a-debug.apk" ]; then
-            cp release-assets/NothingPlayer-arm64-v8a-debug.apk release-assets/NothingPlayer-v2.0-arm64.apk
+          
+          # Copy release or debug APKs
+          if [ -d "android/app/build/outputs/apk/release" ]; then
+            cd android/app/build/outputs/apk/release/
+            for f in *.apk; do
+              if [ -f "$f" ]; then
+                echo "Copying release $f to $ROOT_DIR/release-assets/"
+                cp "$f" "$ROOT_DIR/release-assets/${f/app-/NothingPlayer-}"
+              fi
+            done
+            cd "$ROOT_DIR"
           fi
+
+          if [ -d "android/app/build/outputs/apk/debug" ]; then
+            cd android/app/build/outputs/apk/debug/
+            for f in *.apk; do
+              if [ -f "$f" ]; then
+                echo "Copying debug $f to $ROOT_DIR/release-assets/"
+                cp "$f" "$ROOT_DIR/release-assets/${f/app-/NothingPlayer-}"
+              fi
+            done
+            cd "$ROOT_DIR"
+          fi
+
           if [ -d "dist" ]; then
             cd dist && zip -r "$ROOT_DIR/release-assets/nothing-player-web-bundle.zip" . && cd "$ROOT_DIR"
           fi
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist'
 
       - name: Generate Changelog & Release Notes
         id: changelog
@@ -113,54 +120,48 @@ jobs:
           COMMIT_MSG=$(git log -1 --pretty=format:"%s")
           COMMIT_AUTHOR=$(git log -1 --pretty=format:"%an")
           COMMIT_HASH=$(git log -1 --pretty=format:"%h")
-          
           COMMITS_LOG=$(git log -n 10 --pretty=format:"- [%h] %s (%an)")
 
-          cat << 'EOF' > release_notes.md
+          cat << EOF > release_notes.md
           # 🔴 NOTHING PLAYER v2.0 // MULTI-ARCH ANDROID RELEASE
 
-          > **Build Timestamp:** $DATE  
-          > **Commit:** `$COMMIT_HASH` by @$COMMIT_AUTHOR  
-          > **Latest Push Note:** $COMMIT_MSG  
+          > **Build Timestamp:** ${DATE}  
+          > **Commit:** \`${COMMIT_HASH}\` by @${COMMIT_AUTHOR}  
+          > **Latest Push Note:** ${COMMIT_MSG}  
 
           ---
 
           ### 📲 Download APK (Choose by Architecture)
 
-          | Architecture | Target Devices | Typical Size | Download |
-          |:---|:---|:---|:---|
-          | **ARM64 (arm64-v8a)** ⭐ *(Recommended)* | Nothing Phone 1/2/2a, Pixel, Samsung, OnePlus, modern 64-bit phones | **~30 MB** | [Download arm64-v8a APK](NothingPlayer-arm64-v8a-debug.apk) |
-          | **ARMv7 (armeabi-v7a)** | Older 32-bit Android phones & budget devices | **~28 MB** | [Download armeabi-v7a APK](NothingPlayer-armeabi-v7a-debug.apk) |
-          | **x86_64** | 64-bit Android Emulators (PC, Android Studio, WSA) | **~35 MB** | [Download x86_64 APK](NothingPlayer-x86_64-debug.apk) |
-          | **x86** | 32-bit PC Emulators | **~32 MB** | [Download x86 APK](NothingPlayer-x86-debug.apk) |
-          | **Universal All-in-One** | Universal bundle with all 4 engines combined | **~180 MB** | [Download Universal APK](NothingPlayer-universal-debug.apk) |
+          | Architecture | Target Devices | Typical Size |
+          |:---|:---|:---|
+          | **ARM64 (arm64-v8a)** ⭐ *(Recommended)* | Nothing Phone 1/2/2a, Pixel, Samsung, OnePlus, modern 64-bit phones | **~50 MB** |
+          | **ARMv7 (armeabi-v7a)** | Older 32-bit Android phones & budget devices | **~48 MB** |
+          | **x86_64** | 64-bit Android Emulators (PC, Android Studio, WSA) | **~58 MB** |
+          | **x86** | 32-bit PC Emulators | **~55 MB** |
+          | **Universal All-in-One** | Universal bundle with all 4 engines combined | **~190 MB** |
 
           ---
 
           ## ⚡ What's New & Changelog
 
-          $COMMITS_LOG
+          ${COMMITS_LOG}
 
           ---
 
           ## 📱 Mobile App Features Included
           - **Universal Dual-Engine**: AndroidX Media3 (HW+) + LibVLC Native C++ Engine (SW+)
+          - **Full Storage Scanner**: Automatically scans all directories on Internal Storage & SD Cards (excluding Android/data and Android/obb)
           - **Dolby EAC-3 5.1 / AC-3 / DTS / TrueHD Native Downmixing**: Crystal-clear surround playback with zero codec errors
           - **Zero-Black-Screen TextureView Rendering**: Direct hardware streaming without video freezing
           - **Pro Gesture Cinema Controls**: Vertical swipe brightness/volume with 200% audio boost & real-time Nothing OS HUD
           - **Multi-Track Audio & Subtitle Switchers**: Top bar dialogs for multi-language tracks and embedded subtitles
           - **Background Audio Service**: MediaStyle foreground playback service with lockscreen and Bluetooth headset controls
-          - **Detailed File Specs Sheet**: Exact storage path display with 1-tap copy button
           - **Network Stream Player**: Direct video link playback with clipboard paste and demo streams
 
           ---
           *Automated Android APK build powered by GitHub Actions for NOTHING PLAYER.*
           EOF
-
-          sed -i "s/\$DATE/$DATE/g" release_notes.md
-          sed -i "s/\$COMMIT_HASH/$COMMIT_HASH/g" release_notes.md
-          sed -i "s/\$COMMIT_AUTHOR/$COMMIT_AUTHOR/g" release_notes.md
-          sed -i "s/\$COMMIT_MSG/$COMMIT_MSG/g" release_notes.md
 
       - name: Create GitHub Release with APK
         uses: softprops/action-gh-release@v2
@@ -177,9 +178,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Setup Pages
+        continue-on-error: true
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages Artifact
+        continue-on-error: true
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
   deploy-pages:
     name: Deploy to GitHub Pages
     needs: build-android
+    continue-on-error: true
     permissions:
       pages: write
       id-token: write
@@ -190,4 +202,5 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@v4
