@@ -26,10 +26,32 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            def keystoreFile = file('../keystore/nothing-player-release.jks')
+            if (keystoreFile.exists()) {
+                storeFile keystoreFile
+                storePassword System.getenv("KEYSTORE_PASSWORD") ?: "nothing_player_secure_key_2026"
+                keyAlias System.getenv("KEY_ALIAS") ?: "nothing_player_key"
+                keyPassword System.getenv("KEY_PASSWORD") ?: "nothing_player_secure_key_2026"
+            }
+        }
+    }
+
     buildTypes {
         release {
+            def keystoreFile = file('../keystore/nothing-player-release.jks')
+            if (keystoreFile.exists()) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            def keystoreFile = file('../keystore/nothing-player-release.jks')
+            if (keystoreFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
