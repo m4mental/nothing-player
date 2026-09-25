@@ -302,29 +302,27 @@ public class MediaRepository {
             Log.e(TAG, "Error scanning MediaStore videos", e);
         }
 
-        // Direct Disk Fallback Scan (for custom folders like Download/speeddown/videos that MediaStore hasn't indexed yet)
+        // Full Storage Direct Disk Fallback Scan (skipping ONLY Android/data and Android/obb)
         try {
             File storageRoot = Environment.getExternalStorageDirectory();
             if (storageRoot != null && storageRoot.exists()) {
-                File[] targetDirs = new File[] {
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
-                    new File(storageRoot, "Download"),
-                    new File(storageRoot, "Movies"),
-                    new File(storageRoot, "Videos"),
-                    new File(storageRoot, "Telegram"),
-                    new File(storageRoot, "WhatsApp/Media/WhatsApp Video"),
-                    new File(storageRoot, "Android/media")
-                };
-                for (File dir : targetDirs) {
-                    if (dir != null && dir.exists()) {
-                        scanDirectoryForVideos(context, dir, knownPaths, list, 0);
+                scanDirectoryForVideos(context, storageRoot, knownPaths, list, 0);
+            }
+
+            // Also scan SD Card or secondary volumes in /storage/
+            File storageDir = new File("/storage");
+            if (storageDir.exists() && storageDir.canRead()) {
+                File[] volumes = storageDir.listFiles();
+                if (volumes != null) {
+                    for (File vol : volumes) {
+                        if (vol.isDirectory() && !vol.getName().equalsIgnoreCase("emulated") && !vol.getName().equalsIgnoreCase("self")) {
+                            scanDirectoryForVideos(context, vol, knownPaths, list, 0);
+                        }
                     }
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error performing direct disk video scan", e);
+            Log.e(TAG, "Error performing full disk video scan", e);
         }
 
         return list;
@@ -418,46 +416,62 @@ public class MediaRepository {
             Log.e(TAG, "Error scanning MediaStore audios", e);
         }
 
-        // Direct Disk Fallback Scan for Audios
+        // Full Storage Direct Disk Fallback Scan for Audios
         try {
             File storageRoot = Environment.getExternalStorageDirectory();
             if (storageRoot != null && storageRoot.exists()) {
-                File[] targetDirs = new File[] {
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PODCASTS),
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_AUDIOBOOKS),
-                    new File(storageRoot, "Music"),
-                    new File(storageRoot, "Download"),
-                    new File(storageRoot, "Telegram")
-                };
-                for (File dir : targetDirs) {
-                    if (dir != null && dir.exists()) {
-                        scanDirectoryForAudios(context, dir, knownPaths, list, 0);
+                scanDirectoryForAudios(context, storageRoot, knownPaths, list, 0);
+            }
+
+            File storageDir = new File("/storage");
+            if (storageDir.exists() && storageDir.canRead()) {
+                File[] volumes = storageDir.listFiles();
+                if (volumes != null) {
+                    for (File vol : volumes) {
+                        if (vol.isDirectory() && !vol.getName().equalsIgnoreCase("emulated") && !vol.getName().equalsIgnoreCase("self")) {
+                            scanDirectoryForAudios(context, vol, knownPaths, list, 0);
+                        }
                     }
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error performing direct disk audio scan", e);
+            Log.e(TAG, "Error performing full disk audio scan", e);
         }
 
         return list;
     }
 
+    private static boolean shouldSkipDirectory(File dir) {
+        if (dir == null) return true;
+        String name = dir.getName();
+        if (name.startsWith(".")) return true; // skip hidden system folders (.thumbnails, .cache)
+
+        String lowerPath = dir.getAbsolutePath().replace('\\', '/').toLowerCase();
+        // Explicitly skip Android/data and Android/obb folders (case-insensitive)
+        if (lowerPath.contains("/android/data") || lowerPath.contains("/android/obb") ||
+            lowerPath.endsWith("/android/data") || lowerPath.endsWith("/android/obb")) {
+            return true;
+        }
+
+        // Skip .nomedia directories
+        if (new File(dir, ".nomedia").exists()) return true;
+
+        return false;
+    }
+
     private static void scanDirectoryForVideos(Context context, File dir, Set<String> knownPaths, List<MediaItem> list, int depth) {
-        if (dir == null || !dir.exists() || !dir.canRead() || depth > 6) return;
+        if (dir == null || !dir.exists() || !dir.canRead() || depth > 15) return;
+        if (shouldSkipDirectory(dir)) return;
+
         File[] files = dir.listFiles();
         if (files == null) return;
 
-        if (new File(dir, ".nomedia").exists()) return;
-
         for (File f : files) {
             if (f.isDirectory()) {
-                String name = f.getName();
-                if (!name.startsWith(".") && !name.equalsIgnoreCase("Android/data") && !name.equalsIgnoreCase("Android/obb")) {
+                if (!f.getName().startsWith(".")) {
                     scanDirectoryForVideos(context, f, knownPaths, list, depth + 1);
                 }
-            } else if (f.isFile() && f.length() > 1024) {
+            } else if (f.isFile() && f.length() > 0) {
                 String path = f.getAbsolutePath();
                 if (knownPaths.contains(path)) continue;
 
@@ -465,7 +479,9 @@ public class MediaRepository {
                 if (lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".webm") ||
                     lower.endsWith(".avi") || lower.endsWith(".mov") || lower.endsWith(".3gp") ||
                     lower.endsWith(".ts") || lower.endsWith(".m4v") || lower.endsWith(".flv") ||
-                    lower.endsWith(".wmv") || lower.endsWith(".vob") || lower.endsWith(".ogv")) {
+                    lower.endsWith(".wmv") || lower.endsWith(".vob") || lower.endsWith(".ogv") ||
+                    lower.endsWith(".divx") || lower.endsWith(".rmvb") || lower.endsWith(".mpg") ||
+                    lower.endsWith(".mpeg") || lower.endsWith(".m2ts")) {
 
                     knownPaths.add(path);
                     MediaItem item = createMediaItemFromDiskFile(context, f, "video");
@@ -481,26 +497,26 @@ public class MediaRepository {
     }
 
     private static void scanDirectoryForAudios(Context context, File dir, Set<String> knownPaths, List<MediaItem> list, int depth) {
-        if (dir == null || !dir.exists() || !dir.canRead() || depth > 6) return;
+        if (dir == null || !dir.exists() || !dir.canRead() || depth > 15) return;
+        if (shouldSkipDirectory(dir)) return;
+
         File[] files = dir.listFiles();
         if (files == null) return;
 
-        if (new File(dir, ".nomedia").exists()) return;
-
         for (File f : files) {
             if (f.isDirectory()) {
-                String name = f.getName();
-                if (!name.startsWith(".") && !name.equalsIgnoreCase("Android/data") && !name.equalsIgnoreCase("Android/obb")) {
+                if (!f.getName().startsWith(".")) {
                     scanDirectoryForAudios(context, f, knownPaths, list, depth + 1);
                 }
-            } else if (f.isFile() && f.length() > 1024) {
+            } else if (f.isFile() && f.length() > 0) {
                 String path = f.getAbsolutePath();
                 if (knownPaths.contains(path)) continue;
 
                 String lower = f.getName().toLowerCase();
                 if (lower.endsWith(".mp3") || lower.endsWith(".flac") || lower.endsWith(".wav") ||
                     lower.endsWith(".m4a") || lower.endsWith(".aac") || lower.endsWith(".ogg") ||
-                    lower.endsWith(".opus") || lower.endsWith(".wma")) {
+                    lower.endsWith(".opus") || lower.endsWith(".wma") || lower.endsWith(".alac") ||
+                    lower.endsWith(".aiff") || lower.endsWith(".mid") || lower.endsWith(".amr")) {
 
                     knownPaths.add(path);
                     MediaItem item = createMediaItemFromDiskFile(context, f, "audio");
