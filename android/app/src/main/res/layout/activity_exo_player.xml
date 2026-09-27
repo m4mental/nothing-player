@@ -533,19 +533,19 @@
                     android:contentDescription="Next Video" />
             </LinearLayout>
 
-            <!-- Playlist Queue Drawer Button (Right side of transport) -->
+            <!-- Playlist Drawer Button (Right side of transport) -->
             <Button
                 android:id="@+id/btn_playlist_queue"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
-                android:text="QUEUE"
+                android:text="PLAYLIST"
                 android:textColor="#FFFFFF"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
-                android:drawableStart="@drawable/ic_playlist"
+                android:drawableStart="@drawable/ic_dotmatrix_playlist"
                 android:drawablePadding="6dp"
                 android:drawableTint="#FFFFFF"
                 android:background="@drawable/bg_player_pill_button"
@@ -577,7 +577,7 @@
                 android:id="@+id/queue_header_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="QUEUE • 01 / 05"
+                android:text="PLAYLIST • 01 / 01"
                 android:textColor="#FFFFFF"
                 android:textSize="14sp"
                 android:textStyle="bold"

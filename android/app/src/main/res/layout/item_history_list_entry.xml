@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    android:orientation="vertical"
+    android:background="@drawable/bg_card_nothing"
+    android:padding="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Thumbnail with Progress Line -->
+        <RelativeLayout
+            android:layout_width="96dp"
+            android:layout_height="58dp"
+            android:background="@color/nothing_surface">
+
+            <ImageView
+                android:id="@+id/entry_thumb"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop" />
+
+            <TextView
+                android:id="@+id/entry_duration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
+                android:layout_alignParentEnd="true"
+                android:layout_marginEnd="4dp"
+                android:layout_marginBottom="5dp"
+                android:background="#D0000000"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="1dp"
+                android:text="00:00"
+                android:textColor="@color/nothing_white"
+                android:textSize="8sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+
+            <com.nothing.player.DotMatrixProgressBar
+                android:id="@+id/entry_progress_bar"
+                android:layout_width="match_parent"
+                android:layout_height="5dp"
+                android:layout_alignParentBottom="true" />
+        </RelativeLayout>
+
+        <!-- Video & Watched Details -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/entry_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Video Title"
+                android:textColor="@color/nothing_white"
+                android:textSize="12sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/entry_watched_time"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Watched: Today, 10:45 PM"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot" />
+
+            <TextView
+                android:id="@+id/entry_progress_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="14:20 / 30:00 (47% watched)"
+                android:textColor="@color/nothing_white_40"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot" />
+        </LinearLayout>
+
+        <!-- Delete Entry Button -->
+        <ImageButton
+            android:id="@+id/btn_delete_entry"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:tint="@color/nothing_white_40"
+            android:contentDescription="Remove from history" />
+    </LinearLayout>
+
+    <!-- Action Buttons Row (RESUME & START OVER) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="8dp">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_start_over"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:background="@drawable/bg_chip_unselected"
+            app:backgroundTint="@null"
+            android:text="START OVER"
+            android:textColor="@color/nothing_white"
+            android:textSize="10sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:paddingHorizontal="14dp"
+            android:layout_marginEnd="8dp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_resume"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:background="@drawable/bg_badge_new"
+            app:backgroundTint="@null"
+            android:text="RESUME"
+            android:textColor="#FFFFFF"
+            android:textSize="10sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:paddingHorizontal="16dp" />
+    </LinearLayout>
+
+</LinearLayout>

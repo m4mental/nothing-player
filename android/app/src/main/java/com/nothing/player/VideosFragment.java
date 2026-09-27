@@ -1,9 +1,9 @@
 package com.nothing.player;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -26,16 +26,17 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.IntentSenderRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
-import android.app.Activity;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -54,6 +55,12 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     private TextView tvSelectionCount;
     private Button btnSelectAll, btnDeleteSelected;
     private ImageButton btnCloseSelection;
+
+    // Recently Watched Carousel & History Views
+    private View sectionHistory;
+    private RecyclerView recyclerHistory;
+    private Button btnOpenHistorySheet;
+    private HistoryAdapter historyAdapter;
 
     private List<MediaItem> allVideos = new ArrayList<>();
     private boolean isFoldersMode = true;
@@ -93,6 +100,21 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         btnDeleteSelected = view.findViewById(R.id.btn_delete_selected);
         btnCloseSelection = view.findViewById(R.id.btn_close_selection);
 
+        // History Carousel Views
+        sectionHistory = view.findViewById(R.id.section_history_carousel);
+        recyclerHistory = view.findViewById(R.id.recycler_history_horizontal);
+        btnOpenHistorySheet = view.findViewById(R.id.btn_open_history_sheet);
+
+        if (recyclerHistory != null) {
+            recyclerHistory.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+            historyAdapter = new HistoryAdapter(getContext(), this::onHistoryItemClick);
+            recyclerHistory.setAdapter(historyAdapter);
+        }
+
+        if (btnOpenHistorySheet != null) {
+            btnOpenHistorySheet.setOnClickListener(v -> showHistoryBottomSheet());
+        }
+
         recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
         adapter = new VideoAdapter(getContext(), this);
         recyclerView.setAdapter(adapter);
@@ -127,13 +149,48 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
 
         // Setup Selection Action Bar Listeners
         btnCloseSelection.setOnClickListener(v -> adapter.clearSelection());
-
         btnSelectAll.setOnClickListener(v -> adapter.selectAll());
-
         btnDeleteSelected.setOnClickListener(v -> confirmDeleteSelected());
 
         loadVideos();
+        updateHistorySection();
         return view;
+    }
+
+    private void updateHistorySection() {
+        if (getContext() == null || sectionHistory == null || historyAdapter == null) return;
+        List<PlaybackHistoryManager.HistoryItem> history = PlaybackHistoryManager.getHistoryList(getContext());
+        if (history != null && !history.isEmpty()) {
+            sectionHistory.setVisibility(View.VISIBLE);
+            historyAdapter.setItems(history);
+        } else {
+            sectionHistory.setVisibility(View.GONE);
+        }
+    }
+
+    private void onHistoryItemClick(PlaybackHistoryManager.HistoryItem item) {
+        if (getContext() == null || item == null) return;
+        Intent intent = new Intent(getContext(), ExoVideoPlayerActivity.class);
+        intent.setAction(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse(item.pathOrUri));
+        intent.putExtra("path", item.pathOrUri);
+        intent.putExtra("video_path", item.pathOrUri);
+        intent.putExtra("contentUri", item.pathOrUri);
+        intent.putExtra("video_uri", item.pathOrUri);
+        intent.putExtra("title", item.title);
+        intent.putExtra("video_title", item.title);
+        intent.putExtra("position", item.positionMs);
+        intent.putExtra("start_over", false);
+        startActivity(intent);
+    }
+
+    private void showHistoryBottomSheet() {
+        HistoryBottomSheet sheet = HistoryBottomSheet.newInstance();
+        sheet.setOnHistoryChangedListener(() -> {
+            updateHistorySection();
+            if (adapter != null) adapter.notifyDataSetChanged();
+        });
+        sheet.show(getChildFragmentManager(), "HistoryBottomSheet");
     }
 
     @Override
@@ -249,6 +306,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     @Override
     public void onResume() {
         super.onResume();
+        updateHistorySection();
         if (adapter != null) {
             filterAndDisplay();
         }
@@ -260,6 +318,13 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
 
         if (isFoldersMode && currentSelectedFolder == null && query.isEmpty()) {
             recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 1));
+
+            // Dedicated "Recently" folder at the top of the folder list
+            if (allVideos != null && !allVideos.isEmpty()) {
+                boolean hasAnyNew = MediaStateManager.hasAnyNewVideos(getContext(), allVideos);
+                displayItems.add(new VideoAdapter.FolderItem("Recently", allVideos.size(), hasAnyNew, true));
+            }
+
             Map<String, Integer> folderMap = new HashMap<>();
             for (MediaItem v : allVideos) {
                 String folder = v.folder != null ? v.folder : "Storage";
@@ -269,9 +334,21 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 String folderName = entry.getKey();
                 int count = entry.getValue();
                 boolean hasNew = MediaStateManager.folderHasNewVideos(getContext(), folderName, allVideos);
-                displayItems.add(new VideoAdapter.FolderItem(folderName, count, hasNew));
+                displayItems.add(new VideoAdapter.FolderItem(folderName, count, hasNew, false));
             }
-            adapter.setItems(displayItems, true);
+            adapter.setItems(displayItems, true, false);
+        } else if (currentSelectedFolder != null && currentSelectedFolder.equalsIgnoreCase("Recently")) {
+            recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
+            List<MediaItem> sortedVideos = new ArrayList<>(allVideos);
+            // Sort chronologically descending (newest arrival first)
+            Collections.sort(sortedVideos, (a, b) -> Long.compare(b.addedAt, a.addedAt));
+            for (MediaItem v : sortedVideos) {
+                if (!query.isEmpty() && !v.title.toLowerCase().contains(query)) {
+                    continue;
+                }
+                displayItems.add(v);
+            }
+            adapter.setItems(displayItems, false, true);
         } else {
             recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
             for (MediaItem v : allVideos) {
@@ -283,7 +360,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 }
                 displayItems.add(v);
             }
-            adapter.setItems(displayItems, false);
+            adapter.setItems(displayItems, false, false);
         }
     }
 
@@ -310,7 +387,10 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         int clickedIndex = 0;
 
         List<MediaItem> activeList = new ArrayList<>();
-        if (allVideos != null) {
+        if (currentSelectedFolder != null && currentSelectedFolder.equalsIgnoreCase("Recently")) {
+            activeList = new ArrayList<>(allVideos);
+            Collections.sort(activeList, (a, b) -> Long.compare(b.addedAt, a.addedAt));
+        } else if (allVideos != null) {
             for (MediaItem v : allVideos) {
                 if (currentSelectedFolder != null && !currentSelectedFolder.equalsIgnoreCase(v.folder)) {
                     continue;
@@ -381,111 +461,97 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         }
 
         EditText etStreamUrl = dialogView.findViewById(R.id.et_stream_url);
-        Button btnPasteUrl = dialogView.findViewById(R.id.btn_paste_url);
-        Button btnPlayDirect = dialogView.findViewById(R.id.btn_play_direct);
         Button btnPlayStream = dialogView.findViewById(R.id.btn_play_stream);
-        Button btnCancel = dialogView.findViewById(R.id.btn_cancel_stream);
-        View btnCloseDialog = dialogView.findViewById(R.id.btn_close_dialog);
-        LinearLayout containerRecent = dialogView.findViewById(R.id.container_recent_streams);
-        TextView tvRecentLabel = dialogView.findViewById(R.id.tv_recent_streams_label);
+        Button btnPlayDirect = dialogView.findViewById(R.id.btn_play_direct);
+        Button btnPasteUrl = dialogView.findViewById(R.id.btn_paste_url);
+        Button btnCancelStream = dialogView.findViewById(R.id.btn_cancel_stream);
+        ImageButton btnCloseDialog = dialogView.findViewById(R.id.btn_close_dialog);
+        LinearLayout containerRecentStreams = dialogView.findViewById(R.id.container_recent_streams);
 
-        SharedPreferences prefs = requireContext().getSharedPreferences("nothing_streams_prefs", Context.MODE_PRIVATE);
-        String recentRaw = prefs.getString("recent_streams", "");
+        if (btnCloseDialog != null) btnCloseDialog.setOnClickListener(v -> dialog.dismiss());
+        if (btnCancelStream != null) btnCancelStream.setOnClickListener(v -> dialog.dismiss());
 
-        // Check clipboard for video stream links
-        ClipboardManager clipboard = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
-        if (clipboard != null && clipboard.hasPrimaryClip() && clipboard.getPrimaryClip() != null && clipboard.getPrimaryClip().getItemCount() > 0) {
-            ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
-            if (item != null && item.getText() != null) {
-                String text = item.getText().toString().trim();
-                if (text.startsWith("http://") || text.startsWith("https://") || text.startsWith("rtsp://") || text.startsWith("rtmp://")) {
-                    etStreamUrl.setText(text);
-                    etStreamUrl.setSelection(text.length());
+        // Load recent streams
+        if (containerRecentStreams != null && getContext() != null) {
+            List<String> streams = StreamUrlHelper.getRecentStreams(getContext());
+            for (String s : streams) {
+                if (!s.trim().isEmpty()) {
+                    TextView tv = new TextView(getContext());
+                    tv.setText(s);
+                    tv.setTextColor(getResources().getColor(R.color.nothing_white_70));
+                    tv.setTextSize(11);
+                    tv.setPadding(0, 10, 0, 10);
+                    tv.setOnClickListener(v -> {
+                        etStreamUrl.setText(s);
+                        etStreamUrl.setSelection(s.length());
+                    });
+                    containerRecentStreams.addView(tv);
                 }
             }
         }
 
-        btnPasteUrl.setOnClickListener(v -> {
-            if (clipboard != null && clipboard.hasPrimaryClip() && clipboard.getPrimaryClip() != null && clipboard.getPrimaryClip().getItemCount() > 0) {
-                ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
-                if (item != null && item.getText() != null) {
-                    etStreamUrl.setText(item.getText().toString().trim());
-                    etStreamUrl.setSelection(etStreamUrl.getText().length());
+        // Auto paste if clipboard has URL
+        ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard != null && clipboard.hasPrimaryClip() && clipboard.getPrimaryClip() != null && clipboard.getPrimaryClip().getItemCount() > 0) {
+            ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
+            if (item != null && item.getText() != null) {
+                String extracted = StreamUrlHelper.extractUrl(item.getText().toString());
+                if (extracted != null) {
+                    etStreamUrl.setText(extracted);
+                    etStreamUrl.setSelection(extracted.length());
                 }
             }
-        });
+        }
+
+        if (btnPasteUrl != null) {
+            btnPasteUrl.setOnClickListener(v -> {
+                if (clipboard != null && clipboard.hasPrimaryClip() && clipboard.getPrimaryClip() != null && clipboard.getPrimaryClip().getItemCount() > 0) {
+                    ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
+                    if (item != null && item.getText() != null) {
+                        String extracted = StreamUrlHelper.extractUrl(item.getText().toString());
+                        if (extracted != null) {
+                            etStreamUrl.setText(extracted);
+                            etStreamUrl.setSelection(etStreamUrl.getText().length());
+                        } else {
+                            etStreamUrl.setText(item.getText().toString().trim());
+                            etStreamUrl.setSelection(etStreamUrl.getText().length());
+                        }
+                    }
+                }
+            });
+        }
 
         Runnable startStreamRunnable = () -> {
-            String url = etStreamUrl.getText().toString().trim();
-            if (url.isEmpty() || (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("rtsp://") && !url.startsWith("rtmp://"))) {
+            String rawInput = etStreamUrl.getText().toString().trim();
+            String url = StreamUrlHelper.extractUrl(rawInput);
+            if (url == null && StreamUrlHelper.isOnlineStream(rawInput)) {
+                url = rawInput;
+            }
+
+            if (url == null || url.isEmpty() || !StreamUrlHelper.isOnlineStream(url)) {
                 Toast.makeText(getContext(), "Please enter or paste a valid stream URL", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // Save to recent
-            String updated = url + "\n" + recentRaw.replace(url + "\n", "");
-            prefs.edit().putString("recent_streams", updated).apply();
+            // Save to recent streams
+            StreamUrlHelper.saveRecentStream(requireContext(), url);
 
             dialog.dismiss();
 
             Intent intent = new Intent(getContext(), ExoVideoPlayerActivity.class);
+            intent.setAction(Intent.ACTION_VIEW);
             intent.setData(Uri.parse(url));
             intent.putExtra("video_uri", url);
             intent.putExtra("contentUri", url);
             intent.putExtra("path", url);
-            String title = YouTubeStreamResolver.isYouTubeUrl(url) ? "YouTube Stream" : getFileNameFromUrl(url);
-            intent.putExtra("title", title);
-            intent.putExtra("video_title", title);
+            intent.putExtra("video_path", url);
+            intent.putExtra("title", "Online Stream");
+            intent.putExtra("video_title", "Online Stream");
             startActivity(intent);
         };
 
-        if (btnPlayDirect != null) btnPlayDirect.setOnClickListener(v -> startStreamRunnable.run());
         if (btnPlayStream != null) btnPlayStream.setOnClickListener(v -> startStreamRunnable.run());
-        if (btnCancel != null) btnCancel.setOnClickListener(v -> dialog.dismiss());
-        if (btnCloseDialog != null) btnCloseDialog.setOnClickListener(v -> dialog.dismiss());
-
-        etStreamUrl.setOnEditorActionListener((v, actionId, event) -> {
-            startStreamRunnable.run();
-            return true;
-        });
-
-        // Load recent streams
-        if (!recentRaw.isEmpty()) {
-            String[] streams = recentRaw.split("\n");
-            for (String s : streams) {
-                if (s.trim().isEmpty()) continue;
-                TextView chip = new TextView(getContext());
-                chip.setText(s);
-                chip.setTextColor(getResources().getColor(R.color.nothing_white_70));
-                chip.setTextSize(11);
-                chip.setBackgroundResource(R.drawable.bg_chip_unselected);
-                chip.setPadding(24, 14, 24, 14);
-                chip.setSingleLine(true);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                );
-                lp.setMargins(0, 8, 0, 8);
-                chip.setLayoutParams(lp);
-                chip.setOnClickListener(cv -> {
-                    etStreamUrl.setText(s);
-                    etStreamUrl.setSelection(s.length());
-                });
-                containerRecent.addView(chip);
-            }
-        } else {
-            if (tvRecentLabel != null) tvRecentLabel.setVisibility(View.GONE);
-        }
-
+        if (btnPlayDirect != null) btnPlayDirect.setOnClickListener(v -> startStreamRunnable.run());
         dialog.show();
-    }
-
-    private String getFileNameFromUrl(String url) {
-        try {
-            Uri uri = Uri.parse(url);
-            String last = uri.getLastPathSegment();
-            if (last != null && !last.isEmpty()) return last;
-        } catch (Exception ignored) {}
-        return "Network Stream";
     }
 }

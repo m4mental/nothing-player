@@ -101,6 +101,14 @@
             android:layout_margin="6dp"
             android:src="@drawable/ic_check_circle"
             android:visibility="gone" />
+
+        <!-- Playback Dot Matrix Progress Line directly under Thumbnail -->
+        <com.nothing.player.DotMatrixProgressBar
+            android:id="@+id/video_progress_bar"
+            android:layout_width="match_parent"
+            android:layout_height="5dp"
+            android:layout_alignParentBottom="true"
+            android:visibility="gone" />
     </RelativeLayout>
 
     <!-- Metadata Bottom Area -->

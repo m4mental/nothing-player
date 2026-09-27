@@ -43,4 +43,15 @@ public class MediaStateManager {
         }
         return false;
     }
+
+    public static boolean hasAnyNewVideos(Context context, List<MediaItem> allVideos) {
+        if (context == null || allVideos == null) return false;
+        for (MediaItem v : allVideos) {
+            String path = v.path != null ? v.path : v.contentUri;
+            if (isVideoNew(context, path)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

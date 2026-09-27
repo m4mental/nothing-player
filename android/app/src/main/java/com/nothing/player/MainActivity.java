@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -145,6 +146,32 @@ public class MainActivity extends AppCompatActivity {
         checkAndRequestPermissions();
         bindMusicService();
         startProgressUpdater();
+
+        handleIncomingSharedIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIncomingSharedIntent(intent);
+    }
+
+    private void handleIncomingSharedIntent(Intent intent) {
+        if (intent == null) return;
+        String mediaUrl = StreamUrlHelper.extractMediaUriOrUrl(intent);
+        if (mediaUrl != null && !mediaUrl.isEmpty()) {
+            String title = StreamUrlHelper.extractTitle(this, intent, mediaUrl);
+            Intent playerIntent = new Intent(this, ExoVideoPlayerActivity.class);
+            playerIntent.setAction(Intent.ACTION_VIEW);
+            playerIntent.setData(Uri.parse(mediaUrl));
+            playerIntent.putExtra("video_uri", mediaUrl);
+            playerIntent.putExtra("contentUri", mediaUrl);
+            playerIntent.putExtra("path", mediaUrl);
+            playerIntent.putExtra("title", title);
+            playerIntent.putExtra("video_title", title);
+            startActivity(playerIntent);
+        }
     }
 
     private void checkAndRequestPermissions() {

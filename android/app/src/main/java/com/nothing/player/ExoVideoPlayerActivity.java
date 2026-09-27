@@ -48,11 +48,16 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+import android.graphics.Point;
+import android.graphics.Rect;
+import android.content.SharedPreferences;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
@@ -201,6 +206,8 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private float playbackSpeed = 1.0f;
     private float currentVideoScale = 1.0f;
     private int currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
+    private int videoWidth = 0;
+    private int videoHeight = 0;
 
     private String videoPath;
     private String videoUriStr;
@@ -215,10 +222,15 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         // Always Open in Landscape Cinema Mode by Default
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
 
-        // Edge-to-Edge display past camera cutout / notch
+        // True Edge-to-Edge display past camera cutout / notch (committing LayoutParams to WindowManager)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            getWindow().getAttributes().layoutInDisplayCutoutMode = 
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            WindowManager.LayoutParams lp = getWindow().getAttributes();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+            } else {
+                lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            }
+            getWindow().setAttributes(lp);
         }
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
@@ -227,6 +239,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         hideSystemUI();
 
         setContentView(R.layout.activity_exo_player);
+
+        View rootLayout = findViewById(R.id.player_root_layout);
+        if (rootLayout != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(rootLayout, (v, insets) -> {
+                v.setPadding(0, 0, 0, 0);
+                return WindowInsetsCompat.CONSUMED;
+            });
+        }
 
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         if (audioManager != null) {
@@ -237,71 +257,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         WindowManager.LayoutParams lp = getWindow().getAttributes();
         currentBrightness = lp.screenBrightness > 0 ? lp.screenBrightness : 0.5f;
 
-        videoTitle = getIntent().getStringExtra("title");
-        if (videoTitle == null) videoTitle = getIntent().getStringExtra("video_title");
-
-        videoPath = getIntent().getStringExtra("path");
-        if (videoPath == null) videoPath = getIntent().getStringExtra("video_path");
-
-        videoUriStr = getIntent().getStringExtra("contentUri");
-        if (videoUriStr == null) videoUriStr = getIntent().getStringExtra("video_uri");
-        if (videoUriStr == null && videoPath != null && videoPath.startsWith("content://")) {
-            videoUriStr = videoPath;
-        }
-
-        if (getIntent().getData() != null) {
-            Uri data = getIntent().getData();
-            if (videoUriStr == null) videoUriStr = data.toString();
-            if (videoPath == null) videoPath = data.getPath();
-            if (videoTitle == null || videoTitle.isEmpty()) videoTitle = resolveTitleFromUri(data);
-        } else if (getIntent().getClipData() != null && getIntent().getClipData().getItemCount() > 0) {
-            Uri data = getIntent().getClipData().getItemAt(0).getUri();
-            if (data != null) {
-                if (videoUriStr == null) videoUriStr = data.toString();
-                if (videoPath == null) videoPath = data.getPath();
-                if (videoTitle == null || videoTitle.isEmpty()) videoTitle = resolveTitleFromUri(data);
-            }
-        }
-
-        currentPositionMs = getIntent().getLongExtra("position", 0);
-
-        // Parse Playlist Queue
-        ArrayList<String> paths = getIntent().getStringArrayListExtra("playlist_paths");
-        ArrayList<String> uris = getIntent().getStringArrayListExtra("playlist_uris");
-        ArrayList<String> titles = getIntent().getStringArrayListExtra("playlist_titles");
-        int index = getIntent().getIntExtra("playlist_index", 0);
-
-        if (paths != null && !paths.isEmpty()) {
-            playlistPaths = paths;
-            playlistUris = uris != null ? uris : new ArrayList<>();
-            playlistTitles = titles != null ? titles : new ArrayList<>();
-            playlistIndex = Math.max(0, Math.min(playlistPaths.size() - 1, index));
-            if (videoPath == null && !playlistPaths.isEmpty()) videoPath = playlistPaths.get(playlistIndex);
-            if (videoUriStr == null && playlistUris.size() > playlistIndex) videoUriStr = playlistUris.get(playlistIndex);
-            if (videoTitle == null && playlistTitles.size() > playlistIndex) videoTitle = playlistTitles.get(playlistIndex);
-        } else {
-            playlistPaths = new ArrayList<>();
-            if (videoPath != null) playlistPaths.add(videoPath);
-            playlistUris = new ArrayList<>();
-            if (videoUriStr != null) playlistUris.add(videoUriStr);
-            playlistTitles = new ArrayList<>();
-            if (videoTitle != null) playlistTitles.add(videoTitle);
-            playlistIndex = 0;
-        }
-
-        youtubePlaylistId = YouTubeStreamResolver.extractPlaylistId(videoUriStr != null ? videoUriStr : videoPath);
-
         initViews();
-        
-        // Auto-select optimal engine: If YouTube stream is detected, use direct YouTube stream engine
-        if (isYouTubeStream()) {
-            startYouTubePlayer();
-        } else if (isSurroundOrEac3File()) {
-            startVlcPlayer(currentPositionMs);
-        } else {
-            startExoPlayer(currentPositionMs);
-        }
-        
         setupGestures();
         setupListeners();
 
@@ -316,6 +272,141 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         } else {
             registerReceiver(pipReceiver, pipFilter);
         }
+
+        processIntent(getIntent(), false);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        processIntent(intent, true);
+    }
+
+    private void processIntent(Intent intent, boolean isNewIntent) {
+        if (intent == null) return;
+
+        ArrayList<String> paths = intent.getStringArrayListExtra("playlist_paths");
+        ArrayList<String> uris = intent.getStringArrayListExtra("playlist_uris");
+        ArrayList<String> titles = intent.getStringArrayListExtra("playlist_titles");
+        int index = intent.getIntExtra("playlist_index", 0);
+
+        if (paths != null && !paths.isEmpty()) {
+            playlistPaths = paths;
+            playlistUris = uris != null ? uris : new ArrayList<>();
+            playlistTitles = titles != null ? titles : new ArrayList<>();
+            playlistIndex = Math.max(0, Math.min(playlistPaths.size() - 1, index));
+            videoPath = playlistPaths.get(playlistIndex);
+            videoUriStr = playlistUris.size() > playlistIndex ? playlistUris.get(playlistIndex) : null;
+            videoTitle = playlistTitles.size() > playlistIndex ? playlistTitles.get(playlistIndex) : "Nothing Media Player";
+        } else {
+            String mediaUrl = StreamUrlHelper.extractMediaUriOrUrl(intent);
+            String customTitle = StreamUrlHelper.extractTitle(this, intent, mediaUrl);
+
+            if (mediaUrl != null && !mediaUrl.isEmpty()) {
+                if (StreamUrlHelper.isOnlineStream(mediaUrl)) {
+                    StreamUrlHelper.saveRecentStream(this, mediaUrl);
+                    videoUriStr = mediaUrl;
+                    videoPath = mediaUrl;
+                } else if (mediaUrl.startsWith("content://")) {
+                    videoUriStr = mediaUrl;
+                    videoPath = null;
+                } else {
+                    videoPath = mediaUrl;
+                    videoUriStr = null;
+                }
+
+                videoTitle = customTitle;
+
+                playlistPaths = new ArrayList<>();
+                playlistPaths.add(videoPath != null ? videoPath : videoUriStr);
+                playlistUris = new ArrayList<>();
+                if (videoUriStr != null) playlistUris.add(videoUriStr);
+                playlistTitles = new ArrayList<>();
+                if (videoTitle != null) playlistTitles.add(videoTitle);
+                playlistIndex = 0;
+            }
+        }
+
+        // Resume & Start Over Support
+        currentPositionMs = intent.getLongExtra("position", 0);
+        boolean startOver = intent.getBooleanExtra("start_over", false);
+        String currentKey = videoPath != null && !videoPath.isEmpty() ? videoPath : videoUriStr;
+        if (currentPositionMs <= 0 && !startOver && currentKey != null) {
+            PlaybackHistoryManager.HistoryItem saved = PlaybackHistoryManager.getProgress(this, currentKey);
+            if (saved != null && saved.positionMs > 2000 && (saved.durationMs <= 0 || saved.positionMs < saved.durationMs - 5000)) {
+                currentPositionMs = saved.positionMs;
+                showGestureHud("● RESUMED", DotMatrixIconView.TYPE_SEEK_FORWARD, "AT " + saved.getFormattedPosition(), 100);
+            }
+        }
+
+        youtubePlaylistId = YouTubeStreamResolver.extractPlaylistId(videoUriStr != null ? videoUriStr : videoPath);
+
+        if (videoTitleText != null && videoTitle != null) {
+            videoTitleText.setText(videoTitle);
+        }
+        updateQueueUI();
+
+        if (isNewIntent) {
+            // Seamless YouTube stream transition
+            if (isYouTubeActive && isYouTubeLoaded && youtubeStreamView != null && isYouTubeStream()) {
+                String rawUrl = videoUriStr != null ? videoUriStr : videoPath;
+                String vid = YouTubeStreamResolver.extractVideoId(rawUrl);
+                if (vid != null && !vid.isEmpty()) {
+                    youtubeStreamView.evaluateJavascript("if (player && player.loadVideoById) { player.loadVideoById('" + vid + "'); }", null);
+                    fetchSingleYouTubeTitle(rawUrl);
+                    showGestureHud("● ONLINE STREAM", DotMatrixIconView.TYPE_SEEK_FORWARD, videoTitle, 100);
+                    return;
+                }
+            }
+
+            // Release any previously playing engines cleanly
+            if (isYouTubeActive) {
+                if (youtubeStreamView != null) {
+                    youtubeStreamView.loadUrl("about:blank");
+                    youtubeStreamView.setVisibility(View.GONE);
+                }
+                isYouTubeActive = false;
+                isYouTubeLoaded = false;
+            }
+            if (isVlcActive) {
+                releaseVlcPlayer();
+                isVlcActive = false;
+                if (vlcVideoLayout != null) vlcVideoLayout.setVisibility(View.GONE);
+            }
+            if (exoPlayer != null) {
+                releaseExoPlayer();
+                if (exoPlayerView != null) exoPlayerView.setVisibility(View.GONE);
+            }
+
+            // Reset Seekbar and time displays
+            if (videoSeekBar != null) {
+                videoSeekBar.setProgress(0);
+                videoSeekBar.setMax(100);
+            }
+            if (timeCurrentText != null) timeCurrentText.setText("00:00");
+            if (timeTotalText != null) timeTotalText.setText("00:00");
+        }
+
+        if (StreamUrlHelper.isOnlineStream(videoUriStr != null ? videoUriStr : videoPath)) {
+            showGestureHud("● STREAMING", DotMatrixIconView.TYPE_SEEK_FORWARD, videoTitle, 100);
+        }
+
+        // Auto-select optimal engine
+        if (isYouTubeStream()) {
+            startYouTubePlayer();
+            fetchSingleYouTubeTitle(videoUriStr != null ? videoUriStr : videoPath);
+        } else if (isSurroundOrEac3File() || isRtspOrLiveStream(videoUriStr != null ? videoUriStr : videoPath)) {
+            startVlcPlayer(currentPositionMs);
+        } else {
+            startExoPlayer(currentPositionMs);
+        }
+    }
+
+    private boolean isRtspOrLiveStream(String url) {
+        if (url == null) return false;
+        String lower = url.trim().toLowerCase();
+        return lower.startsWith("rtsp://") || lower.startsWith("rtmp://") || lower.startsWith("mms://");
     }
 
     private String resolveTitleFromUri(Uri uri) {
@@ -341,8 +432,8 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     }
 
     private boolean isYouTubeStream() {
-        String testStr = ((videoTitle != null ? videoTitle : "") + " " + (videoPath != null ? videoPath : "") + " " + (videoUriStr != null ? videoUriStr : "")).toLowerCase();
-        return YouTubeStreamResolver.isYouTubeUrl(testStr);
+        String target = videoUriStr != null && !videoUriStr.isEmpty() ? videoUriStr : videoPath;
+        return target != null && YouTubeStreamResolver.isYouTubeUrl(target);
     }
 
     private boolean isSurroundOrEac3File() {
@@ -375,6 +466,91 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             hideSystemUI();
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        hideSystemUI();
+        applyAspectRatio();
+    }
+
+    /**
+     * Accurately detects the true physical display resolution (width and height),
+     * bypassing status bars, navigation bars, and display cutouts.
+     */
+    public Point getRealScreenSize() {
+        Point point = new Point();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+            if (wm != null) {
+                Rect bounds = wm.getCurrentWindowMetrics().getBounds();
+                point.set(bounds.width(), bounds.height());
+                return point;
+            }
+        }
+        WindowManager wm = getWindowManager();
+        if (wm != null) {
+            android.view.Display display = wm.getDefaultDisplay();
+            android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+            display.getRealMetrics(dm);
+            point.set(dm.widthPixels, dm.heightPixels);
+        } else {
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            point.set(dm.widthPixels, dm.heightPixels);
+        }
+        return point;
+    }
+
+    private void applyAspectRatio() {
+        Point realSize = getRealScreenSize();
+        int sw = Math.max(realSize.x, realSize.y);
+        int sh = Math.min(realSize.x, realSize.y);
+        float screenAspect = (float) sw / (float) sh;
+        float videoAspect = (videoWidth > 0 && videoHeight > 0) ? ((float) videoWidth / videoHeight) : (16f / 9f);
+        float zoomRatio = screenAspect / videoAspect;
+        if (zoomRatio < 1.0f) zoomRatio = videoAspect / screenAspect;
+        if (zoomRatio < 1.01f) zoomRatio = 1.25f;
+
+        if (btnAspectRatio != null) {
+            if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
+                btnAspectRatio.setText("FILL");
+            } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+                btnAspectRatio.setText("ZOOM");
+            } else {
+                btnAspectRatio.setText("FIT");
+            }
+        }
+
+        if (exoPlayerView != null) {
+            exoPlayerView.setResizeMode(currentResizeMode);
+        }
+
+        if (isVlcActive && vlcPlayer != null) {
+            if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
+                vlcPlayer.setAspectRatio(sw + ":" + sh);
+                vlcPlayer.setScale(0);
+            } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+                vlcPlayer.setAspectRatio(null);
+                vlcPlayer.setScale(zoomRatio);
+            } else {
+                vlcPlayer.setAspectRatio(null);
+                vlcPlayer.setScale(0);
+            }
+        }
+
+        if (isYouTubeActive && youtubeStreamView != null) {
+            if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
+                youtubeStreamView.setScaleX(zoomRatio);
+                youtubeStreamView.setScaleY(1.0f);
+            } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+                youtubeStreamView.setScaleX(zoomRatio);
+                youtubeStreamView.setScaleY(zoomRatio);
+            } else {
+                youtubeStreamView.setScaleX(1.0f);
+                youtubeStreamView.setScaleY(1.0f);
+            }
         }
     }
 
@@ -437,6 +613,17 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         btnDecoderMode = findViewById(R.id.btn_decoder_mode);
         btnSpeed = findViewById(R.id.btn_speed);
         btnAspectRatio = findViewById(R.id.btn_aspect_ratio);
+        SharedPreferences prefs = getSharedPreferences("nothing_player_prefs", MODE_PRIVATE);
+        currentResizeMode = prefs.getInt("aspect_ratio_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
+        if (btnAspectRatio != null) {
+            if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
+                btnAspectRatio.setText("FILL");
+            } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+                btnAspectRatio.setText("ZOOM");
+            } else {
+                btnAspectRatio.setText("FIT");
+            }
+        }
         btnAudioTrack = findViewById(R.id.btn_audio_track);
         btnSubtitleTrack = findViewById(R.id.btn_subtitle_track);
         btnRotateScreen = findViewById(R.id.btn_rotate_screen);
@@ -589,6 +776,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                             hideTransitionOverlay();
                             isYouTubePlaying = true;
                             btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
+                            applyAspectRatio();
                         } else if (state == 2) {
                             isYouTubePlaying = false;
                             btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
@@ -719,6 +907,48 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         }
     }
 
+    private void fetchSingleYouTubeTitle(String rawUrl) {
+        if (rawUrl == null || rawUrl.isEmpty()) return;
+        String videoId = YouTubeStreamResolver.extractVideoId(rawUrl);
+        if (videoId == null || videoId.isEmpty()) return;
+        titleExecutor.execute(() -> {
+            try {
+                String oembedUrl = "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=" + videoId + "&format=json";
+                java.net.URL url = new java.net.URL(oembedUrl);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(4000);
+                conn.setReadTimeout(4000);
+                if (conn.getResponseCode() == 200) {
+                    java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line);
+                    }
+                    reader.close();
+                    org.json.JSONObject obj = new org.json.JSONObject(sb.toString());
+                    String realTitle = obj.optString("title", "");
+                    if (!realTitle.isEmpty()) {
+                        runOnUiThread(() -> {
+                            videoTitle = realTitle;
+                            if (videoTitleText != null) {
+                                videoTitleText.setText(realTitle);
+                            }
+                            if (playlistTitles != null && !playlistTitles.isEmpty()) {
+                                playlistTitles.set(playlistIndex, realTitle);
+                            }
+                            if (queueAdapter != null) {
+                                queueAdapter.updateTitle(playlistIndex, realTitle);
+                            }
+                        });
+                    }
+                }
+                conn.disconnect();
+            } catch (Exception ignored) {}
+        });
+    }
+
     private void showTransitionOverlay() {
         if (videoTransitionOverlay == null) return;
         videoTransitionOverlay.animate().cancel();
@@ -828,7 +1058,15 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (targetUri != null) {
             DefaultDataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(this);
             DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory);
-            MediaItem mediaItem = MediaItem.fromUri(targetUri);
+            
+            MediaItem.Builder mediaItemBuilder = new MediaItem.Builder().setUri(targetUri);
+            String urlLower = targetUri.toString().toLowerCase();
+            if (urlLower.contains(".m3u8") || urlLower.contains("m3u8")) {
+                mediaItemBuilder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8);
+            } else if (urlLower.contains(".mpd") || urlLower.contains("dash")) {
+                mediaItemBuilder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MPD);
+            }
+            MediaItem mediaItem = mediaItemBuilder.build();
             
             exoPlayer.setMediaSource(mediaSourceFactory.createMediaSource(mediaItem));
             
@@ -864,6 +1102,15 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             }
 
             @Override
+            public void onVideoSizeChanged(androidx.media3.common.VideoSize videoSize) {
+                if (videoSize.width > 0 && videoSize.height > 0) {
+                    videoWidth = videoSize.width;
+                    videoHeight = videoSize.height;
+                    applyAspectRatio();
+                }
+            }
+
+            @Override
             public void onPlaybackStateChanged(int playbackState) {
                 if (!isVlcActive) {
                     if (playbackState == Player.STATE_READY) {
@@ -873,6 +1120,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                         updateTimeDisplay(exoPlayer.getCurrentPosition());
                         AudioEffectManager.getInstance().attachAudioSession(exoPlayer.getAudioSessionId(), ExoVideoPlayerActivity.this);
                         updateCodecInfo();
+                        applyAspectRatio();
                     } else if (playbackState == Player.STATE_ENDED) {
                         if (playlistPaths != null && playlistIndex < playlistPaths.size() - 1) {
                             playNextVideo();
@@ -964,6 +1212,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                         btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
                         startProgressTracker();
                         scheduleHideControls();
+                        applyAspectRatio();
                     } else if (event.type == MediaPlayer.Event.Paused) {
                         btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
                     } else if (event.type == MediaPlayer.Event.LengthChanged) {
@@ -975,6 +1224,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                         currentPositionMs = pos;
                         updateTimeDisplay(pos);
                         videoSeekBar.setProgress((int) pos);
+                        if (Math.abs(pos - lastSavedProgressMs) >= 2000) {
+                            lastSavedProgressMs = pos;
+                            saveCurrentPlaybackProgress(pos, totalDurationMs);
+                        }
                     } else if (event.type == MediaPlayer.Event.EndReached) {
                         if (playlistPaths != null && playlistIndex < playlistPaths.size() - 1) {
                             playNextVideo();
@@ -1208,48 +1461,21 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 exoPlayerView.getVideoSurfaceView().setScaleY(1.0f);
             }
 
-            int sw = getResources().getDisplayMetrics().widthPixels;
-            int sh = getResources().getDisplayMetrics().heightPixels;
-            float screenAspect = Math.max(sw, sh) / (float) Math.min(sw, sh);
-            float videoAspect = 16f / 9f;
-            float zoomRatio = screenAspect / videoAspect;
-            if (zoomRatio < 1.1f) zoomRatio = 1.28f;
-
             if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
-                btnAspectRatio.setText("FILL");
                 showGestureHud("● ASPECT RATIO", DotMatrixIconView.TYPE_SEEK_FORWARD, "STRETCH / FULL", 100);
-                if (isYouTubeActive && youtubeStreamView != null) {
-                    youtubeStreamView.setScaleX(zoomRatio);
-                    youtubeStreamView.setScaleY(1.0f);
-                } else if (isVlcActive && vlcPlayer != null) {
-                    vlcPlayer.setAspectRatio("16:9");
-                    vlcPlayer.setScale(0);
-                }
             } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
-                btnAspectRatio.setText("ZOOM");
                 showGestureHud("● ASPECT RATIO", DotMatrixIconView.TYPE_SEEK_FORWARD, "ZOOM / CROP", 100);
-                if (isYouTubeActive && youtubeStreamView != null) {
-                    youtubeStreamView.setScaleX(zoomRatio);
-                    youtubeStreamView.setScaleY(zoomRatio);
-                } else if (isVlcActive && vlcPlayer != null) {
-                    vlcPlayer.setAspectRatio(null);
-                    vlcPlayer.setScale(1.25f);
-                }
             } else {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
-                btnAspectRatio.setText("FIT");
                 showGestureHud("● ASPECT RATIO", DotMatrixIconView.TYPE_SEEK_FORWARD, "FIT TO SCREEN", 100);
-                if (isYouTubeActive && youtubeStreamView != null) {
-                    youtubeStreamView.setScaleX(1.0f);
-                    youtubeStreamView.setScaleY(1.0f);
-                } else if (isVlcActive && vlcPlayer != null) {
-                    vlcPlayer.setAspectRatio(null);
-                    vlcPlayer.setScale(0);
-                }
             }
-            if (exoPlayerView != null) exoPlayerView.setResizeMode(currentResizeMode);
+
+            SharedPreferences p = getSharedPreferences("nothing_player_prefs", MODE_PRIVATE);
+            p.edit().putInt("aspect_ratio_mode", currentResizeMode).apply();
+
+            applyAspectRatio();
         });
 
         btnSpeed.setOnClickListener(v -> {
@@ -1575,7 +1801,8 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             @Override
             public boolean onDoubleTap(MotionEvent e) {
                 if (isLocked) return false;
-                int screenWidth = getResources().getDisplayMetrics().widthPixels;
+                Point realSize = getRealScreenSize();
+                int screenWidth = Math.max(realSize.x, realSize.y);
                 long cur = isYouTubeActive ? youtubeCurrentPositionMs : (isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0));
                 long dur = isYouTubeActive ? youtubeDurationMs : totalDurationMs;
 
@@ -1618,8 +1845,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                     }
                 }
 
-                int screenWidth = getResources().getDisplayMetrics().widthPixels;
-                int screenHeight = getResources().getDisplayMetrics().heightPixels;
+                Point realSize = getRealScreenSize();
+                int screenWidth = Math.max(realSize.x, realSize.y);
+                int screenHeight = Math.min(realSize.x, realSize.y);
 
                 if (gestureMode[0] == GESTURE_VERTICAL) {
                     // Vertical Swipe ONLY: Volume / Brightness
@@ -1830,6 +2058,17 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         progressHandler.removeCallbacks(progressRunnable);
     }
 
+    private long lastSavedProgressMs = 0;
+
+    private void saveCurrentPlaybackProgress(long currentPos, long dur) {
+        if (currentPos > 0 && dur > 0) {
+            String key = videoPath != null && !videoPath.isEmpty() ? videoPath : videoUriStr;
+            if (key != null && !key.isEmpty()) {
+                PlaybackHistoryManager.saveProgress(this, key, videoTitle, currentPos, dur);
+            }
+        }
+    }
+
     private final Runnable progressRunnable = new Runnable() {
         @Override
         public void run() {
@@ -1837,6 +2076,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 long pos = exoPlayer.getCurrentPosition();
                 videoSeekBar.setProgress((int) pos);
                 updateTimeDisplay(pos);
+                if (Math.abs(pos - lastSavedProgressMs) >= 2000) {
+                    lastSavedProgressMs = pos;
+                    saveCurrentPlaybackProgress(pos, totalDurationMs);
+                }
                 progressHandler.postDelayed(this, 500);
             }
         }
@@ -1844,6 +2087,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
     private void updateTimeDisplay(long currentPos) {
         timeCurrentText.setText(formatTime(currentPos));
+        if (totalDurationMs <= 0) {
+            timeTotalText.setText("LIVE");
+            return;
+        }
         if (showRemainingTime) {
             long remaining = Math.max(0, totalDurationMs - currentPos);
             timeTotalText.setText("-" + formatTime(remaining));
@@ -1863,7 +2110,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
         float minX = dpToPx(8);
         View parent = (View) seekbarPreviewCard.getParent();
-        float maxX = parent != null ? parent.getWidth() - cardWidth - dpToPx(8) : getResources().getDisplayMetrics().widthPixels - cardWidth;
+        Point realSize = getRealScreenSize();
+        int realWidth = Math.max(realSize.x, realSize.y);
+        float maxX = parent != null ? parent.getWidth() - cardWidth - dpToPx(8) : realWidth - cardWidth;
         targetX = Math.max(minX, Math.min(maxX, targetX));
 
         seekbarPreviewCard.setTranslationX(targetX);
@@ -1923,6 +2172,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     }
 
     private void playNextVideo() {
+        long cur = isYouTubeActive ? youtubeCurrentPositionMs : (isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0));
+        long dur = isYouTubeActive ? youtubeDurationMs : totalDurationMs;
+        saveCurrentPlaybackProgress(cur, dur);
+
         if (isYouTubeActive && youtubePlaylistId != null && youtubeStreamView != null) {
             youtubeStreamView.evaluateJavascript("if (player && player.nextVideo) player.nextVideo();", null);
             showGestureHud("● PLAYLIST NEXT", DotMatrixIconView.TYPE_SEEK_FORWARD, "NEXT VIDEO", 100);
@@ -1932,12 +2185,15 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (playlistPaths != null && playlistIndex < playlistPaths.size() - 1) {
             playVideoAtIndex(playlistIndex + 1);
         } else {
-            showGestureHud("● QUEUE ENDED", DotMatrixIconView.TYPE_SEEK_FORWARD, "LAST VIDEO", 100);
+            showGestureHud("● PLAYLIST END", DotMatrixIconView.TYPE_SEEK_FORWARD, "LAST VIDEO", 100);
         }
     }
 
     private void playPreviousVideo() {
         long cur = isYouTubeActive ? youtubeCurrentPositionMs : (isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0));
+        long dur = isYouTubeActive ? youtubeDurationMs : totalDurationMs;
+        saveCurrentPlaybackProgress(cur, dur);
+
         if (cur > 3500) {
             seekBy(-cur);
             showGestureHud("● RESTART", DotMatrixIconView.TYPE_SEEK_REWIND, "RESTARTING", 0);
@@ -1954,7 +2210,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             playVideoAtIndex(playlistIndex - 1);
         } else {
             seekBy(-cur);
-            showGestureHud("● QUEUE START", DotMatrixIconView.TYPE_SEEK_REWIND, "FIRST VIDEO", 0);
+            showGestureHud("● PLAYLIST START", DotMatrixIconView.TYPE_SEEK_REWIND, "FIRST VIDEO", 0);
         }
     }
 
@@ -2027,7 +2283,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (queueHeaderTitle != null) {
             int total = playlistPaths != null ? playlistPaths.size() : 1;
             int current = playlistIndex + 1;
-            queueHeaderTitle.setText(String.format("QUEUE • %02d / %02d", current, total));
+            queueHeaderTitle.setText(String.format("PLAYLIST • %02d / %02d", current, total));
         }
         if (queueAdapter != null && playlistPaths != null) {
             List<PlaylistQueueAdapter.QueueItem> items = new ArrayList<>();
@@ -2197,6 +2453,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        long cur = isYouTubeActive ? youtubeCurrentPositionMs : (isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0));
+        long dur = isYouTubeActive ? youtubeDurationMs : totalDurationMs;
+        saveCurrentPlaybackProgress(cur, dur);
+
         if (!isInPictureInPictureMode()) {
             if (isYouTubeActive && youtubeStreamView != null) {
                 youtubeStreamView.evaluateJavascript("if (player && player.pauseVideo) player.pauseVideo();", null);
@@ -2211,6 +2471,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        long cur = isYouTubeActive ? youtubeCurrentPositionMs : (isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0));
+        long dur = isYouTubeActive ? youtubeDurationMs : totalDurationMs;
+        saveCurrentPlaybackProgress(cur, dur);
+
         stopProgressTracker();
         hideHandler.removeCallbacksAndMessages(null);
         try {

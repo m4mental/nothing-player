@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -14,7 +15,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -35,6 +38,7 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     private final OnItemClickListener listener;
     private List<Object> items = new ArrayList<>();
     private boolean isFolderView = true;
+    private boolean isRecentlyMode = false;
     private final Set<Object> selectedItems = new HashSet<>();
     private boolean isSelectionMode = false;
 
@@ -42,11 +46,17 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         public String name;
         public int count;
         public boolean hasNew;
+        public boolean isRecentFolder;
 
         public FolderItem(String name, int count, boolean hasNew) {
+            this(name, count, hasNew, false);
+        }
+
+        public FolderItem(String name, int count, boolean hasNew, boolean isRecentFolder) {
             this.name = name;
             this.count = count;
             this.hasNew = hasNew;
+            this.isRecentFolder = isRecentFolder;
         }
     }
 
@@ -56,8 +66,13 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     }
 
     public void setItems(List<Object> items, boolean isFolderView) {
+        setItems(items, isFolderView, false);
+    }
+
+    public void setItems(List<Object> items, boolean isFolderView, boolean isRecentlyMode) {
         this.items = items;
         this.isFolderView = isFolderView;
+        this.isRecentlyMode = isRecentlyMode;
         clearSelection();
         notifyDataSetChanged();
     }
@@ -122,7 +137,21 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             FolderItem folder = (FolderItem) item;
             FolderViewHolder fHolder = (FolderViewHolder) holder;
             fHolder.folderName.setText(folder.name);
-            fHolder.folderCount.setText(folder.count + " Videos");
+            
+            if (fHolder.folderIcon != null) {
+                if (folder.isRecentFolder) {
+                    fHolder.folderIcon.setImageResource(R.drawable.ic_folder_recent);
+                    fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
+                    fHolder.folderCount.setText(folder.count + " Videos • Chronological");
+                } else {
+                    fHolder.folderIcon.setImageResource(android.R.drawable.ic_menu_agenda);
+                    fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
+                    fHolder.folderCount.setText(folder.count + " Videos");
+                }
+            } else {
+                fHolder.folderCount.setText(folder.count + " Videos");
+            }
+
             if (fHolder.badgeNew != null) {
                 fHolder.badgeNew.setVisibility(folder.hasNew ? View.VISIBLE : View.GONE);
             }
@@ -150,7 +179,13 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             MediaItem video = (MediaItem) item;
             VideoViewHolder vHolder = (VideoViewHolder) holder;
             vHolder.title.setText(video.title);
-            vHolder.subtext.setText(video.folder + " • " + formatSize(video.size));
+
+            if (isRecentlyMode || "Recently".equalsIgnoreCase(video.folder)) {
+                vHolder.subtext.setText(formatArrivalDate(video.addedAt) + " • " + formatSize(video.size));
+            } else {
+                vHolder.subtext.setText(video.folder + " • " + formatSize(video.size));
+            }
+
             vHolder.duration.setText(formatDuration(video.duration));
             vHolder.badgeRes.setText(video.resolution != null ? video.resolution : video.format);
 
@@ -168,6 +203,23 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 vHolder.badgeSurround.setVisibility(View.VISIBLE);
             } else {
                 vHolder.badgeSurround.setVisibility(View.GONE);
+            }
+
+            // Thumbnail Playback Progress Line directly underneath thumbnail
+            if (vHolder.progressBar != null) {
+                String path = video.path != null ? video.path : video.contentUri;
+                PlaybackHistoryManager.HistoryItem history = PlaybackHistoryManager.getProgress(context, path);
+                if (history != null && history.positionMs > 2000 && history.durationMs > 0) {
+                    int percent = history.getProgressPercent();
+                    if (percent > 0 && percent < 98) {
+                        vHolder.progressBar.setVisibility(View.VISIBLE);
+                        vHolder.progressBar.setProgress(percent);
+                    } else {
+                        vHolder.progressBar.setVisibility(View.GONE);
+                    }
+                } else {
+                    vHolder.progressBar.setVisibility(View.GONE);
+                }
             }
 
             Glide.with(context)
@@ -201,11 +253,13 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     }
 
     static class FolderViewHolder extends RecyclerView.ViewHolder {
+        ImageView folderIcon;
         TextView folderName, folderCount, folderArrow, badgeNew;
         ImageView selectionCheck;
 
         FolderViewHolder(View v) {
             super(v);
+            folderIcon = v.findViewById(R.id.folder_icon);
             folderName = v.findViewById(R.id.folder_name);
             folderCount = v.findViewById(R.id.folder_video_count);
             folderArrow = v.findViewById(R.id.folder_arrow);
@@ -218,6 +272,7 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         ImageView thumb, selectionCheck;
         TextView title, subtext, duration, badgeRes, badgeSurround, badgeNew;
         ImageButton btnMenu;
+        DotMatrixProgressBar progressBar;
 
         VideoViewHolder(View v) {
             super(v);
@@ -230,7 +285,20 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             badgeNew = v.findViewById(R.id.badge_new);
             btnMenu = v.findViewById(R.id.btn_video_menu);
             selectionCheck = v.findViewById(R.id.selection_check);
+            progressBar = v.findViewById(R.id.video_progress_bar);
         }
+    }
+
+    private String formatArrivalDate(long time) {
+        if (time <= 0) return "Recently";
+        long diff = System.currentTimeMillis() - time;
+        if (diff < 60 * 1000) return "Just now";
+        if (diff < 60 * 60 * 1000) return (diff / (60 * 1000)) + "m ago";
+        if (diff < 24 * 60 * 60 * 1000) return (diff / (60 * 60 * 1000)) + "h ago";
+        if (diff < 48 * 60 * 60 * 1000) return "Yesterday";
+        if (diff < 7 * 24 * 60 * 60 * 1000) return (diff / (24 * 60 * 60 * 1000)) + "d ago";
+        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
+        return sdf.format(new Date(time));
     }
 
     private String formatDuration(long millis) {

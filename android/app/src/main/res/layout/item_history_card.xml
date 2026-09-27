@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="148dp"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="10dp"
+    android:orientation="vertical"
+    android:background="@drawable/bg_card_nothing"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Thumbnail Box -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="88dp">
+
+        <ImageView
+            android:id="@+id/history_thumb"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:background="@color/nothing_surface" />
+
+        <!-- Relative Last Watched Time Badge (Top Right) -->
+        <TextView
+            android:id="@+id/history_time_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:layout_margin="5dp"
+            android:background="#D0000000"
+            android:paddingHorizontal="5dp"
+            android:paddingVertical="1dp"
+            android:text="2H AGO"
+            android:textColor="#D71921"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold" />
+
+        <!-- Total Duration Badge (Bottom Right) -->
+        <TextView
+            android:id="@+id/history_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginEnd="5dp"
+            android:layout_marginBottom="6dp"
+            android:background="#CC000000"
+            android:paddingHorizontal="5dp"
+            android:paddingVertical="1dp"
+            android:text="00:00"
+            android:textColor="@color/nothing_white"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold" />
+
+        <!-- Dot Matrix Playback Progress Line under Thumbnail -->
+        <com.nothing.player.DotMatrixProgressBar
+            android:id="@+id/history_progress_bar"
+            android:layout_width="match_parent"
+            android:layout_height="5dp"
+            android:layout_alignParentBottom="true" />
+    </RelativeLayout>
+
+    <!-- Info text below thumbnail -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/history_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Video Title"
+            android:textColor="@color/nothing_white"
+            android:textSize="11sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/history_subtext"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="14:20 / 30:00 • 47%"
+            android:textColor="@color/nothing_white_40"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:singleLine="true" />
+    </LinearLayout>
+
+</LinearLayout>
