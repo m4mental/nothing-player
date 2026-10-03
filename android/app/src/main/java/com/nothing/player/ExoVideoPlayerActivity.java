@@ -1,6 +1,11 @@
 package com.nothing.player;
 
 import android.app.AlertDialog;
+import android.app.Dialog;
+import android.graphics.drawable.ColorDrawable;
+import android.view.LayoutInflater;
+import android.view.ViewGroup;
+import android.view.Window;
 import android.app.PendingIntent;
 import android.app.PictureInPictureParams;
 import android.app.RemoteAction;
@@ -21,6 +26,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import android.util.Rational;
@@ -33,6 +40,7 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -48,6 +56,7 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -165,7 +174,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private ImageButton btnPlayPause;
     private ImageButton btnPrev;
     private ImageButton btnNext;
-    private Button btnPlaylistQueue;
+    private ImageButton btnRewind;
+    private ImageButton btnForward;
+    private ImageButton btnPlaylistQueue;
     private View playlistQueuePanel;
     private TextView queueHeaderTitle;
     private ImageButton btnCloseQueue;
@@ -178,17 +189,113 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private String youtubePlaylistId = null;
     private boolean isYouTubeLoaded = false;
 
+    // Top Controls
+    private ImageButton btnCast;
     private Button btnDecoderMode;
-    private Button btnSpeed;
+    private ImageButton btnSubtitleTrack;
+    private ImageButton btnMoreMenu;
+
+    // Quick Action Bar
+    private ImageButton btnQuickOrientation;
+    private ImageButton btnQuickMute;
+    private ImageButton btnQuickBackground;
+    private Button btnQuickSpeed;
+    private ImageButton btnQuickExpand;
+    private View layoutQuickActionsExpanded;
+    private ImageButton btnQuickNightMode;
+    private ImageButton btnQuickAbRepeat;
+    private ImageButton btnQuickPip;
+    private ImageButton btnQuickEqualizer;
+    private ImageButton btnQuickMirror;
+    private ImageButton btnQuickScreenshot;
+    private ImageButton btnFloatingLock;
+    private String currentRatioLabel = "FIT";
+
+    // Bottom Controls
+    private Button btnBottomSpeed;
     private Button btnAspectRatio;
-    private Button btnAudioTrack;
-    private Button btnSubtitleTrack;
-    private Button btnRotateScreen;
-    private Button btnAudioBoost;
-    private Button btnPip;
-    private Button btnMute;
-    private ImageButton btnExpandControls;
-    private View topExpandableControlsBar;
+
+    // Slide-over Panels & Overlays
+    private View panelRatio;
+    private ImageButton btnCloseRatioPanel;
+    private View panelSpeed;
+    private ImageButton btnCloseSpeedPanel;
+    private View panelMoreMenu;
+    private ImageButton btnCloseMoreMenu;
+    private View nightModeOverlay;
+    private TextView tvSpeedCurrentValue;
+    private SeekBar seekbarPlaybackSpeed;
+
+    // Phase 2 Panels & Overlays
+    private View panelVisualEnhancer;
+    private ImageButton btnCloseVisualEnhancer;
+    private ImageButton btnBackVisualEnhancer;
+    private View panelSleepTimer;
+    private ImageButton btnCloseSleepTimer;
+    private ImageButton btnBackSleepTimer;
+    private View visualEnhancerOverlay;
+
+    // Phase 3 Others Panel Views
+    private View panelOthers;
+    private ImageButton btnBackOthers;
+    private ImageButton btnCloseOthers;
+    private View itemOthersProperties;
+    private View itemOthersFaq;
+    private View itemOthersCastFaq;
+    private View itemOthersPlaybackIssue;
+
+    // Phase 2 Speed Panel Views
+    private View layoutSpeedMain;
+    private View layoutSpeedAdvanced;
+    private View btnOpenSpeedAdvanced;
+    private ImageButton btnBackSpeedAdvanced;
+    private TextView tvLongPressSpeedTarget;
+    private SwitchCompat switchLongPressVibration;
+    private float longPressSpeedTarget = 2.0f;
+    private boolean longPressVibration = true;
+    private Vibrator vibrator;
+
+    // Phase 2 More Menu Elements
+    private TextView tvMenuRepeatModeVal;
+    private ImageButton btnRepeatOrder, btnRepeatOne, btnRepeatShuffle, btnRepeatAll, btnRepeatOnce;
+    private int currentRepeatMode = 3; // 0=Order, 1=Loop One, 2=Shuffle, 3=Loop All, 4=Once
+    private SeekBar seekbarMenuBrightness;
+    private TextView tvMenuBrightnessVal;
+    private SeekBar seekbarMenuVolume;
+    private TextView tvMenuVolumeVal;
+    private Button btnMenuDecoderHw, btnMenuDecoderSw;
+    private SwitchCompat switchMenuScreenshotToggle;
+    private ImageView ivMenuBookmarkIcon;
+    private ImageView ivMenuFavoriteIcon;
+    private TextView tvMenuTimerLabel;
+
+    // Phase 2 Visual Enhancer
+    private Button btnFilterOriginal, btnFilterHdr, btnFilterClear, btnFilterUltraClear, btnFilterArcticBlue, btnFilterWarmGlow, btnFilterCinematic;
+    private SwitchCompat switchFilterApplyAll;
+    private String currentVisualFilter = "ORIGINAL";
+    private boolean filterApplyAll = true;
+
+    // Phase 2 Sleep Timer
+    private TextView tvSleepTimerStatus;
+    private Button btnTimerOff, btnTimer15, btnTimer30, btnTimer60, btnTimer90, btnTimerEndOfVideo;
+    private final Handler sleepTimerHandler = new Handler(Looper.getMainLooper());
+    private Runnable sleepTimerRunnable;
+    private long sleepTimerEndTimeMs = 0;
+    private boolean sleepTimerEndOfVideo = false;
+
+    // Toggles & Preferences
+    private boolean rememberRatio = true;
+    private boolean directRatioSwitch = true;
+    private boolean rememberSpeed = false;
+    private boolean longPress2xBoost = true;
+    private boolean is2xBoostActive = false;
+    private float preBoostSpeed = 1.0f;
+    private int currentOrientationMode = 0; // 0 = Landscape, 1 = Portrait, 2 = Sensor
+    private boolean isNightModeActive = false;
+    private boolean isMirrored = false;
+    private long repeatPointA = -1;
+    private long repeatPointB = -1;
+    private int repeatMode = 0; // 0 = All, 1 = One, 2 = Off
 
     private boolean isLocked = false;
     private boolean areControlsVisible = true;
@@ -514,10 +621,12 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (zoomRatio < 1.01f) zoomRatio = 1.25f;
 
         if (btnAspectRatio != null) {
-            if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
-                btnAspectRatio.setText("FILL");
+            if (currentRatioLabel != null && !currentRatioLabel.isEmpty()) {
+                btnAspectRatio.setText(currentRatioLabel.toUpperCase());
+            } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
+                btnAspectRatio.setText("STRETCH");
             } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
-                btnAspectRatio.setText("ZOOM");
+                btnAspectRatio.setText("FILL");
             } else {
                 btnAspectRatio.setText("FIT");
             }
@@ -611,27 +720,166 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         }
 
         btnDecoderMode = findViewById(R.id.btn_decoder_mode);
-        btnSpeed = findViewById(R.id.btn_speed);
+        btnCast = findViewById(R.id.btn_cast);
+        btnSubtitleTrack = findViewById(R.id.btn_subtitle_track);
+        btnMoreMenu = findViewById(R.id.btn_more_menu);
+
+        btnQuickOrientation = findViewById(R.id.btn_quick_orientation);
+        btnQuickMute = findViewById(R.id.btn_quick_mute);
+        btnQuickBackground = findViewById(R.id.btn_quick_background);
+        btnQuickSpeed = findViewById(R.id.btn_quick_speed);
+        btnQuickExpand = findViewById(R.id.btn_quick_expand);
+        layoutQuickActionsExpanded = findViewById(R.id.layout_quick_actions_expanded);
+        btnQuickNightMode = findViewById(R.id.btn_quick_night_mode);
+        btnQuickAbRepeat = findViewById(R.id.btn_quick_ab_repeat);
+        btnQuickPip = findViewById(R.id.btn_quick_pip);
+        btnQuickEqualizer = findViewById(R.id.btn_quick_equalizer);
+        btnQuickMirror = findViewById(R.id.btn_quick_mirror);
+        btnQuickScreenshot = findViewById(R.id.btn_quick_screenshot);
+        btnFloatingLock = findViewById(R.id.btn_floating_lock);
+
+        btnBottomSpeed = findViewById(R.id.btn_bottom_speed);
         btnAspectRatio = findViewById(R.id.btn_aspect_ratio);
+        btnRewind = findViewById(R.id.btn_rewind);
+        btnForward = findViewById(R.id.btn_forward);
+
+        panelRatio = findViewById(R.id.panel_ratio);
+        btnCloseRatioPanel = findViewById(R.id.btn_close_ratio_panel);
+        panelSpeed = findViewById(R.id.panel_speed);
+        btnCloseSpeedPanel = findViewById(R.id.btn_close_speed_panel);
+        panelMoreMenu = findViewById(R.id.panel_more_menu);
+        btnCloseMoreMenu = findViewById(R.id.btn_close_more_menu);
+        nightModeOverlay = findViewById(R.id.night_mode_overlay);
+        tvSpeedCurrentValue = findViewById(R.id.tv_speed_current_value);
+        seekbarPlaybackSpeed = findViewById(R.id.seekbar_playback_speed);
+
+        // Phase 2 Views Binding
+        visualEnhancerOverlay = findViewById(R.id.visual_enhancer_overlay);
+        panelVisualEnhancer = findViewById(R.id.panel_visual_enhancer);
+        btnCloseVisualEnhancer = findViewById(R.id.btn_close_visual_enhancer);
+        btnBackVisualEnhancer = findViewById(R.id.btn_back_visual_enhancer);
+
+        panelSleepTimer = findViewById(R.id.panel_sleep_timer);
+        btnCloseSleepTimer = findViewById(R.id.btn_close_sleep_timer);
+        btnBackSleepTimer = findViewById(R.id.btn_back_sleep_timer);
+
+        // Phase 3 Views Binding
+        panelOthers = findViewById(R.id.panel_others);
+        btnBackOthers = findViewById(R.id.btn_back_others);
+        btnCloseOthers = findViewById(R.id.btn_close_others);
+        itemOthersProperties = findViewById(R.id.item_others_properties);
+        itemOthersFaq = findViewById(R.id.item_others_faq);
+        itemOthersCastFaq = findViewById(R.id.item_others_cast_faq);
+        itemOthersPlaybackIssue = findViewById(R.id.item_others_playback_issue);
+
+        layoutSpeedMain = findViewById(R.id.layout_speed_main);
+        layoutSpeedAdvanced = findViewById(R.id.layout_speed_advanced);
+        btnOpenSpeedAdvanced = findViewById(R.id.btn_open_speed_advanced);
+        btnBackSpeedAdvanced = findViewById(R.id.btn_back_speed_advanced);
+        tvLongPressSpeedTarget = findViewById(R.id.tv_long_press_speed_target);
+        switchLongPressVibration = findViewById(R.id.switch_long_press_vibration);
+
+        tvMenuRepeatModeVal = findViewById(R.id.tv_menu_repeat_mode_val);
+        btnRepeatOrder = findViewById(R.id.btn_repeat_order);
+        btnRepeatOne = findViewById(R.id.btn_repeat_one);
+        btnRepeatShuffle = findViewById(R.id.btn_repeat_shuffle);
+        btnRepeatAll = findViewById(R.id.btn_repeat_all);
+        btnRepeatOnce = findViewById(R.id.btn_repeat_once);
+
+        seekbarMenuBrightness = findViewById(R.id.seekbar_menu_brightness);
+        tvMenuBrightnessVal = findViewById(R.id.tv_menu_brightness_val);
+        seekbarMenuVolume = findViewById(R.id.seekbar_menu_volume);
+        tvMenuVolumeVal = findViewById(R.id.tv_menu_volume_val);
+
+        btnMenuDecoderHw = findViewById(R.id.btn_menu_decoder_hw);
+        btnMenuDecoderSw = findViewById(R.id.btn_menu_decoder_sw);
+        switchMenuScreenshotToggle = findViewById(R.id.switch_menu_screenshot_toggle);
+        ivMenuBookmarkIcon = findViewById(R.id.iv_menu_bookmark_icon);
+        ivMenuFavoriteIcon = findViewById(R.id.iv_menu_favorite_icon);
+        tvMenuTimerLabel = findViewById(R.id.tv_menu_timer_label);
+
+        btnFilterOriginal = findViewById(R.id.btn_filter_original);
+        btnFilterHdr = findViewById(R.id.btn_filter_hdr);
+        btnFilterClear = findViewById(R.id.btn_filter_clear);
+        btnFilterUltraClear = findViewById(R.id.btn_filter_ultra_clear);
+        btnFilterArcticBlue = findViewById(R.id.btn_filter_arctic_blue);
+        btnFilterWarmGlow = findViewById(R.id.btn_filter_warm_glow);
+        btnFilterCinematic = findViewById(R.id.btn_filter_cinematic);
+        switchFilterApplyAll = findViewById(R.id.switch_filter_apply_all);
+
+        tvSleepTimerStatus = findViewById(R.id.tv_sleep_timer_status);
+        btnTimerOff = findViewById(R.id.btn_timer_off);
+        btnTimer15 = findViewById(R.id.btn_timer_15);
+        btnTimer30 = findViewById(R.id.btn_timer_30);
+        btnTimer60 = findViewById(R.id.btn_timer_60);
+        btnTimer90 = findViewById(R.id.btn_timer_90);
+        btnTimerEndOfVideo = findViewById(R.id.btn_timer_end_of_video);
+
+        try {
+            vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        } catch (Exception ignored) {}
+
         SharedPreferences prefs = getSharedPreferences("nothing_player_prefs", MODE_PRIVATE);
         currentResizeMode = prefs.getInt("aspect_ratio_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
-        if (btnAspectRatio != null) {
-            if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
-                btnAspectRatio.setText("FILL");
-            } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
-                btnAspectRatio.setText("ZOOM");
-            } else {
-                btnAspectRatio.setText("FIT");
-            }
+        rememberRatio = prefs.getBoolean("remember_ratio", true);
+        directRatioSwitch = prefs.getBoolean("direct_ratio_switch", true);
+        rememberSpeed = prefs.getBoolean("remember_speed", false);
+        longPress2xBoost = prefs.getBoolean("long_press_2x_boost", true);
+        longPressSpeedTarget = prefs.getFloat("long_press_speed_target", 2.0f);
+        longPressVibration = prefs.getBoolean("long_press_vibration", true);
+        filterApplyAll = prefs.getBoolean("filter_apply_all", true);
+        if (filterApplyAll) {
+            currentVisualFilter = prefs.getString("saved_visual_filter", "ORIGINAL");
         }
-        btnAudioTrack = findViewById(R.id.btn_audio_track);
-        btnSubtitleTrack = findViewById(R.id.btn_subtitle_track);
-        btnRotateScreen = findViewById(R.id.btn_rotate_screen);
-        btnAudioBoost = findViewById(R.id.btn_audio_boost);
-        btnPip = findViewById(R.id.btn_pip);
-        btnMute = findViewById(R.id.btn_mute);
-        btnExpandControls = findViewById(R.id.btn_expand_controls);
-        topExpandableControlsBar = findViewById(R.id.top_expandable_controls_bar);
+        currentRepeatMode = prefs.getInt("repeat_mode", 3);
+        boolean showScreenshot = prefs.getBoolean("show_screenshot_btn", true);
+
+        if (rememberSpeed) {
+            playbackSpeed = prefs.getFloat("saved_playback_speed", 1.0f);
+        }
+        if (rememberRatio) {
+            currentRatioLabel = prefs.getString("saved_ratio_label", "FIT");
+        }
+        updateSpeedUI(playbackSpeed);
+        updateRatioButtonText();
+        updateRatioPresetsUI(currentRatioLabel);
+        updateRepeatModeUI();
+        applyVisualFilter(currentVisualFilter);
+
+        if (btnQuickScreenshot != null) {
+            btnQuickScreenshot.setVisibility(showScreenshot ? View.VISIBLE : View.GONE);
+        }
+        if (switchMenuScreenshotToggle != null) {
+            switchMenuScreenshotToggle.setChecked(showScreenshot);
+        }
+        if (tvLongPressSpeedTarget != null) {
+            tvLongPressSpeedTarget.setText(String.format(java.util.Locale.US, "%.1fX >", longPressSpeedTarget));
+        }
+        if (switchLongPressVibration != null) {
+            switchLongPressVibration.setChecked(longPressVibration);
+        }
+        if (switchFilterApplyAll != null) {
+            switchFilterApplyAll.setChecked(filterApplyAll);
+        }
+
+        // Initialize Brightness & Volume Sliders in More Menu
+        int brightPercent = (int) (currentBrightness * 100);
+        if (seekbarMenuBrightness != null) seekbarMenuBrightness.setProgress(brightPercent);
+        if (tvMenuBrightnessVal != null) tvMenuBrightnessVal.setText(String.valueOf(brightPercent));
+
+        if (audioManager != null) {
+            int curVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+            int volPercent = (int) ((float) curVol / Math.max(1, maxVolume) * 100);
+            if (seekbarMenuVolume != null) seekbarMenuVolume.setProgress(volPercent);
+            if (tvMenuVolumeVal != null) tvMenuVolumeVal.setText(String.valueOf(volPercent));
+        }
+
+        // Restore Favorite Icon state
+        String favKey = videoPath != null ? videoPath : videoUriStr;
+        if (favKey != null && ivMenuFavoriteIcon != null) {
+            boolean isFav = prefs.getBoolean("fav_" + favKey, false);
+            ivMenuFavoriteIcon.setColorFilter(isFav ? Color.parseColor("#D71921") : Color.WHITE);
+        }
 
         if (videoTitle != null) {
             videoTitleText.setText(videoTitle);
@@ -783,9 +1031,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                         } else if (state == 0) {
                             isYouTubePlaying = false;
                             btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
-                            if (youtubePlaylistId == null && playlistPaths != null && playlistIndex < playlistPaths.size() - 1) {
-                                playNextVideo();
-                            }
+                            handleVideoCompletion();
                         }
                     });
                 }
@@ -1122,11 +1368,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                         updateCodecInfo();
                         applyAspectRatio();
                     } else if (playbackState == Player.STATE_ENDED) {
-                        if (playlistPaths != null && playlistIndex < playlistPaths.size() - 1) {
-                            playNextVideo();
-                        } else if (totalDurationMs > 5000 && exoPlayer.getCurrentPosition() >= totalDurationMs - 2500) {
-                            finish();
-                        }
+                        handleVideoCompletion();
                     }
                 }
             }
@@ -1229,11 +1471,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                             saveCurrentPlaybackProgress(pos, totalDurationMs);
                         }
                     } else if (event.type == MediaPlayer.Event.EndReached) {
-                        if (playlistPaths != null && playlistIndex < playlistPaths.size() - 1) {
-                            playNextVideo();
-                        } else if (totalDurationMs > 5000 && currentPositionMs >= totalDurationMs - 2500) {
-                            finish();
-                        }
+                        handleVideoCompletion();
                     } else if (event.type == MediaPlayer.Event.EncounteredError) {
                         Toast.makeText(this, "Playback Warning", Toast.LENGTH_SHORT).show();
                     }
@@ -1394,134 +1632,122 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             showGestureHud("● 10s FORWARD", DotMatrixIconView.TYPE_SEEK_FORWARD, "+10s", (int) (target * 100 / Math.max(1, totalDurationMs)));
         });
 
-        if (btnExpandControls != null) {
-            btnExpandControls.setOnClickListener(v -> {
-                if (topExpandableControlsBar != null) {
-                    boolean isExpanded = topExpandableControlsBar.getVisibility() == View.VISIBLE;
-                    topExpandableControlsBar.setVisibility(isExpanded ? View.GONE : View.VISIBLE);
+        if (btnCast != null) {
+            btnCast.setOnClickListener(v -> {
+                try {
+                    Intent castIntent = new Intent("android.settings.CAST_SETTINGS");
+                    startActivity(castIntent);
+                } catch (Exception e) {
+                    showGestureHud("● CAST SCREEN", DotMatrixIconView.TYPE_SEEK_FORWARD, "CAST READY", 100);
+                    Toast.makeText(this, "Cast Screen: Connect to wireless display in settings", Toast.LENGTH_SHORT).show();
                 }
-                scheduleHideControls();
             });
         }
 
-        btnDecoderMode.setOnClickListener(v -> {
-            long cur = isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0);
-            if (isVlcActive) {
-                Toast.makeText(this, "Switching to Hardware (HW+) Decoder", Toast.LENGTH_SHORT).show();
-                startExoPlayer(cur);
-            } else {
-                Toast.makeText(this, "Switching to Universal VLC (SW+) Engine", Toast.LENGTH_SHORT).show();
-                startVlcPlayer(cur);
-            }
-        });
-
-        btnAudioTrack.setOnClickListener(v -> {
-            if (isVlcActive) showVlcAudioTrackDialog();
-            else showExoAudioTrackDialog();
-        });
-
-        btnSubtitleTrack.setOnClickListener(v -> {
-            if (isVlcActive) showVlcSubtitleTrackDialog();
-            else showExoSubtitleTrackDialog();
-        });
-
-        btnScreenLock.setOnClickListener(v -> {
-            isLocked = !isLocked;
-            btnScreenLock.setImageResource(isLocked ? R.drawable.ic_lock_closed : R.drawable.ic_lock_open);
-            if (isLocked) {
-                topControlsBar.setVisibility(View.GONE);
-                bottomControlsBar.setVisibility(View.GONE);
-                if (topExpandableControlsBar != null) topExpandableControlsBar.setVisibility(View.GONE);
-                showGestureHud("● SCREEN LOCK", DotMatrixIconView.TYPE_LOCK, "LOCKED", 100);
-                hideHandler.postDelayed(() -> {
-                    if (isLocked) btnScreenLock.setVisibility(View.GONE);
-                }, 2500);
-            } else {
-                topControlsBar.setVisibility(View.VISIBLE);
-                bottomControlsBar.setVisibility(View.VISIBLE);
-                btnScreenLock.setVisibility(View.VISIBLE);
-                showGestureHud("● SCREEN LOCK", DotMatrixIconView.TYPE_LOCK, "UNLOCKED", 100);
-                scheduleHideControls();
-            }
-        });
-
-        btnRotateScreen.setOnClickListener(v -> {
-            int orientation = getResources().getConfiguration().orientation;
-            if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-            } else {
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-            }
-        });
-
-        btnAspectRatio.setOnClickListener(v -> {
-            currentVideoScale = 1.0f;
-            if (exoPlayerView != null && exoPlayerView.getVideoSurfaceView() != null) {
-                exoPlayerView.getVideoSurfaceView().setScaleX(1.0f);
-                exoPlayerView.getVideoSurfaceView().setScaleY(1.0f);
-            }
-
-            if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
-                currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
-                showGestureHud("● ASPECT RATIO", DotMatrixIconView.TYPE_SEEK_FORWARD, "STRETCH / FULL", 100);
-            } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
-                currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
-                showGestureHud("● ASPECT RATIO", DotMatrixIconView.TYPE_SEEK_FORWARD, "ZOOM / CROP", 100);
-            } else {
-                currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
-                showGestureHud("● ASPECT RATIO", DotMatrixIconView.TYPE_SEEK_FORWARD, "FIT TO SCREEN", 100);
-            }
-
-            SharedPreferences p = getSharedPreferences("nothing_player_prefs", MODE_PRIVATE);
-            p.edit().putInt("aspect_ratio_mode", currentResizeMode).apply();
-
-            applyAspectRatio();
-        });
-
-        btnSpeed.setOnClickListener(v -> {
-            float[] speeds = {0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f};
-            int nextIndex = 0;
-            for (int i = 0; i < speeds.length; i++) {
-                if (Math.abs(speeds[i] - playbackSpeed) < 0.05) {
-                    nextIndex = (i + 1) % speeds.length;
-                    break;
+        if (btnDecoderMode != null) {
+            btnDecoderMode.setOnClickListener(v -> {
+                long cur = isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0);
+                if (isVlcActive) {
+                    Toast.makeText(this, "Switching to Hardware (HW+) Decoder", Toast.LENGTH_SHORT).show();
+                    startExoPlayer(cur);
+                } else {
+                    Toast.makeText(this, "Switching to Universal VLC (SW+) Engine", Toast.LENGTH_SHORT).show();
+                    startVlcPlayer(cur);
                 }
-            }
-            playbackSpeed = speeds[nextIndex];
-            if (isYouTubeActive && youtubeStreamView != null) {
-                youtubeStreamView.evaluateJavascript("if (player && player.setPlaybackRate) player.setPlaybackRate(" + playbackSpeed + ");", null);
-            } else if (isVlcActive && vlcPlayer != null) vlcPlayer.setRate(playbackSpeed);
-            else if (exoPlayer != null) exoPlayer.setPlaybackSpeed(playbackSpeed);
-            btnSpeed.setText(playbackSpeed + "x");
-            showGestureHud("● PLAY SPEED", DotMatrixIconView.TYPE_SEEK_FORWARD, playbackSpeed + "x", (int)(playbackSpeed * 50));
-        });
+            });
+        }
 
-        btnAudioBoost.setOnClickListener(v -> {
-            isAudioBoosted = !isAudioBoosted;
-            if (isVlcActive && vlcPlayer != null) {
-                vlcPlayer.setVolume(isAudioBoosted ? 200 : 100);
-            } else if (exoPlayer != null) {
-                exoPlayer.setVolume(isAudioBoosted ? 2.0f : 1.0f);
-            }
-            btnAudioBoost.setText(isAudioBoosted ? "BOOST ON" : "200%");
-            int dotType = isAudioBoosted ? DotMatrixIconView.TYPE_AUDIO_BOOST : DotMatrixIconView.TYPE_VOLUME;
-            showGestureHud("● AUDIO BOOST", dotType, isAudioBoosted ? "200% BOOST ON" : "100% STANDARD", isAudioBoosted ? 100 : 50);
-        });
+        if (btnSubtitleTrack != null) {
+            btnSubtitleTrack.setOnClickListener(v -> {
+                if (isVlcActive) showVlcSubtitleTrackDialog();
+                else showExoSubtitleTrackDialog();
+            });
+        }
 
-        btnMute.setOnClickListener(v -> {
-            isMuted = !isMuted;
-            if (isVlcActive && vlcPlayer != null) {
-                vlcPlayer.setVolume(isMuted ? 0 : (isAudioBoosted ? 200 : 100));
-            } else if (exoPlayer != null) {
-                exoPlayer.setVolume(isMuted ? 0.0f : (isAudioBoosted ? 2.0f : 1.0f));
-            }
-            btnMute.setText(isMuted ? "MUTED" : "MUTE");
-            btnMute.setCompoundDrawablesWithIntrinsicBounds(isMuted ? android.R.drawable.ic_lock_silent_mode : android.R.drawable.ic_lock_silent_mode_off, 0, 0, 0);
-            int dotType = isMuted ? DotMatrixIconView.TYPE_VOLUME_MUTE : DotMatrixIconView.TYPE_VOLUME;
-            showGestureHud("● AUDIO OUTPUT", dotType, isMuted ? "MUTED" : "UNMUTED", isMuted ? 0 : 100);
-        });
+        if (btnMoreMenu != null) {
+            btnMoreMenu.setOnClickListener(v -> togglePanel(panelMoreMenu));
+        }
 
-        btnPip.setOnClickListener(v -> enterPipMode());
+        // Quick Actions Row
+        if (btnQuickOrientation != null) {
+            btnQuickOrientation.setOnClickListener(v -> cycleOrientation());
+        }
+
+        if (btnQuickMute != null) {
+            btnQuickMute.setOnClickListener(v -> toggleMute());
+        }
+
+        if (btnQuickBackground != null) {
+            btnQuickBackground.setOnClickListener(v -> toggleBackgroundPlay());
+        }
+
+        if (btnQuickSpeed != null) {
+            btnQuickSpeed.setOnClickListener(v -> togglePanel(panelSpeed));
+        }
+
+        if (btnQuickExpand != null) {
+            btnQuickExpand.setOnClickListener(v -> toggleQuickExpand());
+        }
+
+        if (btnQuickNightMode != null) {
+            btnQuickNightMode.setOnClickListener(v -> toggleNightMode());
+        }
+
+        if (btnQuickAbRepeat != null) {
+            btnQuickAbRepeat.setOnClickListener(v -> toggleAbRepeat());
+        }
+
+        if (btnQuickPip != null) {
+            btnQuickPip.setOnClickListener(v -> enterPipMode());
+        }
+
+        if (btnQuickEqualizer != null) {
+            btnQuickEqualizer.setOnClickListener(v -> {
+                Intent eqIntent = new Intent(this, EqualizerActivity.class);
+                startActivity(eqIntent);
+            });
+        }
+
+        if (btnQuickMirror != null) {
+            btnQuickMirror.setOnClickListener(v -> toggleMirror());
+        }
+
+        if (btnQuickScreenshot != null) {
+            btnQuickScreenshot.setOnClickListener(v -> takeQuickScreenshot());
+        }
+
+        // Bottom Transport
+        if (btnScreenLock != null) {
+            btnScreenLock.setOnClickListener(v -> toggleScreenLock());
+        }
+        if (btnFloatingLock != null) {
+            btnFloatingLock.setOnClickListener(v -> toggleScreenLock());
+        }
+
+        if (btnBottomSpeed != null) {
+            btnBottomSpeed.setOnClickListener(v -> togglePanel(panelSpeed));
+        }
+
+        if (btnAspectRatio != null) {
+            btnAspectRatio.setOnClickListener(v -> {
+                if (directRatioSwitch) {
+                    cycleAspectRatioDirect();
+                } else {
+                    togglePanel(panelRatio);
+                }
+            });
+            btnAspectRatio.setOnLongClickListener(v -> {
+                togglePanel(panelRatio);
+                return true;
+            });
+        }
+
+        setupRatioPanelListeners();
+        setupSpeedPanelListeners();
+        setupMoreMenuPanelListeners();
+        setupVisualEnhancerListeners();
+        setupSleepTimerListeners();
+        setupOthersPanelListeners();
 
         timeTotalText.setOnClickListener(v -> {
             showRemainingTime = !showRemainingTime;
@@ -1570,6 +1796,1264 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         });
     }
 
+    // ==========================================
+    // PHASE 1 & 2 QUICK ACTION & PANEL HELPERS
+    // ==========================================
+    private void toggleScreenLock() {
+        isLocked = !isLocked;
+        if (btnScreenLock != null) {
+            btnScreenLock.setImageResource(isLocked ? R.drawable.ic_lock_closed : R.drawable.ic_lock_open);
+        }
+        if (isLocked) {
+            topControlsBar.setVisibility(View.GONE);
+            if (layoutQuickActionsExpanded != null) layoutQuickActionsExpanded.setVisibility(View.GONE);
+            if (btnQuickScreenshot != null) btnQuickScreenshot.setVisibility(View.GONE);
+            closeAllPanels();
+            bottomControlsBar.setVisibility(View.GONE);
+            if (btnFloatingLock != null) {
+                btnFloatingLock.setVisibility(View.VISIBLE);
+                btnFloatingLock.setImageResource(R.drawable.ic_lock_closed);
+                btnFloatingLock.setColorFilter(Color.parseColor("#D71921"));
+                hideHandler.removeCallbacksAndMessages(null);
+                hideHandler.postDelayed(() -> {
+                    if (isLocked && btnFloatingLock != null) {
+                        btnFloatingLock.setVisibility(View.GONE);
+                    }
+                }, 3000);
+            }
+            showGestureHud("● SCREEN LOCK", DotMatrixIconView.TYPE_LOCK, "LOCKED", 100);
+        } else {
+            if (btnFloatingLock != null) btnFloatingLock.setVisibility(View.GONE);
+            topControlsBar.setVisibility(View.VISIBLE);
+            bottomControlsBar.setVisibility(View.VISIBLE);
+            if (btnQuickScreenshot != null) btnQuickScreenshot.setVisibility(View.VISIBLE);
+            showGestureHud("● SCREEN LOCK", DotMatrixIconView.TYPE_LOCK, "UNLOCKED", 100);
+            scheduleHideControls();
+        }
+    }
+
+    private void cycleOrientation() {
+        currentOrientationMode = (currentOrientationMode + 1) % 3;
+        if (currentOrientationMode == 0) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            showGestureHud("● ORIENTATION", DotMatrixIconView.TYPE_SEEK_FORWARD, "LANDSCAPE", 100);
+        } else if (currentOrientationMode == 1) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            showGestureHud("● ORIENTATION", DotMatrixIconView.TYPE_SEEK_FORWARD, "PORTRAIT", 100);
+        } else {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR);
+            showGestureHud("● ORIENTATION", DotMatrixIconView.TYPE_SEEK_FORWARD, "AUTO ROTATE", 100);
+        }
+        scheduleHideControls();
+    }
+
+    private void toggleMute() {
+        isMuted = !isMuted;
+        if (isVlcActive && vlcPlayer != null) {
+            vlcPlayer.setVolume(isMuted ? 0 : (isAudioBoosted ? 200 : 100));
+        } else if (exoPlayer != null) {
+            exoPlayer.setVolume(isMuted ? 0.0f : (isAudioBoosted ? 2.0f : 1.0f));
+        }
+        if (btnQuickMute != null) {
+            btnQuickMute.setImageResource(isMuted ? R.drawable.ic_volume_mute : R.drawable.ic_volume_high);
+        }
+        int dotType = isMuted ? DotMatrixIconView.TYPE_VOLUME_MUTE : DotMatrixIconView.TYPE_VOLUME;
+        showGestureHud("● AUDIO", dotType, isMuted ? "MUTED" : "UNMUTED", isMuted ? 0 : 100);
+        scheduleHideControls();
+    }
+
+    private void toggleBackgroundPlay() {
+        Toast.makeText(this, "Background Audio Playback Enabled", Toast.LENGTH_SHORT).show();
+        showGestureHud("● BACKGROUND", DotMatrixIconView.TYPE_SEEK_FORWARD, "AUDIO PLAY ON", 100);
+        if (videoPath != null || videoUriStr != null) {
+            Intent serviceIntent = new Intent(this, MusicPlaybackService.class);
+            serviceIntent.putExtra("title", videoTitle != null ? videoTitle : "Video Audio");
+            serviceIntent.putExtra("path", videoPath != null ? videoPath : videoUriStr);
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(serviceIntent);
+                } else {
+                    startService(serviceIntent);
+                }
+            } catch (Exception ignored) {}
+        }
+        scheduleHideControls();
+    }
+
+    private void toggleQuickExpand() {
+        if (layoutQuickActionsExpanded != null) {
+            boolean isExpanded = layoutQuickActionsExpanded.getVisibility() == View.VISIBLE;
+            layoutQuickActionsExpanded.setVisibility(isExpanded ? View.GONE : View.VISIBLE);
+            if (btnQuickExpand != null) {
+                btnQuickExpand.setImageResource(isExpanded ? R.drawable.ic_arrow_expand : R.drawable.ic_arrow_collapse);
+            }
+        }
+        scheduleHideControls();
+    }
+
+    private void toggleNightMode() {
+        isNightModeActive = !isNightModeActive;
+        if (nightModeOverlay != null) {
+            nightModeOverlay.setVisibility(isNightModeActive ? View.VISIBLE : View.GONE);
+        }
+        if (btnQuickNightMode != null) {
+            btnQuickNightMode.setColorFilter(isNightModeActive ? Color.parseColor("#D71921") : Color.WHITE);
+        }
+        showGestureHud("● NIGHT MODE", DotMatrixIconView.TYPE_SEEK_FORWARD, isNightModeActive ? "ACTIVE" : "OFF", isNightModeActive ? 100 : 0);
+        scheduleHideControls();
+    }
+
+    private void toggleAbRepeat() {
+        long cur = isYouTubeActive ? youtubeCurrentPositionMs : (isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0));
+        TextView tvAb = findViewById(R.id.tv_menu_ab_repeat_status);
+        if (repeatPointA < 0) {
+            repeatPointA = cur;
+            showGestureHud("● A-B REPEAT", DotMatrixIconView.TYPE_SEEK_FORWARD, "POINT A (" + formatTime(repeatPointA) + ")", 50);
+            Toast.makeText(this, "A-B Repeat: Point A set to " + formatTime(repeatPointA), Toast.LENGTH_SHORT).show();
+            if (tvAb != null) tvAb.setText("A: " + formatTime(repeatPointA));
+        } else if (repeatPointB < 0) {
+            if (cur > repeatPointA) {
+                repeatPointB = cur;
+                showGestureHud("● A-B REPEAT", DotMatrixIconView.TYPE_SEEK_FORWARD, "LOOPING A-B", 100);
+                Toast.makeText(this, "A-B Repeat: Point B set (" + formatTime(repeatPointA) + " - " + formatTime(repeatPointB) + ")", Toast.LENGTH_SHORT).show();
+                if (tvAb != null) tvAb.setText(formatTime(repeatPointA) + "-" + formatTime(repeatPointB));
+            } else {
+                repeatPointA = cur;
+                Toast.makeText(this, "Point B must be after Point A. Point A reset.", Toast.LENGTH_SHORT).show();
+                if (tvAb != null) tvAb.setText("A: " + formatTime(repeatPointA));
+            }
+        } else {
+            repeatPointA = -1;
+            repeatPointB = -1;
+            showGestureHud("● A-B REPEAT", DotMatrixIconView.TYPE_SEEK_FORWARD, "CLEARED / OFF", 0);
+            Toast.makeText(this, "A-B Repeat Cleared", Toast.LENGTH_SHORT).show();
+            if (tvAb != null) tvAb.setText("OFF");
+        }
+        scheduleHideControls();
+    }
+
+    private void toggleMirror() {
+        isMirrored = !isMirrored;
+        float scaleX = isMirrored ? -1.0f : 1.0f;
+        if (exoPlayerView != null && exoPlayerView.getVideoSurfaceView() != null) {
+            exoPlayerView.getVideoSurfaceView().setScaleX(scaleX);
+        }
+        if (vlcVideoLayout != null) {
+            vlcVideoLayout.setScaleX(scaleX);
+        }
+        if (youtubeStreamView != null) {
+            youtubeStreamView.setScaleX(scaleX);
+        }
+        showGestureHud("● SCREEN", DotMatrixIconView.TYPE_SEEK_FORWARD, isMirrored ? "MIRRORED" : "NORMAL", 100);
+        scheduleHideControls();
+    }
+
+    private void takeQuickScreenshot() {
+        try {
+            Bitmap bitmap = null;
+            if (exoPlayerView != null && exoPlayerView.getVideoSurfaceView() instanceof android.view.TextureView) {
+                bitmap = ((android.view.TextureView) exoPlayerView.getVideoSurfaceView()).getBitmap();
+            }
+            if (bitmap == null && previewRetriever != null) {
+                long pos = isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0);
+                bitmap = previewRetriever.getFrameAtTime(pos * 1000, MediaMetadataRetriever.OPTION_CLOSEST);
+            }
+            if (bitmap != null) {
+                File dir = new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_PICTURES), "Screenshots");
+                if (!dir.exists()) dir.mkdirs();
+                String fileName = "NothingPlayer_" + System.currentTimeMillis() + ".jpg";
+                File file = new File(dir, fileName);
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(file);
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 95, fos);
+                fos.flush();
+                fos.close();
+                android.media.MediaScannerConnection.scanFile(this, new String[]{file.getAbsolutePath()}, new String[]{"image/jpeg"}, null);
+                showGestureHud("● SCREENSHOT", DotMatrixIconView.TYPE_SEEK_FORWARD, "SAVED TO GALLERY", 100);
+                Toast.makeText(this, "Screenshot saved to Pictures/Screenshots", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Screenshot captured", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Screenshot error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+        scheduleHideControls();
+    }
+
+    private void togglePanel(View targetPanel) {
+        if (targetPanel == null) return;
+        boolean isVisible = targetPanel.getVisibility() == View.VISIBLE;
+        closeAllPanels();
+        if (!isVisible) {
+            targetPanel.setVisibility(View.VISIBLE);
+            if (targetPanel == panelRatio) {
+                updateRatioPresetsUI(currentRatioLabel);
+            }
+            hideHandler.removeCallbacksAndMessages(null);
+            targetPanel.post(() -> targetPanel.scrollTo(0, 0));
+        } else {
+            targetPanel.setVisibility(View.GONE);
+            scheduleHideControls();
+        }
+    }
+
+    private boolean isAnyPanelOpen() {
+        return (playlistQueuePanel != null && playlistQueuePanel.getVisibility() == View.VISIBLE)
+            || (panelRatio != null && panelRatio.getVisibility() == View.VISIBLE)
+            || (panelSpeed != null && panelSpeed.getVisibility() == View.VISIBLE)
+            || (panelMoreMenu != null && panelMoreMenu.getVisibility() == View.VISIBLE)
+            || (panelVisualEnhancer != null && panelVisualEnhancer.getVisibility() == View.VISIBLE)
+            || (panelSleepTimer != null && panelSleepTimer.getVisibility() == View.VISIBLE)
+            || (panelOthers != null && panelOthers.getVisibility() == View.VISIBLE);
+    }
+
+    private void closeAllPanels() {
+        if (playlistQueuePanel != null) playlistQueuePanel.setVisibility(View.GONE);
+        if (panelRatio != null) panelRatio.setVisibility(View.GONE);
+        if (panelSpeed != null) panelSpeed.setVisibility(View.GONE);
+        if (panelMoreMenu != null) panelMoreMenu.setVisibility(View.GONE);
+        if (panelVisualEnhancer != null) panelVisualEnhancer.setVisibility(View.GONE);
+        if (panelSleepTimer != null) panelSleepTimer.setVisibility(View.GONE);
+        if (panelOthers != null) panelOthers.setVisibility(View.GONE);
+    }
+
+    private void cycleAspectRatioDirect() {
+        currentVideoScale = 1.0f;
+        if (exoPlayerView != null && exoPlayerView.getVideoSurfaceView() != null) {
+            exoPlayerView.getVideoSurfaceView().setScaleX(1.0f);
+            exoPlayerView.getVideoSurfaceView().setScaleY(1.0f);
+        }
+
+        if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
+            applyScreenRatio(AspectRatioFrameLayout.RESIZE_MODE_ZOOM, "FILL");
+        } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+            applyScreenRatio(AspectRatioFrameLayout.RESIZE_MODE_FILL, "STRETCH");
+        } else {
+            applyScreenRatio(AspectRatioFrameLayout.RESIZE_MODE_FIT, "FIT");
+        }
+    }
+
+    private void updateRatioButtonText() {
+        if (btnAspectRatio == null) return;
+        if (currentRatioLabel != null && !currentRatioLabel.isEmpty()) {
+            btnAspectRatio.setText(currentRatioLabel.toUpperCase());
+        } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+            btnAspectRatio.setText("FILL");
+        } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
+            btnAspectRatio.setText("STRETCH");
+        } else {
+            btnAspectRatio.setText("FIT");
+        }
+    }
+
+    private void updateRatioPresetsUI(String activeLabel) {
+        if (activeLabel == null) return;
+        currentRatioLabel = activeLabel;
+        int active = R.drawable.bg_chip_red_active;
+        int inactive = R.drawable.bg_chip_dark_inactive;
+
+        int[] btnIds = {
+            R.id.btn_ratio_fit, R.id.btn_ratio_fill, R.id.btn_ratio_original, R.id.btn_ratio_stretch,
+            R.id.btn_ratio_16_9, R.id.btn_ratio_4_3, R.id.btn_ratio_18_9, R.id.btn_ratio_195_9, R.id.btn_ratio_20_9, R.id.btn_ratio_21_9,
+            R.id.btn_ratio_185_1, R.id.btn_ratio_221_1, R.id.btn_ratio_235_1, R.id.btn_ratio_239_1
+        };
+
+        String[] labels = {
+            "FIT", "FILL", "ORIGINAL", "STRETCH",
+            "16:9", "4:3", "18:9", "19.5:9", "20:9", "21:9",
+            "1.85:1", "2.21:1", "2.35:1", "2.39:1"
+        };
+
+        for (int i = 0; i < btnIds.length; i++) {
+            Button btn = findViewById(btnIds[i]);
+            if (btn != null) {
+                boolean isMatch = labels[i].equalsIgnoreCase(activeLabel)
+                        || ("ZOOM".equalsIgnoreCase(activeLabel) && "FILL".equalsIgnoreCase(labels[i]));
+                btn.setBackgroundResource(isMatch ? active : inactive);
+            }
+        }
+    }
+
+    private void applyScreenRatio(int resizeMode, String modeName) {
+        currentResizeMode = resizeMode;
+        currentRatioLabel = modeName;
+        currentVideoScale = 1.0f;
+        if (exoPlayerView != null && exoPlayerView.getVideoSurfaceView() != null) {
+            exoPlayerView.getVideoSurfaceView().setScaleX(1.0f);
+            exoPlayerView.getVideoSurfaceView().setScaleY(1.0f);
+        }
+        updateRatioButtonText();
+        updateRatioPresetsUI(modeName);
+        if (rememberRatio) {
+            SharedPreferences p = getSharedPreferences("nothing_player_prefs", MODE_PRIVATE);
+            p.edit().putInt("aspect_ratio_mode", currentResizeMode)
+                    .putString("saved_ratio_label", modeName)
+                    .apply();
+        }
+        applyAspectRatio();
+        showGestureHud("● RATIO: " + modeName, DotMatrixIconView.TYPE_SEEK_FORWARD, modeName, 100);
+        if (panelRatio != null) panelRatio.setVisibility(View.GONE);
+        scheduleHideControls();
+    }
+
+    private void applyCustomAspectRatio(float targetAspect, String label) {
+        Point realSize = getRealScreenSize();
+        int sw = Math.max(realSize.x, realSize.y);
+        int sh = Math.min(realSize.x, realSize.y);
+        float screenAspect = (float) sw / (float) sh;
+
+        currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
+        currentRatioLabel = label;
+        if (exoPlayerView != null) {
+            exoPlayerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
+            if (exoPlayerView.getVideoSurfaceView() != null) {
+                float scaleX = targetAspect / screenAspect;
+                float scaleY = 1.0f;
+                if (scaleX > 1.0f) {
+                    scaleY = 1.0f / scaleX;
+                    scaleX = 1.0f;
+                }
+                exoPlayerView.getVideoSurfaceView().setScaleX(scaleX);
+                exoPlayerView.getVideoSurfaceView().setScaleY(scaleY);
+            }
+        }
+        if (btnAspectRatio != null) btnAspectRatio.setText(label);
+        updateRatioPresetsUI(label);
+        if (rememberRatio) {
+            SharedPreferences p = getSharedPreferences("nothing_player_prefs", MODE_PRIVATE);
+            p.edit().putInt("aspect_ratio_mode", currentResizeMode)
+                    .putString("saved_ratio_label", label)
+                    .apply();
+        }
+        showGestureHud("● RATIO: " + label, DotMatrixIconView.TYPE_SEEK_FORWARD, label, 100);
+        if (panelRatio != null) panelRatio.setVisibility(View.GONE);
+        scheduleHideControls();
+    }
+
+    private void setupRatioPanelListeners() {
+        if (panelRatio == null) return;
+
+        // Screen Buttons
+        findViewById(R.id.btn_ratio_fit).setOnClickListener(v -> applyScreenRatio(AspectRatioFrameLayout.RESIZE_MODE_FIT, "FIT"));
+        findViewById(R.id.btn_ratio_fill).setOnClickListener(v -> applyScreenRatio(AspectRatioFrameLayout.RESIZE_MODE_ZOOM, "FILL"));
+        findViewById(R.id.btn_ratio_original).setOnClickListener(v -> applyScreenRatio(AspectRatioFrameLayout.RESIZE_MODE_FIT, "ORIGINAL"));
+        findViewById(R.id.btn_ratio_stretch).setOnClickListener(v -> applyScreenRatio(AspectRatioFrameLayout.RESIZE_MODE_FILL, "STRETCH"));
+
+        // Standard Buttons
+        findViewById(R.id.btn_ratio_16_9).setOnClickListener(v -> applyCustomAspectRatio(16f / 9f, "16:9"));
+        findViewById(R.id.btn_ratio_4_3).setOnClickListener(v -> applyCustomAspectRatio(4f / 3f, "4:3"));
+        findViewById(R.id.btn_ratio_18_9).setOnClickListener(v -> applyCustomAspectRatio(18f / 9f, "18:9"));
+        findViewById(R.id.btn_ratio_195_9).setOnClickListener(v -> applyCustomAspectRatio(19.5f / 9f, "19.5:9"));
+        findViewById(R.id.btn_ratio_20_9).setOnClickListener(v -> applyCustomAspectRatio(20f / 9f, "20:9"));
+        findViewById(R.id.btn_ratio_21_9).setOnClickListener(v -> applyCustomAspectRatio(21f / 9f, "21:9"));
+
+        // Cinema Buttons
+        findViewById(R.id.btn_ratio_185_1).setOnClickListener(v -> applyCustomAspectRatio(1.85f, "1.85:1"));
+        findViewById(R.id.btn_ratio_221_1).setOnClickListener(v -> applyCustomAspectRatio(2.21f, "2.21:1"));
+        findViewById(R.id.btn_ratio_235_1).setOnClickListener(v -> applyCustomAspectRatio(2.35f, "2.35:1"));
+        findViewById(R.id.btn_ratio_239_1).setOnClickListener(v -> applyCustomAspectRatio(2.39f, "2.39:1"));
+
+        // Switches
+        SwitchCompat switchRemember = findViewById(R.id.switch_remember_ratio);
+        if (switchRemember != null) {
+            switchRemember.setChecked(rememberRatio);
+            switchRemember.setOnCheckedChangeListener((btn, isChecked) -> {
+                rememberRatio = isChecked;
+                getSharedPreferences("nothing_player_prefs", MODE_PRIVATE).edit().putBoolean("remember_ratio", isChecked).apply();
+            });
+        }
+
+        SwitchCompat switchDirect = findViewById(R.id.switch_direct_ratio_switch);
+        if (switchDirect != null) {
+            switchDirect.setChecked(directRatioSwitch);
+            switchDirect.setOnCheckedChangeListener((btn, isChecked) -> {
+                directRatioSwitch = isChecked;
+                getSharedPreferences("nothing_player_prefs", MODE_PRIVATE).edit().putBoolean("direct_ratio_switch", isChecked).apply();
+            });
+        }
+
+        if (btnCloseRatioPanel != null) {
+            btnCloseRatioPanel.setOnClickListener(v -> {
+                panelRatio.setVisibility(View.GONE);
+                scheduleHideControls();
+            });
+        }
+    }
+
+    private void updateSpeedPresetsUI(float speed) {
+        int active = R.drawable.bg_chip_red_active;
+        int inactive = R.drawable.bg_chip_dark_inactive;
+        Button b025 = findViewById(R.id.btn_preset_speed_025);
+        Button b05 = findViewById(R.id.btn_preset_speed_05);
+        Button b10 = findViewById(R.id.btn_preset_speed_10);
+        Button b125 = findViewById(R.id.btn_preset_speed_125);
+        Button b15 = findViewById(R.id.btn_preset_speed_15);
+        Button b20 = findViewById(R.id.btn_preset_speed_20);
+        Button b40 = findViewById(R.id.btn_preset_speed_40);
+        Button b80 = findViewById(R.id.btn_preset_speed_80);
+
+        if (b025 != null) b025.setBackgroundResource(Math.abs(speed - 0.25f) < 0.03f ? active : inactive);
+        if (b05 != null) b05.setBackgroundResource(Math.abs(speed - 0.5f) < 0.03f ? active : inactive);
+        if (b10 != null) b10.setBackgroundResource(Math.abs(speed - 1.0f) < 0.03f ? active : inactive);
+        if (b125 != null) b125.setBackgroundResource(Math.abs(speed - 1.25f) < 0.03f ? active : inactive);
+        if (b15 != null) b15.setBackgroundResource(Math.abs(speed - 1.5f) < 0.03f ? active : inactive);
+        if (b20 != null) b20.setBackgroundResource(Math.abs(speed - 2.0f) < 0.03f ? active : inactive);
+        if (b40 != null) b40.setBackgroundResource(Math.abs(speed - 4.0f) < 0.03f ? active : inactive);
+        if (b80 != null) b80.setBackgroundResource(Math.abs(speed - 8.0f) < 0.03f ? active : inactive);
+    }
+
+    private void updateSpeedUI(float speed) {
+        playbackSpeed = Math.round(speed * 100f) / 100f;
+        String speedStr = String.format(java.util.Locale.US, "%.2fX", playbackSpeed);
+        if (tvSpeedCurrentValue != null) {
+            tvSpeedCurrentValue.setText(speedStr);
+        }
+        if (btnQuickSpeed != null) {
+            btnQuickSpeed.setText(String.format(java.util.Locale.US, "%.1fX", playbackSpeed));
+        }
+        if (seekbarPlaybackSpeed != null) {
+            int progress = Math.max(0, Math.min(155, Math.round((playbackSpeed - 0.25f) / 0.05f)));
+            seekbarPlaybackSpeed.setProgress(progress);
+        }
+        updateSpeedPresetsUI(playbackSpeed);
+    }
+
+    private void applySpeed(float speed) {
+        playbackSpeed = Math.max(0.25f, Math.min(8.0f, Math.round(speed * 100f) / 100f));
+        if (isYouTubeActive && youtubeStreamView != null) {
+            youtubeStreamView.evaluateJavascript("if (player && player.setPlaybackRate) player.setPlaybackRate(" + playbackSpeed + ");", null);
+        } else if (isVlcActive && vlcPlayer != null) {
+            vlcPlayer.setRate(playbackSpeed);
+        } else if (exoPlayer != null) {
+            exoPlayer.setPlaybackSpeed(playbackSpeed);
+        }
+        updateSpeedUI(playbackSpeed);
+        if (rememberSpeed) {
+            getSharedPreferences("nothing_player_prefs", MODE_PRIVATE).edit().putFloat("saved_playback_speed", playbackSpeed).apply();
+        }
+        showGestureHud("● SPEED: " + playbackSpeed + "X", DotMatrixIconView.TYPE_SEEK_FORWARD, playbackSpeed + "X", (int) (playbackSpeed * 25));
+    }
+
+    private void triggerHapticBoost() {
+        if (!longPressVibration || vibrator == null) return;
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(35, VibrationEffect.DEFAULT_AMPLITUDE));
+            } else {
+                vibrator.vibrate(35);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void setupSpeedPanelListeners() {
+        if (panelSpeed == null) return;
+
+        findViewById(R.id.btn_speed_step_down).setOnClickListener(v -> applySpeed(playbackSpeed - 0.05f));
+        findViewById(R.id.btn_speed_step_up).setOnClickListener(v -> applySpeed(playbackSpeed + 0.05f));
+
+        // 8 Discrete Presets
+        View b025 = findViewById(R.id.btn_preset_speed_025);
+        if (b025 != null) b025.setOnClickListener(v -> applySpeed(0.25f));
+        View b05 = findViewById(R.id.btn_preset_speed_05);
+        if (b05 != null) b05.setOnClickListener(v -> applySpeed(0.5f));
+        View b10 = findViewById(R.id.btn_preset_speed_10);
+        if (b10 != null) b10.setOnClickListener(v -> applySpeed(1.0f));
+        View b125 = findViewById(R.id.btn_preset_speed_125);
+        if (b125 != null) b125.setOnClickListener(v -> applySpeed(1.25f));
+        View b15 = findViewById(R.id.btn_preset_speed_15);
+        if (b15 != null) b15.setOnClickListener(v -> applySpeed(1.5f));
+        View b20 = findViewById(R.id.btn_preset_speed_20);
+        if (b20 != null) b20.setOnClickListener(v -> applySpeed(2.0f));
+        View b40 = findViewById(R.id.btn_preset_speed_40);
+        if (b40 != null) b40.setOnClickListener(v -> applySpeed(4.0f));
+        View b80 = findViewById(R.id.btn_preset_speed_80);
+        if (b80 != null) b80.setOnClickListener(v -> applySpeed(8.0f));
+
+        if (seekbarPlaybackSpeed != null) {
+            seekbarPlaybackSpeed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    if (fromUser) {
+                        float speed = 0.25f + (progress * 0.05f);
+                        applySpeed(speed);
+                    }
+                }
+                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            });
+        }
+
+        // Subview Switcher: Main -> Advanced
+        if (btnOpenSpeedAdvanced != null) {
+            btnOpenSpeedAdvanced.setOnClickListener(v -> {
+                if (layoutSpeedMain != null) layoutSpeedMain.setVisibility(View.GONE);
+                if (layoutSpeedAdvanced != null) layoutSpeedAdvanced.setVisibility(View.VISIBLE);
+            });
+        }
+
+        // Subview Switcher: Advanced -> Main
+        if (btnBackSpeedAdvanced != null) {
+            btnBackSpeedAdvanced.setOnClickListener(v -> {
+                if (layoutSpeedAdvanced != null) layoutSpeedAdvanced.setVisibility(View.GONE);
+                if (layoutSpeedMain != null) layoutSpeedMain.setVisibility(View.VISIBLE);
+            });
+        }
+
+        // Remember Speed Toggle
+        SwitchCompat switchRememberSpeed = findViewById(R.id.switch_remember_speed);
+        if (switchRememberSpeed != null) {
+            switchRememberSpeed.setChecked(rememberSpeed);
+            switchRememberSpeed.setOnCheckedChangeListener((btn, isChecked) -> {
+                rememberSpeed = isChecked;
+                SharedPreferences.Editor editor = getSharedPreferences("nothing_player_prefs", MODE_PRIVATE).edit();
+                editor.putBoolean("remember_speed", isChecked);
+                if (isChecked) editor.putFloat("saved_playback_speed", playbackSpeed);
+                editor.apply();
+            });
+        }
+
+        // Long Press Speed Up Toggle
+        SwitchCompat switch2x = findViewById(R.id.switch_long_press_2x);
+        if (switch2x != null) {
+            switch2x.setChecked(longPress2xBoost);
+            switch2x.setOnCheckedChangeListener((btn, isChecked) -> {
+                longPress2xBoost = isChecked;
+                getSharedPreferences("nothing_player_prefs", MODE_PRIVATE).edit().putBoolean("long_press_2x_boost", isChecked).apply();
+            });
+        }
+
+        // Long Press Speed Target Cycle
+        View layoutLongPressVal = findViewById(R.id.layout_long_press_speed_val);
+        if (layoutLongPressVal != null) {
+            layoutLongPressVal.setOnClickListener(v -> {
+                if (longPressSpeedTarget == 2.0f) longPressSpeedTarget = 3.0f;
+                else if (longPressSpeedTarget == 3.0f) longPressSpeedTarget = 4.0f;
+                else if (longPressSpeedTarget == 4.0f) longPressSpeedTarget = 5.0f;
+                else longPressSpeedTarget = 2.0f;
+
+                if (tvLongPressSpeedTarget != null) {
+                    tvLongPressSpeedTarget.setText(String.format(java.util.Locale.US, "%.1fX >", longPressSpeedTarget));
+                }
+                getSharedPreferences("nothing_player_prefs", MODE_PRIVATE).edit().putFloat("long_press_speed_target", longPressSpeedTarget).apply();
+                showGestureHud("● BOOST SPEED", DotMatrixIconView.TYPE_SEEK_FORWARD, longPressSpeedTarget + "X TARGET", 100);
+            });
+        }
+
+        // Long Press Vibration Toggle
+        if (switchLongPressVibration != null) {
+            switchLongPressVibration.setChecked(longPressVibration);
+            switchLongPressVibration.setOnCheckedChangeListener((btn, isChecked) -> {
+                longPressVibration = isChecked;
+                getSharedPreferences("nothing_player_prefs", MODE_PRIVATE).edit().putBoolean("long_press_vibration", isChecked).apply();
+                if (isChecked) triggerHapticBoost();
+            });
+        }
+
+        if (btnCloseSpeedPanel != null) {
+            btnCloseSpeedPanel.setOnClickListener(v -> {
+                panelSpeed.setVisibility(View.GONE);
+                scheduleHideControls();
+            });
+        }
+    }
+
+    private void updateRepeatModeUI() {
+        if (tvMenuRepeatModeVal != null) {
+            String[] names = {"ORDER", "LOOP ONE", "SHUFFLE", "LOOP ALL", "PLAY ONCE"};
+            tvMenuRepeatModeVal.setText(names[Math.max(0, Math.min(4, currentRepeatMode))]);
+        }
+        int active = R.drawable.bg_circle_red_active;
+        int trans = android.R.color.transparent;
+        if (btnRepeatOrder != null) btnRepeatOrder.setBackgroundResource(currentRepeatMode == 0 ? active : trans);
+        if (btnRepeatOne != null) btnRepeatOne.setBackgroundResource(currentRepeatMode == 1 ? active : trans);
+        if (btnRepeatShuffle != null) btnRepeatShuffle.setBackgroundResource(currentRepeatMode == 2 ? active : trans);
+        if (btnRepeatAll != null) btnRepeatAll.setBackgroundResource(currentRepeatMode == 3 ? active : trans);
+        if (btnRepeatOnce != null) btnRepeatOnce.setBackgroundResource(currentRepeatMode == 4 ? active : trans);
+    }
+
+    private void setRepeatMode(int mode, String label) {
+        currentRepeatMode = mode;
+        updateRepeatModeUI();
+        getSharedPreferences("nothing_player_prefs", MODE_PRIVATE).edit().putInt("repeat_mode", mode).apply();
+        if (exoPlayer != null) {
+            exoPlayer.setRepeatMode(Player.REPEAT_MODE_OFF);
+        }
+        showGestureHud("● REPEAT: " + label, DotMatrixIconView.TYPE_SEEK_FORWARD, label, 100);
+    }
+
+    private void setupMoreMenuPanelListeners() {
+        if (panelMoreMenu == null) return;
+
+        // Top 4x2 Grid Actions
+        View audioItem = findViewById(R.id.item_menu_audio_track);
+        if (audioItem != null) {
+            audioItem.setOnClickListener(v -> {
+                if (isVlcActive) showVlcAudioTrackDialog();
+                else showExoAudioTrackDialog();
+            });
+        }
+
+        View subItem = findViewById(R.id.item_menu_subtitle_track);
+        if (subItem != null) {
+            subItem.setOnClickListener(v -> {
+                if (isVlcActive) showVlcSubtitleTrackDialog();
+                else showExoSubtitleTrackDialog();
+            });
+        }
+
+        View bgItem = findViewById(R.id.item_menu_background_play);
+        if (bgItem != null) {
+            bgItem.setOnClickListener(v -> toggleBackgroundPlay());
+        }
+
+        View pipItem = findViewById(R.id.item_menu_pip);
+        if (pipItem != null) {
+            pipItem.setOnClickListener(v -> enterPipMode());
+        }
+
+        View castItem = findViewById(R.id.item_menu_cast);
+        if (castItem != null) {
+            castItem.setOnClickListener(v -> {
+                try {
+                    startActivity(new Intent("android.settings.CAST_SETTINGS"));
+                } catch (Exception e) {
+                    Toast.makeText(this, "Connect to Cast/Wireless Display in Settings", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        View deleteItem = findViewById(R.id.item_menu_delete);
+        if (deleteItem != null) {
+            deleteItem.setOnClickListener(v -> promptDeleteVideo());
+        }
+
+        View bookmarkItem = findViewById(R.id.item_menu_bookmark);
+        if (bookmarkItem != null) {
+            bookmarkItem.setOnClickListener(v -> saveBookmark());
+        }
+
+        View favItem = findViewById(R.id.item_menu_favorites);
+        if (favItem != null) {
+            favItem.setOnClickListener(v -> toggleFavorite());
+        }
+
+        // Play Option Row (AB Repeat, Equalizer, Sleep Timer, Visual Enhancer)
+        View abItem = findViewById(R.id.item_playopt_ab_repeat);
+        if (abItem != null) {
+            abItem.setOnClickListener(v -> toggleAbRepeat());
+        }
+
+        View eqItem = findViewById(R.id.item_playopt_equalizer);
+        if (eqItem != null) {
+            eqItem.setOnClickListener(v -> startActivity(new Intent(this, EqualizerActivity.class)));
+        }
+
+        View timerItem = findViewById(R.id.item_playopt_timer);
+        if (timerItem != null) {
+            timerItem.setOnClickListener(v -> {
+                panelMoreMenu.setVisibility(View.GONE);
+                if (panelSleepTimer != null) panelSleepTimer.setVisibility(View.VISIBLE);
+            });
+        }
+
+        View visualItem = findViewById(R.id.item_playopt_visual_enhancer);
+        if (visualItem != null) {
+            visualItem.setOnClickListener(v -> {
+                panelMoreMenu.setVisibility(View.GONE);
+                if (panelVisualEnhancer != null) panelVisualEnhancer.setVisibility(View.VISIBLE);
+            });
+        }
+
+        // 5-Pill Repeat Mode
+        if (btnRepeatOrder != null) btnRepeatOrder.setOnClickListener(v -> setRepeatMode(0, "ORDER"));
+        if (btnRepeatOne != null) btnRepeatOne.setOnClickListener(v -> setRepeatMode(1, "LOOP ONE"));
+        if (btnRepeatShuffle != null) btnRepeatShuffle.setOnClickListener(v -> setRepeatMode(2, "SHUFFLE"));
+        if (btnRepeatAll != null) btnRepeatAll.setOnClickListener(v -> setRepeatMode(3, "LOOP ALL"));
+        if (btnRepeatOnce != null) btnRepeatOnce.setOnClickListener(v -> setRepeatMode(4, "PLAY ONCE"));
+
+        // Brightness & Volume Sliders
+        if (seekbarMenuBrightness != null) {
+            seekbarMenuBrightness.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    if (fromUser) {
+                        currentBrightness = Math.max(0.01f, progress / 100f);
+                        WindowManager.LayoutParams lp = getWindow().getAttributes();
+                        lp.screenBrightness = currentBrightness;
+                        getWindow().setAttributes(lp);
+                        if (tvMenuBrightnessVal != null) tvMenuBrightnessVal.setText(String.valueOf(progress));
+                    }
+                }
+                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            });
+        }
+
+        if (seekbarMenuVolume != null) {
+            seekbarMenuVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    if (fromUser && audioManager != null) {
+                        int vol = Math.round((progress / 100f) * maxVolume);
+                        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, vol, 0);
+                        if (tvMenuVolumeVal != null) tvMenuVolumeVal.setText(String.valueOf(progress));
+                    }
+                }
+                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            });
+        }
+
+        // Decoder Pills (HW vs SW)
+        if (btnMenuDecoderHw != null) {
+            btnMenuDecoderHw.setOnClickListener(v -> {
+                if (isVlcActive) {
+                    long cur = vlcPlayer != null ? vlcPlayer.getTime() : 0;
+                    startExoPlayer(cur);
+                }
+                btnMenuDecoderHw.setBackgroundResource(R.drawable.bg_chip_red_active);
+                if (btnMenuDecoderSw != null) btnMenuDecoderSw.setBackgroundResource(R.drawable.bg_chip_dark_inactive);
+                Toast.makeText(this, "Hardware (HW+) Decoder Active", Toast.LENGTH_SHORT).show();
+            });
+        }
+
+        if (btnMenuDecoderSw != null) {
+            btnMenuDecoderSw.setOnClickListener(v -> {
+                if (!isVlcActive) {
+                    long cur = exoPlayer != null ? exoPlayer.getCurrentPosition() : 0;
+                    startVlcPlayer(cur);
+                }
+                btnMenuDecoderSw.setBackgroundResource(R.drawable.bg_chip_red_active);
+                if (btnMenuDecoderHw != null) btnMenuDecoderHw.setBackgroundResource(R.drawable.bg_chip_dark_inactive);
+                Toast.makeText(this, "Universal VLC (SW+) Engine Active", Toast.LENGTH_SHORT).show();
+            });
+        }
+
+        // Custom Section: Screenshot Toggle & Action Row
+        if (switchMenuScreenshotToggle != null) {
+            switchMenuScreenshotToggle.setOnCheckedChangeListener((btn, isChecked) -> {
+                if (btnQuickScreenshot != null) {
+                    btnQuickScreenshot.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+                }
+                getSharedPreferences("nothing_player_prefs", MODE_PRIVATE).edit().putBoolean("show_screenshot_btn", isChecked).apply();
+            });
+        }
+
+        View customEdit = findViewById(R.id.btn_custom_edit);
+        if (customEdit != null) {
+            customEdit.setOnClickListener(v -> {
+                Uri uri = resolveMediaUri();
+                if (uri != null) {
+                    try {
+                        Intent editIntent = new Intent(Intent.ACTION_EDIT);
+                        editIntent.setDataAndType(uri, "video/*");
+                        editIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        startActivity(Intent.createChooser(editIntent, "Edit Video"));
+                    } catch (Exception e) {
+                        Toast.makeText(this, "No video editor found on device", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+        }
+
+        View customFilter = findViewById(R.id.btn_custom_color_filter);
+        if (customFilter != null) {
+            customFilter.setOnClickListener(v -> {
+                panelMoreMenu.setVisibility(View.GONE);
+                if (panelVisualEnhancer != null) panelVisualEnhancer.setVisibility(View.VISIBLE);
+            });
+        }
+
+        View customShare = findViewById(R.id.btn_custom_share);
+        if (customShare != null) {
+            customShare.setOnClickListener(v -> shareCurrentVideo());
+        }
+
+        View customOthers = findViewById(R.id.btn_custom_others);
+        if (customOthers != null) {
+            customOthers.setOnClickListener(v -> {
+                panelMoreMenu.setVisibility(View.GONE);
+                if (panelOthers != null) {
+                    panelOthers.setVisibility(View.VISIBLE);
+                    panelOthers.post(() -> panelOthers.scrollTo(0, 0));
+                }
+            });
+        }
+
+        if (btnCloseMoreMenu != null) {
+            btnCloseMoreMenu.setOnClickListener(v -> {
+                panelMoreMenu.setVisibility(View.GONE);
+                scheduleHideControls();
+            });
+        }
+    }
+
+    // ==========================================
+    // PHASE 2: VISUAL ENHANCER LOGIC
+    // ==========================================
+    private void setupVisualEnhancerListeners() {
+        if (panelVisualEnhancer == null) return;
+
+        if (btnBackVisualEnhancer != null) {
+            btnBackVisualEnhancer.setOnClickListener(v -> {
+                panelVisualEnhancer.setVisibility(View.GONE);
+                if (panelMoreMenu != null) panelMoreMenu.setVisibility(View.VISIBLE);
+            });
+        }
+
+        if (btnCloseVisualEnhancer != null) {
+            btnCloseVisualEnhancer.setOnClickListener(v -> {
+                panelVisualEnhancer.setVisibility(View.GONE);
+                scheduleHideControls();
+            });
+        }
+
+        if (btnFilterOriginal != null) btnFilterOriginal.setOnClickListener(v -> applyVisualFilter("ORIGINAL"));
+        if (btnFilterHdr != null) btnFilterHdr.setOnClickListener(v -> applyVisualFilter("HDR"));
+        if (btnFilterClear != null) btnFilterClear.setOnClickListener(v -> applyVisualFilter("CLEAR"));
+        if (btnFilterUltraClear != null) btnFilterUltraClear.setOnClickListener(v -> applyVisualFilter("ULTRA CLEAR"));
+        if (btnFilterArcticBlue != null) btnFilterArcticBlue.setOnClickListener(v -> applyVisualFilter("ARCTIC BLUE"));
+        if (btnFilterWarmGlow != null) btnFilterWarmGlow.setOnClickListener(v -> applyVisualFilter("WARM GLOW"));
+        if (btnFilterCinematic != null) btnFilterCinematic.setOnClickListener(v -> applyVisualFilter("CINEMATIC"));
+
+        if (switchFilterApplyAll != null) {
+            switchFilterApplyAll.setOnCheckedChangeListener((btn, isChecked) -> {
+                filterApplyAll = isChecked;
+                SharedPreferences.Editor editor = getSharedPreferences("nothing_player_prefs", MODE_PRIVATE).edit();
+                editor.putBoolean("filter_apply_all", isChecked);
+                if (isChecked) editor.putString("saved_visual_filter", currentVisualFilter);
+                editor.apply();
+            });
+        }
+    }
+
+    private void applyVisualFilter(String filterName) {
+        currentVisualFilter = filterName != null ? filterName.toUpperCase() : "ORIGINAL";
+        int tintColor = Color.TRANSPARENT;
+
+        switch (currentVisualFilter) {
+            case "HDR":
+                tintColor = Color.argb(24, 255, 120, 0); // Warm vibrancy & contrast
+                break;
+            case "CLEAR":
+                tintColor = Color.argb(24, 0, 229, 255); // Cool crisp clarity
+                break;
+            case "ULTRA CLEAR":
+                tintColor = Color.argb(20, 255, 255, 255); // High luminescence
+                break;
+            case "ARCTIC BLUE":
+                tintColor = Color.argb(38, 0, 102, 255); // Deep cool cinematic
+                break;
+            case "WARM GLOW":
+                tintColor = Color.argb(35, 255, 102, 0); // Golden hour amber
+                break;
+            case "CINEMATIC":
+                tintColor = Color.argb(35, 0, 51, 102); // Blockbuster teal contrast
+                break;
+            case "ORIGINAL":
+            default:
+                tintColor = Color.TRANSPARENT;
+                break;
+        }
+
+        if (visualEnhancerOverlay != null) {
+            visualEnhancerOverlay.setBackgroundColor(tintColor);
+        }
+
+        int sel = R.drawable.bg_filter_card_selected;
+        int unsel = R.drawable.bg_filter_card;
+        if (btnFilterOriginal != null) btnFilterOriginal.setBackgroundResource("ORIGINAL".equals(currentVisualFilter) ? sel : unsel);
+        if (btnFilterHdr != null) btnFilterHdr.setBackgroundResource("HDR".equals(currentVisualFilter) ? sel : unsel);
+        if (btnFilterClear != null) btnFilterClear.setBackgroundResource("CLEAR".equals(currentVisualFilter) ? sel : unsel);
+        if (btnFilterUltraClear != null) btnFilterUltraClear.setBackgroundResource("ULTRA CLEAR".equals(currentVisualFilter) ? sel : unsel);
+        if (btnFilterArcticBlue != null) btnFilterArcticBlue.setBackgroundResource("ARCTIC BLUE".equals(currentVisualFilter) ? sel : unsel);
+        if (btnFilterWarmGlow != null) btnFilterWarmGlow.setBackgroundResource("WARM GLOW".equals(currentVisualFilter) ? sel : unsel);
+        if (btnFilterCinematic != null) btnFilterCinematic.setBackgroundResource("CINEMATIC".equals(currentVisualFilter) ? sel : unsel);
+
+        if (filterApplyAll) {
+            getSharedPreferences("nothing_player_prefs", MODE_PRIVATE).edit().putString("saved_visual_filter", currentVisualFilter).apply();
+        }
+        showGestureHud("● FILTER", DotMatrixIconView.TYPE_SEEK_FORWARD, currentVisualFilter, 100);
+    }
+
+    // ==========================================
+    // PHASE 2: SLEEP TIMER LOGIC
+    // ==========================================
+    private void setupSleepTimerListeners() {
+        if (panelSleepTimer == null) return;
+
+        if (btnBackSleepTimer != null) {
+            btnBackSleepTimer.setOnClickListener(v -> {
+                panelSleepTimer.setVisibility(View.GONE);
+                if (panelMoreMenu != null) panelMoreMenu.setVisibility(View.VISIBLE);
+            });
+        }
+
+        if (btnCloseSleepTimer != null) {
+            btnCloseSleepTimer.setOnClickListener(v -> {
+                panelSleepTimer.setVisibility(View.GONE);
+                scheduleHideControls();
+            });
+        }
+
+        if (btnTimerOff != null) btnTimerOff.setOnClickListener(v -> cancelSleepTimer());
+        if (btnTimer15 != null) btnTimer15.setOnClickListener(v -> startSleepTimer(15));
+        if (btnTimer30 != null) btnTimer30.setOnClickListener(v -> startSleepTimer(30));
+        if (btnTimer60 != null) btnTimer60.setOnClickListener(v -> startSleepTimer(60));
+        if (btnTimer90 != null) btnTimer90.setOnClickListener(v -> startSleepTimer(90));
+        if (btnTimerEndOfVideo != null) btnTimerEndOfVideo.setOnClickListener(v -> setSleepTimerEndOfVideo());
+    }
+
+    private void updateSleepTimerButtons(int selectedMinutes, boolean isEndVid) {
+        int act = R.drawable.bg_chip_red_active;
+        int inact = R.drawable.bg_chip_dark_inactive;
+        if (btnTimerOff != null) btnTimerOff.setBackgroundResource(!isEndVid && selectedMinutes == 0 ? act : inact);
+        if (btnTimer15 != null) btnTimer15.setBackgroundResource(!isEndVid && selectedMinutes == 15 ? act : inact);
+        if (btnTimer30 != null) btnTimer30.setBackgroundResource(!isEndVid && selectedMinutes == 30 ? act : inact);
+        if (btnTimer60 != null) btnTimer60.setBackgroundResource(!isEndVid && selectedMinutes == 60 ? act : inact);
+        if (btnTimer90 != null) btnTimer90.setBackgroundResource(!isEndVid && selectedMinutes == 90 ? act : inact);
+        if (btnTimerEndOfVideo != null) btnTimerEndOfVideo.setBackgroundResource(isEndVid ? act : inact);
+    }
+
+    private void cancelSleepTimer() {
+        sleepTimerEndOfVideo = false;
+        sleepTimerEndTimeMs = 0;
+        if (sleepTimerRunnable != null) {
+            sleepTimerHandler.removeCallbacks(sleepTimerRunnable);
+            sleepTimerRunnable = null;
+        }
+        if (tvSleepTimerStatus != null) tvSleepTimerStatus.setText("STATUS: OFF");
+        if (tvMenuTimerLabel != null) tvMenuTimerLabel.setText("TIMER");
+        updateSleepTimerButtons(0, false);
+        showGestureHud("● SLEEP TIMER", DotMatrixIconView.TYPE_SEEK_FORWARD, "TIMER OFF", 0);
+    }
+
+    private void startSleepTimer(int minutes) {
+        sleepTimerEndOfVideo = false;
+        if (sleepTimerRunnable != null) {
+            sleepTimerHandler.removeCallbacks(sleepTimerRunnable);
+        }
+        sleepTimerEndTimeMs = System.currentTimeMillis() + (minutes * 60L * 1000L);
+        updateSleepTimerButtons(minutes, false);
+
+        sleepTimerRunnable = new Runnable() {
+            @Override
+            public void run() {
+                long remainingMs = sleepTimerEndTimeMs - System.currentTimeMillis();
+                if (remainingMs <= 0) {
+                    cancelSleepTimer();
+                    togglePlayPause();
+                    showGestureHud("● SLEEP TIMER", DotMatrixIconView.TYPE_SEEK_FORWARD, "PLAYBACK PAUSED", 100);
+                    Toast.makeText(ExoVideoPlayerActivity.this, "Sleep timer expired. Playback paused.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                long sec = remainingMs / 1000;
+                String countdown = String.format(java.util.Locale.US, "%02d:%02d", sec / 60, sec % 60);
+                if (tvSleepTimerStatus != null) {
+                    tvSleepTimerStatus.setText("STATUS: " + countdown + " REMAINING");
+                }
+                if (tvMenuTimerLabel != null) {
+                    tvMenuTimerLabel.setText(countdown);
+                }
+                sleepTimerHandler.postDelayed(this, 1000);
+            }
+        };
+        sleepTimerHandler.post(sleepTimerRunnable);
+        showGestureHud("● SLEEP TIMER", DotMatrixIconView.TYPE_SEEK_FORWARD, minutes + " MINUTES SET", 100);
+    }
+
+    private void setSleepTimerEndOfVideo() {
+        if (sleepTimerRunnable != null) {
+            sleepTimerHandler.removeCallbacks(sleepTimerRunnable);
+            sleepTimerRunnable = null;
+        }
+        sleepTimerEndOfVideo = true;
+        sleepTimerEndTimeMs = 0;
+        if (tvSleepTimerStatus != null) tvSleepTimerStatus.setText("STATUS: END OF CURRENT VIDEO");
+        if (tvMenuTimerLabel != null) tvMenuTimerLabel.setText("END VID");
+        updateSleepTimerButtons(0, true);
+        showGestureHud("● SLEEP TIMER", DotMatrixIconView.TYPE_SEEK_FORWARD, "END OF VIDEO", 100);
+    }
+
+    // ==========================================
+    // PHASE 2: AUXILIARY ACTIONS (Bookmark, Fav, Delete, Share, Properties)
+    // ==========================================
+    private void saveBookmark() {
+        long cur = isYouTubeActive ? youtubeCurrentPositionMs : (isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0));
+        String key = videoPath != null ? videoPath : videoUriStr;
+        if (key != null) {
+            SharedPreferences p = getSharedPreferences("nothing_player_bookmarks", MODE_PRIVATE);
+            String existing = p.getString(key, "");
+            String newEntry = formatTime(cur);
+            String updated = existing.isEmpty() ? newEntry : existing + " • " + newEntry;
+            p.edit().putString(key, updated).apply();
+            showGestureHud("● BOOKMARK ADDED", DotMatrixIconView.TYPE_SEEK_FORWARD, newEntry, 100);
+            Toast.makeText(this, "Bookmark created at " + newEntry, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void toggleFavorite() {
+        String key = videoPath != null ? videoPath : videoUriStr;
+        if (key == null) return;
+        SharedPreferences p = getSharedPreferences("nothing_player_prefs", MODE_PRIVATE);
+        boolean isFav = !p.getBoolean("fav_" + key, false);
+        p.edit().putBoolean("fav_" + key, isFav).apply();
+        if (ivMenuFavoriteIcon != null) {
+            ivMenuFavoriteIcon.setColorFilter(isFav ? Color.parseColor("#D71921") : Color.WHITE);
+        }
+        showGestureHud("● FAVORITE", DotMatrixIconView.TYPE_SEEK_FORWARD, isFav ? "ADDED TO FAVORITES" : "REMOVED FROM FAVORITES", isFav ? 100 : 0);
+    }
+
+    private void promptDeleteVideo() {
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("DELETE VIDEO")
+                .setMessage("Permanently delete this video file from storage?\n\n" + (videoTitle != null ? videoTitle : ""))
+                .setPositiveButton("DELETE", (dialog, which) -> {
+                    boolean deleted = false;
+                    try {
+                        if (videoPath != null) {
+                            File f = new File(videoPath);
+                            if (f.exists()) deleted = f.delete();
+                        }
+                        if (!deleted && videoUriStr != null) {
+                            getContentResolver().delete(Uri.parse(videoUriStr), null, null);
+                            deleted = true;
+                        }
+                    } catch (Exception ignored) {}
+
+                    if (deleted) {
+                        Toast.makeText(this, "Video deleted successfully", Toast.LENGTH_SHORT).show();
+                        if (playlistPaths != null && !playlistPaths.isEmpty() && playlistIndex < playlistPaths.size()) {
+                            playlistPaths.remove(playlistIndex);
+                            if (playlistUris.size() > playlistIndex) playlistUris.remove(playlistIndex);
+                            if (playlistTitles.size() > playlistIndex) playlistTitles.remove(playlistIndex);
+                            if (!playlistPaths.isEmpty()) {
+                                playlistIndex = Math.min(playlistIndex, playlistPaths.size() - 1);
+                                playVideoAtIndex(playlistIndex);
+                            } else {
+                                finish();
+                            }
+                        } else {
+                            finish();
+                        }
+                    } else {
+                        Toast.makeText(this, "Could not delete video file", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("CANCEL", null)
+                .show();
+    }
+
+    private void shareCurrentVideo() {
+        try {
+            Intent share = new Intent(Intent.ACTION_SEND);
+            share.setType("video/*");
+            Uri uri = resolveMediaUri();
+            if (uri != null) {
+                share.putExtra(Intent.EXTRA_STREAM, uri);
+                share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            }
+            share.putExtra(Intent.EXTRA_TEXT, videoTitle != null ? videoTitle : "Watch this video");
+            startActivity(Intent.createChooser(share, "Share Video via"));
+        } catch (Exception e) {
+            Toast.makeText(this, "Sharing error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // ==========================================
+    // PHASE 3: OTHERS SUBPANEL & FAQ LISTENERS
+    // ==========================================
+    private void setupOthersPanelListeners() {
+        if (panelOthers == null) return;
+
+        if (btnBackOthers != null) {
+            btnBackOthers.setOnClickListener(v -> {
+                panelOthers.setVisibility(View.GONE);
+                if (panelMoreMenu != null) {
+                    panelMoreMenu.setVisibility(View.VISIBLE);
+                    panelMoreMenu.post(() -> panelMoreMenu.scrollTo(0, 0));
+                }
+            });
+        }
+
+        if (btnCloseOthers != null) {
+            btnCloseOthers.setOnClickListener(v -> {
+                panelOthers.setVisibility(View.GONE);
+                scheduleHideControls();
+            });
+        }
+
+        if (itemOthersProperties != null) {
+            itemOthersProperties.setOnClickListener(v -> showVideoPropertiesDialog());
+        }
+
+        if (itemOthersFaq != null) {
+            itemOthersFaq.setOnClickListener(v -> showFaqDialog());
+        }
+
+        if (itemOthersCastFaq != null) {
+            itemOthersCastFaq.setOnClickListener(v -> showCastFaqDialog());
+        }
+
+        if (itemOthersPlaybackIssue != null) {
+            itemOthersPlaybackIssue.setOnClickListener(v -> showPlaybackIssueDialog());
+        }
+    }
+
+    private interface OnTrackItemSelectedListener {
+        void onTrackSelected(int index);
+    }
+
+    private void showNothingInfoDialog(String title, String message) {
+        try {
+            Dialog dialog = new Dialog(this);
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+            dialog.setContentView(R.layout.dialog_nothing_info);
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                dialog.getWindow().setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.85f),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+            }
+
+            TextView tvTitle = dialog.findViewById(R.id.tv_nothing_dialog_title);
+            TextView tvMsg = dialog.findViewById(R.id.tv_nothing_dialog_message);
+            Button btnClose = dialog.findViewById(R.id.btn_nothing_dialog_close);
+
+            if (tvTitle != null) tvTitle.setText(title.toUpperCase());
+            if (tvMsg != null) tvMsg.setText(message);
+            if (btnClose != null) btnClose.setOnClickListener(v -> dialog.dismiss());
+
+            dialog.show();
+        } catch (Exception e) {
+            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("CLOSE", null)
+                .show();
+        }
+    }
+
+    private void showNothingSelectionDialog(String title, List<String> items, int selectedIndex, OnTrackItemSelectedListener listener) {
+        try {
+            Dialog dialog = new Dialog(this);
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+            dialog.setContentView(R.layout.dialog_nothing_selection);
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                dialog.getWindow().setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.85f),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+            }
+
+            TextView tvTitle = dialog.findViewById(R.id.tv_selection_dialog_title);
+            if (tvTitle != null) tvTitle.setText(title.toUpperCase());
+
+            LinearLayout container = dialog.findViewById(R.id.layout_track_items_container);
+            LayoutInflater inflater = LayoutInflater.from(this);
+
+            for (int i = 0; i < items.size(); i++) {
+                final int idx = i;
+                View itemView = inflater.inflate(R.layout.item_nothing_track_selection, container, false);
+                View indicator = itemView.findViewById(R.id.view_track_indicator);
+                TextView tvTrack = itemView.findViewById(R.id.tv_track_name);
+
+                tvTrack.setText(items.get(i).toUpperCase());
+                if (idx == selectedIndex) {
+                    indicator.setBackgroundResource(R.drawable.bg_circle_red_active);
+                    tvTrack.setTextColor(Color.parseColor("#D71921"));
+                } else {
+                    indicator.setBackgroundResource(R.drawable.bg_circle_dark);
+                    tvTrack.setTextColor(Color.parseColor("#FFFFFF"));
+                }
+
+                itemView.setOnClickListener(v -> {
+                    dialog.dismiss();
+                    if (listener != null) listener.onTrackSelected(idx);
+                });
+
+                container.addView(itemView);
+            }
+
+            Button btnCancel = dialog.findViewById(R.id.btn_selection_dialog_cancel);
+            if (btnCancel != null) btnCancel.setOnClickListener(v -> dialog.dismiss());
+
+            dialog.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void showVideoPropertiesDialog() {
+        Point real = getRealScreenSize();
+        String res = (videoWidth > 0 && videoHeight > 0) ? (videoWidth + " x " + videoHeight) : (real.x + " x " + real.y);
+        String dur = formatTime(totalDurationMs);
+        String sizeStr = "Unknown";
+        String pathStr = videoPath != null ? videoPath : (videoUriStr != null ? videoUriStr : "Stream");
+
+        if (videoPath != null) {
+            File f = new File(videoPath);
+            if (f.exists()) {
+                double mb = f.length() / (1024.0 * 1024.0);
+                if (mb >= 1024) {
+                    sizeStr = String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0);
+                } else {
+                    sizeStr = String.format(java.util.Locale.US, "%.1f MB", mb);
+                }
+            }
+        }
+
+        String details = "TITLE: " + (videoTitle != null ? videoTitle : "N/A") + "\n\n"
+                + "RESOLUTION: " + res + "\n"
+                + "DURATION: " + dur + "\n"
+                + "SIZE: " + sizeStr + "\n"
+                + "DECODER: " + currentDecoder + "\n"
+                + "PATH: " + pathStr;
+
+        showNothingInfoDialog("VIDEO PROPERTIES", details);
+    }
+
+    private void showFaqDialog() {
+        String faqText = "● SWIPE LEFT SIDE VERTICALLY\n"
+                + "Adjust screen brightness smoothly from 1% to 100%.\n\n"
+                + "● SWIPE RIGHT SIDE VERTICALLY\n"
+                + "Adjust media volume with real-time dot matrix HUD feedback.\n\n"
+                + "● DOUBLE TAP SIDES\n"
+                + "Double tap left for 10s Rewind, right for 10s Fast Forward.\n\n"
+                + "● LONG PRESS ANYWHERE\n"
+                + "Instantly triggers fast playback boost with haptic feedback.\n\n"
+                + "● PINCH TO ZOOM\n"
+                + "Smoothly scale video up to 400% or fit to screen.\n\n"
+                + "● A-B REPEAT\n"
+                + "Set loop points A and B to loop any video segment.";
+        showNothingInfoDialog("GESTURE & PLAYBACK FAQ", faqText);
+    }
+
+    private void showCastFaqDialog() {
+        String castFaqText = "● WIRELESS CASTING & MIRRORING\n"
+                + "1. Ensure Phone and TV are on the same Wi-Fi network.\n"
+                + "2. Tap the CAST button in the top header or More Menu.\n"
+                + "3. Select Chromecast, Android TV, Fire TV, or DLNA receiver.\n\n"
+                + "● CAST TROUBLESHOOTING\n"
+                + "• Restart Wi-Fi on both devices.\n"
+                + "• Ensure AP Isolation / Guest Mode is disabled on Wi-Fi router.\n"
+                + "• Enable 'Wireless Display' in Android Cast settings.";
+        showNothingInfoDialog("CAST & WIRELESS DISPLAY", castFaqText);
+    }
+
+    private void showPlaybackIssueDialog() {
+        String issueText = "● AUDIO FORMAT NOT SUPPORTED (EAC3 / DTS)\n"
+                + "Switch decoder from HW+ to 'UNIVERSAL VLC' in More Menu for full Dolby Digital Plus & DTS 5.1 decode.\n\n"
+                + "● VIDEO STUTTERING OR LAG (10-BIT / 4K HEVC)\n"
+                + "Switch to HW+ (Hardware Decoder) for GPU acceleration.\n\n"
+                + "● AUDIO & VIDEO OUT OF SYNC\n"
+                + "Tap 10s Rewind or toggle between HW+ and SW+ in More Menu.\n\n"
+                + "● SUBTITLES NOT SHOWING\n"
+                + "Open SUBTITLE in the top header to select embedded or external tracks.";
+        showNothingInfoDialog("PLAYBACK TROUBLESHOOTING", issueText);
+    }
+
     private void showExoAudioTrackDialog() {
         if (exoPlayer == null || trackSelector == null) return;
         Tracks tracks = exoPlayer.getCurrentTracks();
@@ -1608,10 +3092,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             return;
         }
 
-        CharSequence[] items = trackLabels.toArray(new CharSequence[0]);
-        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        builder.setTitle("Select Audio Track");
-        builder.setSingleChoiceItems(items, selectedIndex, (dialog, which) -> {
+        showNothingSelectionDialog("SELECT AUDIO TRACK", trackLabels, selectedIndex, which -> {
             try {
                 TrackGroup selectedGroup = audioGroups.get(which);
                 int trackIndex = trackIndices.get(which);
@@ -1623,7 +3104,6 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                     long cur = exoPlayer != null ? exoPlayer.getCurrentPosition() : 0;
                     Toast.makeText(this, "Activating Universal Dolby 5.1 Engine", Toast.LENGTH_SHORT).show();
                     startVlcPlayer(cur);
-                    dialog.dismiss();
                     return;
                 }
 
@@ -1638,10 +3118,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 long cur = exoPlayer != null ? exoPlayer.getCurrentPosition() : 0;
                 startVlcPlayer(cur);
             }
-            dialog.dismiss();
         });
-        builder.setNegativeButton("Cancel", null);
-        builder.show();
     }
 
     private void showVlcAudioTrackDialog() {
@@ -1665,19 +3142,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             }
         }
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        builder.setTitle("Select Audio Track (Dolby 5.1 Universal)");
-        builder.setSingleChoiceItems(labels.toArray(new CharSequence[0]), selectedIndex, (dialog, which) -> {
+        showNothingSelectionDialog("SELECT AUDIO TRACK (VLC)", labels, selectedIndex, which -> {
             try {
                 vlcPlayer.setAudioTrack(trackIds.get(which));
                 Toast.makeText(this, "Selected: " + labels.get(which), Toast.LENGTH_SHORT).show();
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            dialog.dismiss();
         });
-        builder.setNegativeButton("Cancel", null);
-        builder.show();
     }
 
     private void showExoSubtitleTrackDialog() {
@@ -1712,10 +3184,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             }
         }
 
-        CharSequence[] items = trackLabels.toArray(new CharSequence[0]);
-        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        builder.setTitle("Select Subtitle (ESub / CC)");
-        builder.setSingleChoiceItems(items, selectedIndex, (dialog, which) -> {
+        showNothingSelectionDialog("SELECT SUBTITLE (ESUB / CC)", trackLabels, selectedIndex, which -> {
             if (which == 0) {
                 trackSelector.setParameters(
                     trackSelector.buildUponParameters()
@@ -1733,10 +3202,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 );
                 Toast.makeText(this, "Subtitle: " + trackLabels.get(which), Toast.LENGTH_SHORT).show();
             }
-            dialog.dismiss();
         });
-        builder.setNegativeButton("Cancel", null);
-        builder.show();
     }
 
     private void showVlcSubtitleTrackDialog() {
@@ -1760,15 +3226,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             }
         }
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        builder.setTitle("Select Subtitle (VLC Engine)");
-        builder.setSingleChoiceItems(labels.toArray(new CharSequence[0]), selectedIndex, (dialog, which) -> {
+        showNothingSelectionDialog("SELECT SUBTITLE (VLC)", labels, selectedIndex, which -> {
             vlcPlayer.setSpuTrack(trackIds.get(which));
             Toast.makeText(this, "Selected: " + labels.get(which), Toast.LENGTH_SHORT).show();
-            dialog.dismiss();
         });
-        builder.setNegativeButton("Cancel", null);
-        builder.show();
     }
 
     private void setupGestures() {
@@ -1784,15 +3245,27 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             @Override
             public boolean onSingleTapConfirmed(MotionEvent e) {
                 if (!isLocked) {
-                    toggleControlsVisibility();
-                } else {
-                    if (btnScreenLock.getVisibility() == View.VISIBLE) {
-                        btnScreenLock.setVisibility(View.GONE);
+                    if (isAnyPanelOpen()) {
+                        closeAllPanels();
+                        scheduleHideControls();
                     } else {
-                        btnScreenLock.setVisibility(View.VISIBLE);
-                        hideHandler.postDelayed(() -> {
-                            if (isLocked) btnScreenLock.setVisibility(View.GONE);
-                        }, 3000);
+                        toggleControlsVisibility();
+                    }
+                } else {
+                    if (btnFloatingLock != null) {
+                        if (btnFloatingLock.getVisibility() == View.VISIBLE) {
+                            btnFloatingLock.setVisibility(View.GONE);
+                        } else {
+                            btnFloatingLock.setVisibility(View.VISIBLE);
+                            btnFloatingLock.setImageResource(R.drawable.ic_lock_closed);
+                            btnFloatingLock.setColorFilter(Color.parseColor("#D71921"));
+                            hideHandler.removeCallbacksAndMessages(null);
+                            hideHandler.postDelayed(() -> {
+                                if (isLocked && btnFloatingLock != null) {
+                                    btnFloatingLock.setVisibility(View.GONE);
+                                }
+                            }, 3000);
+                        }
                     }
                 }
                 return true;
@@ -1898,6 +3371,25 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 }
                 return false;
             }
+
+            @Override
+            public void onLongPress(MotionEvent e) {
+                if (isLocked) return;
+                if (longPress2xBoost && !is2xBoostActive) {
+                    is2xBoostActive = true;
+                    preBoostSpeed = playbackSpeed;
+                    triggerHapticBoost();
+                    float targetSpeed = longPressSpeedTarget > 0 ? longPressSpeedTarget : 2.0f;
+                    if (isYouTubeActive && youtubeStreamView != null) {
+                        youtubeStreamView.evaluateJavascript("if (player && player.setPlaybackRate) player.setPlaybackRate(" + targetSpeed + ");", null);
+                    } else if (isVlcActive && vlcPlayer != null) {
+                        vlcPlayer.setRate(targetSpeed);
+                    } else if (exoPlayer != null) {
+                        exoPlayer.setPlaybackSpeed(targetSpeed);
+                    }
+                    showGestureHud("● " + targetSpeed + "X SPEED BOOST", DotMatrixIconView.TYPE_SEEK_FORWARD, "HOLDING " + targetSpeed + "X", 100);
+                }
+            }
         });
 
         ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(this, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -1927,11 +3419,20 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         });
 
         View.OnTouchListener touchListener = (v, event) -> {
+            if (isLocked) {
+                gestureDetector.onTouchEvent(event);
+                return true;
+            }
             scaleGestureDetector.onTouchEvent(event);
             if (!scaleGestureDetector.isInProgress()) {
                 gestureDetector.onTouchEvent(event);
             }
             if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                if (is2xBoostActive) {
+                    is2xBoostActive = false;
+                    applySpeed(preBoostSpeed);
+                    showGestureHud("● SPEED RESTORED", DotMatrixIconView.TYPE_SEEK_FORWARD, preBoostSpeed + "X", (int) (preBoostSpeed * 25));
+                }
                 if (gestureMode[0] == GESTURE_HORIZONTAL) {
                     long target = targetSeekPosition[0];
                     if (isYouTubeActive && youtubeStreamView != null) {
@@ -2021,14 +3522,18 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (areControlsVisible) {
             topControlsBar.setVisibility(View.GONE);
             bottomControlsBar.setVisibility(View.GONE);
-            btnScreenLock.setVisibility(View.GONE);
-            if (topExpandableControlsBar != null) topExpandableControlsBar.setVisibility(View.GONE);
+            if (btnQuickScreenshot != null) btnQuickScreenshot.setVisibility(View.GONE);
+            if (layoutQuickActionsExpanded != null) layoutQuickActionsExpanded.setVisibility(View.GONE);
+            closeAllPanels();
             areControlsVisible = false;
         } else {
             topControlsBar.setVisibility(View.VISIBLE);
             bottomControlsBar.setVisibility(View.VISIBLE);
-            btnScreenLock.setVisibility(View.VISIBLE);
-            btnScreenLock.setImageResource(isLocked ? R.drawable.ic_lock_closed : R.drawable.ic_lock_open);
+            if (btnQuickScreenshot != null) btnQuickScreenshot.setVisibility(View.VISIBLE);
+            if (btnScreenLock != null) {
+                btnScreenLock.setVisibility(View.VISIBLE);
+                btnScreenLock.setImageResource(isLocked ? R.drawable.ic_lock_closed : R.drawable.ic_lock_open);
+            }
             areControlsVisible = true;
             scheduleHideControls();
         }
@@ -2044,8 +3549,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (isPlaying && !isLocked) {
             topControlsBar.setVisibility(View.GONE);
             bottomControlsBar.setVisibility(View.GONE);
-            btnScreenLock.setVisibility(View.GONE);
-            if (topExpandableControlsBar != null) topExpandableControlsBar.setVisibility(View.GONE);
+            if (btnQuickScreenshot != null) btnQuickScreenshot.setVisibility(View.GONE);
+            if (layoutQuickActionsExpanded != null) layoutQuickActionsExpanded.setVisibility(View.GONE);
+            closeAllPanels();
             areControlsVisible = false;
         }
     };
@@ -2074,12 +3580,25 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         public void run() {
             if (!isVlcActive && exoPlayer != null && exoPlayer.isPlaying()) {
                 long pos = exoPlayer.getCurrentPosition();
+                if (repeatPointA >= 0 && repeatPointB > repeatPointA && pos >= repeatPointB) {
+                    exoPlayer.seekTo(repeatPointA);
+                    pos = repeatPointA;
+                }
                 videoSeekBar.setProgress((int) pos);
                 updateTimeDisplay(pos);
                 if (Math.abs(pos - lastSavedProgressMs) >= 2000) {
                     lastSavedProgressMs = pos;
                     saveCurrentPlaybackProgress(pos, totalDurationMs);
                 }
+                progressHandler.postDelayed(this, 500);
+            } else if (isVlcActive && vlcPlayer != null && vlcPlayer.isPlaying()) {
+                long pos = vlcPlayer.getTime();
+                if (repeatPointA >= 0 && repeatPointB > repeatPointA && pos >= repeatPointB) {
+                    vlcPlayer.setTime(repeatPointA);
+                    pos = repeatPointA;
+                }
+                videoSeekBar.setProgress((int) pos);
+                updateTimeDisplay(pos);
                 progressHandler.postDelayed(this, 500);
             }
         }
@@ -2256,6 +3775,125 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         showGestureHud("● NOW PLAYING", DotMatrixIconView.TYPE_SEEK_FORWARD, videoTitle, (playlistIndex + 1) * 100 / Math.max(1, playlistPaths.size()));
     }
 
+    private void handleVideoCompletion() {
+        if (sleepTimerEndOfVideo) {
+            cancelSleepTimer();
+            if (isYouTubeActive && youtubeStreamView != null) {
+                youtubeStreamView.evaluateJavascript("if (player && player.pauseVideo) player.pauseVideo();", null);
+            } else if (isVlcActive && vlcPlayer != null) {
+                vlcPlayer.pause();
+            } else if (exoPlayer != null) {
+                exoPlayer.pause();
+            }
+            if (btnPlayPause != null) {
+                btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
+            }
+            showGestureHud("● SLEEP TIMER", DotMatrixIconView.TYPE_SEEK_FORWARD, "PLAYBACK STOPPED", 100);
+            Toast.makeText(this, "Sleep timer reached end of video. Playback stopped.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Repeat mode logic
+        // 0 = Order, 1 = Loop One, 2 = Shuffle, 3 = Loop All, 4 = Play Once
+        if (currentRepeatMode == 1) { // LOOP ONE
+            if (isYouTubeActive && youtubeStreamView != null) {
+                youtubeStreamView.evaluateJavascript("if (player && player.seekTo) { player.seekTo(0); player.playVideo(); }", null);
+            } else if (isVlcActive && vlcPlayer != null) {
+                vlcPlayer.setTime(0);
+                vlcPlayer.play();
+            } else if (exoPlayer != null) {
+                exoPlayer.seekTo(0);
+                exoPlayer.play();
+            }
+            if (btnPlayPause != null) {
+                btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
+            }
+            showGestureHud("● LOOP ONE", DotMatrixIconView.TYPE_SEEK_FORWARD, "REPLAYING", 100);
+            return;
+        }
+
+        if (currentRepeatMode == 4) { // PLAY ONCE
+            if (isYouTubeActive && youtubeStreamView != null) {
+                youtubeStreamView.evaluateJavascript("if (player && player.pauseVideo) player.pauseVideo();", null);
+            } else if (isVlcActive && vlcPlayer != null) {
+                vlcPlayer.pause();
+            } else if (exoPlayer != null) {
+                exoPlayer.pause();
+            }
+            if (btnPlayPause != null) {
+                btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
+            }
+            showGestureHud("● PLAY ONCE", DotMatrixIconView.TYPE_SEEK_FORWARD, "FINISHED", 100);
+            return;
+        }
+
+        if (currentRepeatMode == 2) { // SHUFFLE
+            if (playlistPaths != null && playlistPaths.size() > 1) {
+                int nextIdx = playlistIndex;
+                java.util.Random rnd = new java.util.Random();
+                int attempts = 0;
+                while (nextIdx == playlistIndex && attempts < 10) {
+                    nextIdx = rnd.nextInt(playlistPaths.size());
+                    attempts++;
+                }
+                playVideoAtIndex(nextIdx);
+                showGestureHud("● SHUFFLE", DotMatrixIconView.TYPE_SEEK_FORWARD, "RANDOM NEXT", 100);
+            } else {
+                if (isYouTubeActive && youtubeStreamView != null) {
+                    youtubeStreamView.evaluateJavascript("if (player && player.seekTo) { player.seekTo(0); player.playVideo(); }", null);
+                } else if (isVlcActive && vlcPlayer != null) {
+                    vlcPlayer.setTime(0);
+                    vlcPlayer.play();
+                } else if (exoPlayer != null) {
+                    exoPlayer.seekTo(0);
+                    exoPlayer.play();
+                }
+            }
+            return;
+        }
+
+        if (currentRepeatMode == 3) { // LOOP ALL
+            if (playlistPaths != null && !playlistPaths.isEmpty()) {
+                if (playlistIndex < playlistPaths.size() - 1) {
+                    playNextVideo();
+                } else {
+                    playVideoAtIndex(0);
+                }
+            } else {
+                if (isYouTubeActive && youtubeStreamView != null) {
+                    youtubeStreamView.evaluateJavascript("if (player && player.seekTo) { player.seekTo(0); player.playVideo(); }", null);
+                } else if (isVlcActive && vlcPlayer != null) {
+                    vlcPlayer.setTime(0);
+                    vlcPlayer.play();
+                } else if (exoPlayer != null) {
+                    exoPlayer.seekTo(0);
+                    exoPlayer.play();
+                }
+            }
+            return;
+        }
+
+        // Default: ORDER (0)
+        if (playlistPaths != null && playlistIndex < playlistPaths.size() - 1) {
+            playNextVideo();
+        } else {
+            if (isYouTubeActive && youtubeStreamView != null) {
+                youtubeStreamView.evaluateJavascript("if (player && player.pauseVideo) player.pauseVideo();", null);
+            } else if (isVlcActive && vlcPlayer != null) {
+                vlcPlayer.pause();
+            } else if (exoPlayer != null) {
+                exoPlayer.pause();
+            }
+            if (btnPlayPause != null) {
+                btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
+            }
+            showGestureHud("● PLAYLIST END", DotMatrixIconView.TYPE_SEEK_FORWARD, "ORDER COMPLETE", 100);
+            if (totalDurationMs > 5000 && !isFinishing()) {
+                finish();
+            }
+        }
+    }
+
     private void togglePlaylistQueuePanel() {
         if (playlistQueuePanel == null) return;
         boolean isVisible = playlistQueuePanel.getVisibility() == View.VISIBLE;
@@ -2426,9 +4064,11 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             if (topControlsBar != null) topControlsBar.setVisibility(View.GONE);
             if (bottomControlsBar != null) bottomControlsBar.setVisibility(View.GONE);
             if (btnScreenLock != null) btnScreenLock.setVisibility(View.GONE);
-            if (topExpandableControlsBar != null) topExpandableControlsBar.setVisibility(View.GONE);
+            if (btnFloatingLock != null) btnFloatingLock.setVisibility(View.GONE);
+            if (btnQuickScreenshot != null) btnQuickScreenshot.setVisibility(View.GONE);
+            if (layoutQuickActionsExpanded != null) layoutQuickActionsExpanded.setVisibility(View.GONE);
             if (gestureHudContainer != null) gestureHudContainer.setVisibility(View.GONE);
-            if (playlistQueuePanel != null) playlistQueuePanel.setVisibility(View.GONE);
+            closeAllPanels();
             updatePipActions();
         } else {
             hideSystemUI();
@@ -2437,6 +4077,30 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 if (bottomControlsBar != null) bottomControlsBar.setVisibility(View.VISIBLE);
             }
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (isLocked) {
+            if (btnFloatingLock != null) {
+                btnFloatingLock.setVisibility(View.VISIBLE);
+                btnFloatingLock.setImageResource(R.drawable.ic_lock_closed);
+                btnFloatingLock.setColorFilter(Color.parseColor("#D71921"));
+                hideHandler.removeCallbacksAndMessages(null);
+                hideHandler.postDelayed(() -> {
+                    if (isLocked && btnFloatingLock != null) {
+                        btnFloatingLock.setVisibility(View.GONE);
+                    }
+                }, 3000);
+            }
+            return;
+        }
+        if (isAnyPanelOpen()) {
+            closeAllPanels();
+            scheduleHideControls();
+            return;
+        }
+        super.onBackPressed();
     }
 
     @Override

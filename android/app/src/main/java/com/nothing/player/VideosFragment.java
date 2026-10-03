@@ -159,6 +159,14 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
 
     private void updateHistorySection() {
         if (getContext() == null || sectionHistory == null || historyAdapter == null) return;
+        
+        // Show recently watched ONLY on the root home page (not inside any opened folder or active search)
+        String query = etSearch != null ? etSearch.getText().toString().trim() : "";
+        if (currentSelectedFolder != null || !query.isEmpty()) {
+            sectionHistory.setVisibility(View.GONE);
+            return;
+        }
+
         List<PlaybackHistoryManager.HistoryItem> history = PlaybackHistoryManager.getHistoryList(getContext());
         if (history != null && !history.isEmpty()) {
             sectionHistory.setVisibility(View.VISIBLE);
@@ -313,6 +321,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     }
 
     private void filterAndDisplay() {
+        updateHistorySection();
         String query = etSearch.getText().toString().trim().toLowerCase();
         List<Object> displayItems = new ArrayList<>();
 

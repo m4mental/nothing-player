@@ -43,6 +43,21 @@
         android:background="#000000"
         android:visibility="gone" />
 
+    <!-- Night Mode Tint Overlay (Nothing OS Warm Amber/Dim Filter) -->
+    <View
+        android:id="@+id/night_mode_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99000000"
+        android:visibility="gone" />
+
+    <!-- Visual Enhancer Tint Overlay (Color Filters: HDR, Arctic Blue, Warm Glow, Cinematic) -->
+    <View
+        android:id="@+id/visual_enhancer_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
     <!-- Authentic Nothing OS Gesture HUD Box -->
     <LinearLayout
         android:id="@+id/gesture_hud_container"
@@ -67,7 +82,7 @@
             android:textColor="#D71921"
             android:textSize="10sp"
             android:textStyle="bold"
-            android:fontFamily="monospace"
+            android:fontFamily="@font/ndot"
             android:letterSpacing="0.15" />
 
         <!-- Icon + Large Percentage Value Row -->
@@ -139,7 +154,7 @@
             android:max="100" />
     </LinearLayout>
 
-    <!-- Top Action Bar (Nothing OS Cinematic Style) -->
+    <!-- Top Action Bar (Nothing OS Cinematic Style: Back + Title on Left, Actions on Right) -->
     <LinearLayout
         android:id="@+id/top_controls_bar"
         android:layout_width="match_parent"
@@ -151,7 +166,7 @@
         android:background="#CC000000"
         android:layout_gravity="top">
 
-        <!-- Top Header Row: Back Button + Title + Expand Button -->
+        <!-- Top Header Row: Back Button + Title on Left; Cast, HW, Subtitles, Playlist, 3-Dot on Right -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
@@ -173,17 +188,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toEndOf="@id/btn_back"
-                android:layout_toStartOf="@id/btn_expand_controls"
+                android:layout_toStartOf="@id/top_right_actions"
                 android:layout_centerVertical="true"
                 android:orientation="vertical"
-                android:paddingStart="12dp"
+                android:paddingStart="10dp"
                 android:paddingEnd="12dp">
 
                 <TextView
                     android:id="@+id/video_title_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Video Title"
+                    android:text="VIDEO TITLE"
                     android:textColor="#FFFFFF"
                     android:textSize="14sp"
                     android:textStyle="bold"
@@ -202,27 +217,76 @@
                     android:textStyle="bold" />
             </LinearLayout>
 
-            <!-- Single Expand Controls Button (Top Right) -->
-            <ImageButton
-                android:id="@+id/btn_expand_controls"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+            <!-- Top Right Action Icons: Cast, HW Decoder, Subtitle CC, Playlist, 3-Dot Menu -->
+            <LinearLayout
+                android:id="@+id/top_right_actions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
-                android:background="@drawable/bg_player_pill_button"
-                android:src="@drawable/ic_settings_more"
-                android:contentDescription="Expand Controls"
-                app:tint="#FFFFFF" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageButton
+                    android:id="@+id/btn_cast"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_cast"
+                    android:contentDescription="Cast Screen"
+                    app:tint="#FFFFFF"
+                    android:layout_marginEnd="4dp" />
+
+                <Button
+                    android:id="@+id/btn_decoder_mode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:text="HW+"
+                    android:textColor="#D71921"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_player_pill_button"
+                    android:paddingHorizontal="10dp"
+                    android:layout_marginEnd="6dp" />
+
+                <ImageButton
+                    android:id="@+id/btn_subtitle_track"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_subtitles"
+                    android:contentDescription="Subtitles"
+                    app:tint="#FFFFFF"
+                    android:layout_marginEnd="4dp" />
+
+                <ImageButton
+                    android:id="@+id/btn_playlist_queue"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_dotmatrix_playlist"
+                    android:contentDescription="Playlist"
+                    app:tint="#FFFFFF"
+                    android:layout_marginEnd="4dp" />
+
+                <ImageButton
+                    android:id="@+id/btn_more_menu"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_more_vert"
+                    android:contentDescription="More Options"
+                    app:tint="#FFFFFF" />
+            </LinearLayout>
         </RelativeLayout>
 
-        <!-- Expandable Controls Row (Under Video Title) -->
+        <!-- Secondary Quick-Action Row (Below Title: Orientation, Mute, Background, 1X Speed, Expand >) -->
         <HorizontalScrollView
-            android:id="@+id/top_expandable_controls_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:scrollbars="none"
-            android:layout_marginTop="8dp"
-            android:visibility="gone">
+            android:layout_marginTop="8dp">
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -230,153 +294,159 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- Decoder Button -->
-                <Button
-                    android:id="@+id/btn_decoder_mode"
-                    android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:text="HW+"
-                    android:textColor="#D71921"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:fontFamily="@font/ndot"
-                    android:background="@drawable/bg_player_pill_button"
-                    android:paddingHorizontal="12dp"
-                    android:layout_marginEnd="8dp" />
+                <!-- 1. Screen Orientation Cycle (Landscape / Portrait / Auto) -->
+                <ImageButton
+                    android:id="@+id/btn_quick_orientation"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_auto_rotate"
+                    android:contentDescription="Screen Orientation"
+                    app:tint="#FFFFFF"
+                    android:layout_marginEnd="6dp" />
 
-                <!-- Audio Track Selector Button -->
+                <!-- 2. Mute / Unmute Toggle -->
+                <ImageButton
+                    android:id="@+id/btn_quick_mute"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_volume_high"
+                    android:contentDescription="Mute / Unmute"
+                    app:tint="#FFFFFF"
+                    android:layout_marginEnd="6dp" />
+
+                <!-- 3. Background Audio Play -->
+                <ImageButton
+                    android:id="@+id/btn_quick_background"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_headphones"
+                    android:contentDescription="Background Audio"
+                    app:tint="#FFFFFF"
+                    android:layout_marginEnd="6dp" />
+
+                <!-- 4. 1X Playback Speed Pill Button -->
                 <Button
-                    android:id="@+id/btn_audio_track"
+                    android:id="@+id/btn_quick_speed"
                     android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:text="AUDIO"
+                    android:layout_height="30dp"
+                    android:text="1X"
                     android:textColor="#FFFFFF"
                     android:textSize="11sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
-                    android:drawableStart="@drawable/ic_audio_track"
-                    android:drawablePadding="6dp"
-                    android:drawableTint="#FFFFFF"
                     android:background="@drawable/bg_player_pill_button"
-                    android:paddingHorizontal="12dp"
+                    android:paddingHorizontal="10dp"
+                    android:layout_marginEnd="6dp" />
+
+                <!-- 5. Expand Button (>) -->
+                <ImageButton
+                    android:id="@+id/btn_quick_expand"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_arrow_expand"
+                    android:contentDescription="Expand Quick Actions"
+                    app:tint="#FFFFFF"
                     android:layout_marginEnd="8dp" />
 
-                <!-- Subtitle Track Selector Button -->
-                <Button
-                    android:id="@+id/btn_subtitle_track"
+                <!-- Expandable Actions Group (Night Mode, AB Repeat, PIP, Equalizer, Mirror) -->
+                <LinearLayout
+                    android:id="@+id/layout_quick_actions_expanded"
                     android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:text="SUBTITLES"
-                    android:textColor="#FFFFFF"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:fontFamily="@font/ndot"
-                    android:drawableStart="@drawable/ic_subtitles"
-                    android:drawablePadding="6dp"
-                    android:drawableTint="#FFFFFF"
-                    android:background="@drawable/bg_player_pill_button"
-                    android:paddingHorizontal="12dp"
-                    android:layout_marginEnd="8dp" />
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:visibility="gone">
 
-                <!-- Screen Rotate Button -->
-                <Button
-                    android:id="@+id/btn_rotate_screen"
-                    android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:text="ROTATE"
-                    android:textColor="#FFFFFF"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:fontFamily="@font/ndot"
-                    android:drawableStart="@drawable/ic_rotate"
-                    android:drawablePadding="6dp"
-                    android:drawableTint="#FFFFFF"
-                    android:background="@drawable/bg_player_pill_button"
-                    android:paddingHorizontal="12dp"
-                    android:layout_marginEnd="8dp" />
+                    <!-- Night Mode -->
+                    <ImageButton
+                        android:id="@+id/btn_quick_night_mode"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_night_mode"
+                        android:contentDescription="Night Mode"
+                        app:tint="#FFFFFF"
+                        android:layout_marginEnd="6dp" />
 
-                <!-- PiP Button -->
-                <Button
-                    android:id="@+id/btn_pip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:text="PiP"
-                    android:textColor="#FFFFFF"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:fontFamily="@font/ndot"
-                    android:drawableStart="@drawable/ic_pip"
-                    android:drawablePadding="6dp"
-                    android:drawableTint="#FFFFFF"
-                    android:background="@drawable/bg_player_pill_button"
-                    android:paddingHorizontal="12dp"
-                    android:layout_marginEnd="8dp" />
+                    <!-- A-B Repeat -->
+                    <ImageButton
+                        android:id="@+id/btn_quick_ab_repeat"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_ab_repeat"
+                        android:contentDescription="AB Repeat"
+                        app:tint="#FFFFFF"
+                        android:layout_marginEnd="6dp" />
 
-                <!-- Mute Toggle Button -->
-                <Button
-                    android:id="@+id/btn_mute"
-                    android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:text="MUTE"
-                    android:textColor="#FFFFFF"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:fontFamily="@font/ndot"
-                    android:drawableStart="@android:drawable/ic_lock_silent_mode_off"
-                    android:drawablePadding="6dp"
-                    android:drawableTint="#FFFFFF"
-                    android:background="@drawable/bg_player_pill_button"
-                    android:paddingHorizontal="12dp"
-                    android:layout_marginEnd="8dp" />
+                    <!-- Picture in Picture (PIP) -->
+                    <ImageButton
+                        android:id="@+id/btn_quick_pip"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_pip"
+                        android:contentDescription="Picture in Picture"
+                        app:tint="#FFFFFF"
+                        android:layout_marginEnd="6dp" />
 
-                <!-- Speed Button -->
-                <Button
-                    android:id="@+id/btn_speed"
-                    android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:text="1.0x"
-                    android:textColor="#FFFFFF"
-                    android:textSize="11sp"
-                    android:fontFamily="@font/ndot"
-                    android:drawableStart="@drawable/ic_speed"
-                    android:drawablePadding="6dp"
-                    android:drawableTint="#FFFFFF"
-                    android:background="@drawable/bg_player_pill_button"
-                    android:paddingHorizontal="12dp"
-                    android:layout_marginEnd="8dp" />
+                    <!-- Equalizer -->
+                    <ImageButton
+                        android:id="@+id/btn_quick_equalizer"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_equalizer_faders"
+                        android:contentDescription="Equalizer"
+                        app:tint="#FFFFFF"
+                        android:layout_marginEnd="6dp" />
 
-                <!-- Audio Boost Button -->
-                <Button
-                    android:id="@+id/btn_audio_boost"
-                    android:layout_width="wrap_content"
-                    android:layout_height="34dp"
-                    android:text="200%"
-                    android:textColor="#D71921"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:fontFamily="@font/ndot"
-                    android:drawableStart="@drawable/ic_audio_boost"
-                    android:drawablePadding="6dp"
-                    android:drawableTint="#D71921"
-                    android:background="@drawable/bg_player_pill_button"
-                    android:paddingHorizontal="12dp" />
+                    <!-- Mirror / Flip Screen -->
+                    <ImageButton
+                        android:id="@+id/btn_quick_mirror"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_mirror"
+                        android:contentDescription="Mirror Screen"
+                        app:tint="#FFFFFF"
+                        android:layout_marginEnd="6dp" />
+                </LinearLayout>
             </LinearLayout>
         </HorizontalScrollView>
     </LinearLayout>
 
-    <!-- Floating Lock Button (Hides when UI hides) -->
+    <!-- Quick Screenshot Camera Button (Centered vertically on right edge, Nothing circular button) -->
     <ImageButton
-        android:id="@+id/btn_screen_lock"
+        android:id="@+id/btn_quick_screenshot"
         android:layout_width="44dp"
         android:layout_height="44dp"
+        android:layout_gravity="end|center_vertical"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/bg_circle_button"
+        android:src="@drawable/ic_screenshot_camera"
+        android:contentDescription="Quick Screenshot"
+        app:tint="#FFFFFF" />
+
+    <!-- Floating Screen Lock / Unlock Button (Left side, appears when screen locked) -->
+    <ImageButton
+        android:id="@+id/btn_floating_lock"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_gravity="start|center_vertical"
         android:layout_marginStart="20dp"
         android:background="@drawable/bg_circle_button"
         android:src="@drawable/ic_lock_closed"
-        app:tint="#FFFFFF"
-        android:contentDescription="Screen Lock" />
+        android:contentDescription="Unlock Screen"
+        android:visibility="gone"
+        android:elevation="18dp"
+        app:tint="#D71921" />
 
-    <!-- Bottom Controls Bar (Single Clean Transport Line) -->
+    <!-- Bottom Controls Bar (Nothing OS NDOT Transport Bar) -->
     <LinearLayout
         android:id="@+id/bottom_controls_bar"
         android:layout_width="match_parent"
@@ -451,31 +521,25 @@
                 android:layout_marginStart="6dp" />
         </LinearLayout>
 
-        <!-- Row 2: Single Unified Transport, Prev/Next & Queue Line -->
+        <!-- Row 2: Transport Line: Lock (Left), Transport Controls (Center), Speed & Ratio (Right) -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp">
 
-            <!-- Aspect Ratio Button (Left side of transport on same line) -->
-            <Button
-                android:id="@+id/btn_aspect_ratio"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
+            <!-- Left: Screen Lock Button -->
+            <ImageButton
+                android:id="@+id/btn_screen_lock"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:layout_alignParentStart="true"
                 android:layout_centerVertical="true"
-                android:text="FIT"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:fontFamily="@font/ndot"
-                android:drawableStart="@drawable/ic_aspect_ratio"
-                android:drawablePadding="6dp"
-                android:drawableTint="#FFFFFF"
-                android:background="@drawable/bg_player_pill_button"
-                android:paddingHorizontal="10dp" />
+                android:background="@drawable/bg_circle_button"
+                android:src="@drawable/ic_lock_closed"
+                app:tint="#FFFFFF"
+                android:contentDescription="Screen Lock" />
 
-            <!-- Center Controls: Prev Video, Rewind 10s, Big Play/Pause, Forward 10s, Next Video -->
+            <!-- Center Controls: Rewind 10s, Prev, Play/Pause, Next, Forward 10s -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -484,24 +548,24 @@
                 android:orientation="horizontal">
 
                 <ImageButton
+                    android:id="@+id/btn_rewind"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_rewind_10"
+                    app:tint="#FFFFFF"
+                    android:layout_marginEnd="8dp"
+                    android:contentDescription="Rewind 10 seconds" />
+
+                <ImageButton
                     android:id="@+id/btn_prev"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:src="@android:drawable/ic_media_previous"
                     app:tint="#FFFFFF"
-                    android:layout_marginEnd="6dp"
+                    android:layout_marginEnd="8dp"
                     android:contentDescription="Previous Video" />
-
-                <ImageButton
-                    android:id="@+id/btn_rewind"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:src="@android:drawable/ic_media_rew"
-                    app:tint="#FFFFFF"
-                    android:layout_marginEnd="10dp"
-                    android:contentDescription="Rewind 10 seconds" />
 
                 <ImageButton
                     android:id="@+id/btn_play_pause"
@@ -513,43 +577,68 @@
                     android:contentDescription="Play/Pause" />
 
                 <ImageButton
-                    android:id="@+id/btn_forward"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:src="@android:drawable/ic_media_ff"
-                    app:tint="#FFFFFF"
-                    android:layout_marginStart="10dp"
-                    android:contentDescription="Forward 10 seconds" />
-
-                <ImageButton
                     android:id="@+id/btn_next"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:src="@android:drawable/ic_media_next"
                     app:tint="#FFFFFF"
-                    android:layout_marginStart="6dp"
+                    android:layout_marginStart="8dp"
                     android:contentDescription="Next Video" />
+
+                <ImageButton
+                    android:id="@+id/btn_forward"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_forward_10"
+                    app:tint="#FFFFFF"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="Forward 10 seconds" />
             </LinearLayout>
 
-            <!-- Playlist Drawer Button (Right side of transport) -->
-            <Button
-                android:id="@+id/btn_playlist_queue"
+            <!-- Right: Speed & Screen Size (Aspect Ratio) Buttons -->
+            <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="36dp"
+                android:layout_height="wrap_content"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
-                android:text="PLAYLIST"
-                android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:fontFamily="@font/ndot"
-                android:drawableStart="@drawable/ic_dotmatrix_playlist"
-                android:drawablePadding="6dp"
-                android:drawableTint="#FFFFFF"
-                android:background="@drawable/bg_player_pill_button"
-                android:paddingHorizontal="10dp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <!-- Speed Button -->
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_bottom_speed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="SPEED"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:drawableStart="@drawable/ic_speed"
+                    android:drawablePadding="6dp"
+                    android:drawableTint="#FFFFFF"
+                    android:background="@drawable/bg_player_pill_button"
+                    android:paddingHorizontal="10dp"
+                    android:layout_marginEnd="6dp" />
+
+                <!-- Aspect Ratio / Screen Size Button -->
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_aspect_ratio"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="FIT"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:drawableStart="@drawable/ic_aspect_ratio"
+                    android:drawablePadding="6dp"
+                    android:drawableTint="#FFFFFF"
+                    android:background="@drawable/bg_player_pill_button"
+                    android:paddingHorizontal="10dp" />
+            </LinearLayout>
         </RelativeLayout>
     </LinearLayout>
 
@@ -611,5 +700,2327 @@
             android:clipToPadding="false"
             android:overScrollMode="never" />
     </LinearLayout>
+
+    <!-- ======================================================== -->
+    <!-- PHASE 2 RIGHT SLIDING PANELS: RATIO, SPEED, MORE MENU    -->
+    <!-- ======================================================== -->
+
+    <!-- 1. Screen Ratio / Aspect Ratio Panel -->
+    <ScrollView
+        android:id="@+id/panel_ratio"
+        android:layout_width="320dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="#F5000000"
+        android:visibility="gone"
+        android:elevation="24dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Panel Header -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ASPECT RATIO"
+                    android:textColor="#FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:layout_centerVertical="true" />
+
+                <ImageButton
+                    android:id="@+id/btn_close_ratio_panel"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_close_clear_cancel"
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Close Ratio Panel" />
+            </RelativeLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#22FFFFFF"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Section 1: SCREEN -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="● SCREEN"
+                android:textColor="#D71921"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:layout_marginBottom="8dp" />
+
+            <GridLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="2"
+                android:rowCount="2"
+                android:layout_marginBottom="14dp">
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_fit"
+                    android:layout_width="0dp"
+                    android:layout_height="38dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="FIT"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_red_active" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_fill"
+                    android:layout_width="0dp"
+                    android:layout_height="38dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="FILL"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_original"
+                    android:layout_width="0dp"
+                    android:layout_height="38dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="ORIGINAL"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_stretch"
+                    android:layout_width="0dp"
+                    android:layout_height="38dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="STRETCH"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+            </GridLayout>
+
+            <!-- Section 2: STANDARD -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="● STANDARD"
+                android:textColor="#D71921"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:layout_marginBottom="8dp" />
+
+            <GridLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="3"
+                android:rowCount="2"
+                android:layout_marginBottom="14dp">
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_16_9"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="16:9"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_4_3"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="4:3"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_18_9"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="18:9"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_195_9"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="19.5:9"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_20_9"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="20:9"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_21_9"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="21:9"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+            </GridLayout>
+
+            <!-- Section 3: CINEMA -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="● CINEMA"
+                android:textColor="#D71921"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:layout_marginBottom="8dp" />
+
+            <GridLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="2"
+                android:rowCount="2"
+                android:layout_marginBottom="16dp">
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_185_1"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="1.85:1"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_221_1"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="2.21:1"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_235_1"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="2.35:1"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_ratio_239_1"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="3dp"
+                    android:text="2.39:1"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+            </GridLayout>
+
+            <!-- Section 4: TOGGLES -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#22FFFFFF"
+                android:layout_marginBottom="12dp" />
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:text="REMEMBER RATIO"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_remember_ratio"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    app:thumbTint="#D71921"
+                    app:trackTint="#66D71921" />
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="TAP RATIOS TO SWITCH DIRECTLY"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="(LONG PRESS OPENS FULL MENU)"
+                        android:textColor="#88FFFFFF"
+                        android:textSize="9sp"
+                        android:fontFamily="@font/ndot" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_direct_ratio_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    app:thumbTint="#D71921"
+                    app:trackTint="#66D71921" />
+            </RelativeLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- 2. Speed Configuration Panel (With Main & Advanced Subviews) -->
+    <ScrollView
+        android:id="@+id/panel_speed"
+        android:layout_width="340dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="#F5000000"
+        android:visibility="gone"
+        android:elevation="24dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:scrollbars="none">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <!-- Main Speed View -->
+            <LinearLayout
+                android:id="@+id/layout_speed_main"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Header -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="PLAYBACK SPEED"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:layout_centerVertical="true" />
+
+                    <ImageButton
+                        android:id="@+id/btn_close_speed_panel"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:src="@android:drawable/ic_menu_close_clear_cancel"
+                        app:tint="#FFFFFF"
+                        android:contentDescription="Close Speed Panel" />
+                </RelativeLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#22FFFFFF"
+                    android:layout_marginBottom="14dp" />
+
+                <!-- Large Speed Indicator & Stepper Buttons -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:layout_marginBottom="14dp">
+
+                    <Button
+                        android:id="@+id/btn_speed_step_down"
+                        android:layout_width="48dp"
+                        android:layout_height="40dp"
+                        android:text="-0.05"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:background="@drawable/bg_chip_dark_inactive" />
+
+                    <TextView
+                        android:id="@+id/tv_speed_current_value"
+                        android:layout_width="120dp"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="1.00X"
+                        android:textColor="#D71921"
+                        android:textSize="26sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot" />
+
+                    <Button
+                        android:id="@+id/btn_speed_step_up"
+                        android:layout_width="48dp"
+                        android:layout_height="40dp"
+                        android:text="+0.05"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:background="@drawable/bg_chip_dark_inactive" />
+                </LinearLayout>
+
+                <!-- Speed Slider (0.25X - 8.0X) -->
+                <SeekBar
+                    android:id="@+id/seekbar_playback_speed"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="155"
+                    android:progress="15"
+                    android:thumbTint="#D71921"
+                    android:progressTint="#D71921"
+                    android:layout_marginBottom="4dp" />
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="10dp"
+                    android:layout_marginBottom="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:text="0.25X"
+                        android:textColor="#88FFFFFF"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/ndot" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:text="8.0X"
+                        android:textColor="#88FFFFFF"
+                        android:textSize="10sp"
+                        android:fontFamily="@font/ndot" />
+                </RelativeLayout>
+
+                <!-- Presets Section (4 columns x 2 rows = 8 presets) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="● PRESETS"
+                    android:textColor="#D71921"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:layout_marginBottom="8dp" />
+
+                <GridLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:columnCount="4"
+                    android:rowCount="2"
+                    android:layout_marginBottom="16dp">
+
+                    <Button
+                        android:id="@+id/btn_preset_speed_025"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_columnWeight="1"
+                        android:layout_margin="2dp"
+                        android:text="0.25X"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:background="@drawable/bg_chip_dark_inactive" />
+
+                    <Button
+                        android:id="@+id/btn_preset_speed_05"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_columnWeight="1"
+                        android:layout_margin="2dp"
+                        android:text="0.5X"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:background="@drawable/bg_chip_dark_inactive" />
+
+                    <Button
+                        android:id="@+id/btn_preset_speed_10"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_columnWeight="1"
+                        android:layout_margin="2dp"
+                        android:text="1.0X"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:background="@drawable/bg_chip_red_active" />
+
+                    <Button
+                        android:id="@+id/btn_preset_speed_125"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_columnWeight="1"
+                        android:layout_margin="2dp"
+                        android:text="1.25X"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:background="@drawable/bg_chip_dark_inactive" />
+
+                    <Button
+                        android:id="@+id/btn_preset_speed_15"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_columnWeight="1"
+                        android:layout_margin="2dp"
+                        android:text="1.5X"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:background="@drawable/bg_chip_dark_inactive" />
+
+                    <Button
+                        android:id="@+id/btn_preset_speed_20"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_columnWeight="1"
+                        android:layout_margin="2dp"
+                        android:text="2.0X"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:background="@drawable/bg_chip_dark_inactive" />
+
+                    <Button
+                        android:id="@+id/btn_preset_speed_40"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_columnWeight="1"
+                        android:layout_margin="2dp"
+                        android:text="4.0X"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:background="@drawable/bg_chip_dark_inactive" />
+
+                    <Button
+                        android:id="@+id/btn_preset_speed_80"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_columnWeight="1"
+                        android:layout_margin="2dp"
+                        android:text="8.0X"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:background="@drawable/bg_chip_dark_inactive" />
+                </GridLayout>
+
+                <!-- Navigation link to Advanced Settings -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#22FFFFFF"
+                    android:layout_marginBottom="12dp" />
+
+                <RelativeLayout
+                    android:id="@+id/btn_open_speed_advanced"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingHorizontal="4dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:text="ADVANCED SETTINGS"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text=">"
+                        android:textColor="#D71921"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot" />
+                </RelativeLayout>
+            </LinearLayout>
+
+            <!-- Advanced Speed Settings Subview -->
+            <LinearLayout
+                android:id="@+id/layout_speed_advanced"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:visibility="gone">
+
+                <!-- Header with Back Arrow -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp">
+
+                    <ImageButton
+                        android:id="@+id/btn_back_speed_advanced"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:src="@android:drawable/ic_menu_revert"
+                        app:tint="#FFFFFF"
+                        android:contentDescription="Back" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_toEndOf="@id/btn_back_speed_advanced"
+                        android:layout_centerVertical="true"
+                        android:layout_marginStart="8dp"
+                        android:text="ADVANCED SETTINGS"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot" />
+                </RelativeLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#22FFFFFF"
+                    android:layout_marginBottom="14dp" />
+
+                <!-- Remember Speed Switch -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="REMEMBER SPEED"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:fontFamily="@font/ndot" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="REMEMBER SPEED FOR ALL VIDEOS"
+                            android:textColor="#88FFFFFF"
+                            android:textSize="9sp"
+                            android:fontFamily="@font/ndot" />
+                    </LinearLayout>
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/switch_remember_speed"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        app:thumbTint="#D71921"
+                        app:trackTint="#66D71921" />
+                </RelativeLayout>
+
+                <!-- Long Press To Speed Up Switch -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="LONG PRESS TO SPEED UP"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:fontFamily="@font/ndot" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="HOLD SCREEN TO BOOST SPEED"
+                            android:textColor="#88FFFFFF"
+                            android:textSize="9sp"
+                            android:fontFamily="@font/ndot" />
+                    </LinearLayout>
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/switch_long_press_2x"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        app:thumbTint="#D71921"
+                        app:trackTint="#66D71921" />
+                </RelativeLayout>
+
+                <!-- Long Press Speed Target (2.0x / 3.0x) -->
+                <RelativeLayout
+                    android:id="@+id/layout_long_press_speed_val"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:layout_marginBottom="14dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:text="LONG-PRESS SPEED"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot" />
+
+                    <TextView
+                        android:id="@+id/tv_long_press_speed_target"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text="2.0X >"
+                        android:textColor="#D71921"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot" />
+                </RelativeLayout>
+
+                <!-- Long Press Vibration Switch -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="LONG PRESS VIBRATION"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:fontFamily="@font/ndot" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="HAPTIC FEEDBACK ON BOOST"
+                            android:textColor="#88FFFFFF"
+                            android:textSize="9sp"
+                            android:fontFamily="@font/ndot" />
+                    </LinearLayout>
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/switch_long_press_vibration"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        app:thumbTint="#D71921"
+                        app:trackTint="#66D71921" />
+                </RelativeLayout>
+            </LinearLayout>
+        </FrameLayout>
+    </ScrollView>
+
+    <!-- 3. More Options Menu Drawer (Authentic 3-Dot XPlayer Layout in Nothing NDOT Theme) -->
+    <ScrollView
+        android:id="@+id/panel_more_menu"
+        android:layout_width="340dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="#F5000000"
+        android:visibility="gone"
+        android:elevation="24dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Panel Header -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MORE OPTIONS"
+                    android:textColor="#FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:layout_centerVertical="true" />
+
+                <ImageButton
+                    android:id="@+id/btn_close_more_menu"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_close_clear_cancel"
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Close Menu" />
+            </RelativeLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#22FFFFFF"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Top Grid of 8 Actions (4 Columns x 2 Rows) -->
+            <!-- Row 1: Audio Track, Subtitle, Background Play, Pop-up Play -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <LinearLayout
+                    android:id="@+id/item_menu_audio_track"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_audio_track"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="AUDIO"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/item_menu_subtitle_track"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_subtitles"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="SUBTITLE"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/item_menu_background_play"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_headphones"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="BG PLAY"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/item_menu_pip"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_pip"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="POP-UP"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Row 2: Cast, Delete, Bookmark, Favorites -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:id="@+id/item_menu_cast"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_cast"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="CAST"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/item_menu_delete"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_delete"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="DELETE"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/item_menu_bookmark"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:id="@+id/iv_menu_bookmark_icon"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_bookmark"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="BOOKMARK"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/item_menu_favorites"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:id="@+id/iv_menu_favorite_icon"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_favorite"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="FAVORITE"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#22FFFFFF"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Play Option Section (Row of 4: AB Repeat, Equalizer, Timer, Visual Enhancer) -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="● PLAY OPTION"
+                android:textColor="#D71921"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:id="@+id/item_playopt_ab_repeat"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_ab_repeat"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:id="@+id/tv_menu_ab_repeat_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="AB REPEAT"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/item_playopt_equalizer"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_equalizer_faders"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="EQUALIZER"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/item_playopt_timer"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:id="@+id/iv_menu_timer_icon"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_timer"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:id="@+id/tv_menu_timer_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="TIMER"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/item_playopt_visual_enhancer"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_visual_enhancer"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="VISUAL"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#22FFFFFF"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Repeat Mode Section (Pill Segmented Control) -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:text="REPEAT MODE"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+
+                <TextView
+                    android:id="@+id/tv_menu_repeat_mode_val"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="LOOP ALL"
+                    android:textColor="#D71921"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+            </RelativeLayout>
+
+            <!-- 5-Button Segmented Pill Container -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:background="@drawable/bg_segmented_pill"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="4dp"
+                android:layout_marginBottom="14dp">
+
+                <ImageButton
+                    android:id="@+id/btn_repeat_order"
+                    android:layout_width="0dp"
+                    android:layout_height="34dp"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:src="@drawable/ic_repeat_order"
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Order" />
+
+                <ImageButton
+                    android:id="@+id/btn_repeat_one"
+                    android:layout_width="0dp"
+                    android:layout_height="34dp"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:src="@drawable/ic_repeat_one"
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Loop One" />
+
+                <ImageButton
+                    android:id="@+id/btn_repeat_shuffle"
+                    android:layout_width="0dp"
+                    android:layout_height="34dp"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:src="@drawable/ic_repeat_shuffle"
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Shuffle" />
+
+                <ImageButton
+                    android:id="@+id/btn_repeat_all"
+                    android:layout_width="0dp"
+                    android:layout_height="34dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_circle_red_active"
+                    android:src="@drawable/ic_repeat_all"
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Loop All" />
+
+                <ImageButton
+                    android:id="@+id/btn_repeat_once"
+                    android:layout_width="0dp"
+                    android:layout_height="34dp"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:src="@drawable/ic_repeat_once"
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Play Once" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#22FFFFFF"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Brightness & Volume Sliders Section -->
+            <!-- Brightness -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BRIGHTNESS"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:layout_marginBottom="4dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:layout_marginBottom="10dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_brightness_sun"
+                    app:tint="#FFFFFF"
+                    android:layout_marginEnd="6dp" />
+
+                <SeekBar
+                    android:id="@+id/seekbar_menu_brightness"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:max="100"
+                    android:progress="50"
+                    android:thumbTint="#D71921"
+                    android:progressTint="#D71921" />
+
+                <TextView
+                    android:id="@+id/tv_menu_brightness_val"
+                    android:layout_width="38dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:text="50"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <!-- Volume -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="VOLUME"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:layout_marginBottom="4dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:layout_marginBottom="12dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_volume_high"
+                    app:tint="#FFFFFF"
+                    android:layout_marginEnd="6dp" />
+
+                <SeekBar
+                    android:id="@+id/seekbar_menu_volume"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:max="100"
+                    android:progress="100"
+                    android:thumbTint="#D71921"
+                    android:progressTint="#D71921" />
+
+                <TextView
+                    android:id="@+id/tv_menu_volume_val"
+                    android:layout_width="38dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:text="100"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#22FFFFFF"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Decoder Selection -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="DECODER"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:layout_marginBottom="8dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="14dp">
+
+                <Button
+                    android:id="@+id/btn_menu_decoder_hw"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="4dp"
+                    android:text="HW DECODER"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_red_active" />
+
+                <Button
+                    android:id="@+id/btn_menu_decoder_sw"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:text="SW DECODER"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#22FFFFFF"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Custom / Tools Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="● CUSTOM"
+                android:textColor="#D71921"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:layout_marginBottom="8dp" />
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:text="SCREENSHOT BUTTON"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_menu_screenshot_toggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    app:thumbTint="#D71921"
+                    app:trackTint="#66D71921" />
+            </RelativeLayout>
+
+            <!-- Row of 4: Edit, Color Filter, Share, Others -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp">
+
+                <LinearLayout
+                    android:id="@+id/btn_custom_edit"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_edit_pencil"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="EDIT"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btn_custom_color_filter"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_color_filter"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="FILTER"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btn_custom_share"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_share_action"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="SHARE"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btn_custom_others"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:paddingVertical="6dp">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_circle_dark"
+                        android:src="@drawable/ic_more_dots"
+                        android:padding="10dp"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="OTHERS"
+                        android:textColor="#FFFFFF"
+                        android:textSize="9sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp" />
+                </LinearLayout>
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- 4. Visual Enhancer Panel (Color Profile Filters) -->
+    <ScrollView
+        android:id="@+id/panel_visual_enhancer"
+        android:layout_width="340dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="#F5000000"
+        android:visibility="gone"
+        android:elevation="24dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Header -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <ImageButton
+                    android:id="@+id/btn_back_visual_enhancer"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_revert"
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Back" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/btn_back_visual_enhancer"
+                    android:layout_centerVertical="true"
+                    android:layout_marginStart="8dp"
+                    android:text="VISUAL ENHANCER"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+
+                <ImageButton
+                    android:id="@+id/btn_close_visual_enhancer"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_close_clear_cancel"
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Close" />
+            </RelativeLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#22FFFFFF"
+                android:layout_marginBottom="14dp" />
+
+            <!-- 2-Column Grid of 7 Filter Cards -->
+            <GridLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="2"
+                android:layout_marginBottom="16dp">
+
+                <Button
+                    android:id="@+id/btn_filter_original"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    android:text="ORIGINAL"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_filter_card_selected" />
+
+                <Button
+                    android:id="@+id/btn_filter_hdr"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    android:text="HDR"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_filter_card" />
+
+                <Button
+                    android:id="@+id/btn_filter_clear"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    android:text="CLEAR"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_filter_card" />
+
+                <Button
+                    android:id="@+id/btn_filter_ultra_clear"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    android:text="ULTRA CLEAR"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_filter_card" />
+
+                <Button
+                    android:id="@+id/btn_filter_arctic_blue"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    android:text="ARCTIC BLUE"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_filter_card" />
+
+                <Button
+                    android:id="@+id/btn_filter_warm_glow"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    android:text="WARM GLOW"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_filter_card" />
+
+                <Button
+                    android:id="@+id/btn_filter_cinematic"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    android:text="CINEMATIC"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_filter_card" />
+            </GridLayout>
+
+            <!-- Apply To All Toggle -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:text="APPLY TO ALL"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_filter_apply_all"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    app:thumbTint="#D71921"
+                    app:trackTint="#66D71921" />
+            </RelativeLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- 5. Sleep Timer Panel -->
+    <ScrollView
+        android:id="@+id/panel_sleep_timer"
+        android:layout_width="340dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="#F5000000"
+        android:visibility="gone"
+        android:elevation="24dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Header -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <ImageButton
+                    android:id="@+id/btn_back_sleep_timer"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_revert"
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Back" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/btn_back_sleep_timer"
+                    android:layout_centerVertical="true"
+                    android:layout_marginStart="8dp"
+                    android:text="SLEEP TIMER"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+
+                <ImageButton
+                    android:id="@+id/btn_close_sleep_timer"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_close_clear_cancel"
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Close" />
+            </RelativeLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#22FFFFFF"
+                android:layout_marginBottom="14dp" />
+
+            <!-- Current Timer Status -->
+            <TextView
+                android:id="@+id/tv_sleep_timer_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="STATUS: OFF"
+                android:textColor="#D71921"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:layout_marginBottom="14dp" />
+
+            <!-- Timer Options -->
+            <Button
+                android:id="@+id/btn_timer_off"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="OFF"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:background="@drawable/bg_chip_red_active"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btn_timer_15"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="15 MINUTES"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:background="@drawable/bg_chip_dark_inactive"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btn_timer_30"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="30 MINUTES"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:background="@drawable/bg_chip_dark_inactive"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btn_timer_60"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="60 MINUTES"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:background="@drawable/bg_chip_dark_inactive"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btn_timer_90"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="90 MINUTES"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:background="@drawable/bg_chip_dark_inactive"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btn_timer_end_of_video"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="END OF CURRENT VIDEO"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:background="@drawable/bg_chip_dark_inactive"
+                android:layout_marginBottom="8dp" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- 6. Others Subpanel (Matching Screenshot 045438 in Nothing NDOT Theme) -->
+    <ScrollView
+        android:id="@+id/panel_others"
+        android:layout_width="340dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="#F5000000"
+        android:visibility="gone"
+        android:elevation="26dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Subpanel Header with Back Arrow and Close -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <ImageButton
+                    android:id="@+id/btn_back_others"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_revert"
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Back" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="OTHERS"
+                    android:textColor="#FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:layout_toEndOf="@id/btn_back_others"
+                    android:layout_centerVertical="true"
+                    android:layout_marginStart="8dp" />
+
+                <ImageButton
+                    android:id="@+id/btn_close_others"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_close_clear_cancel"
+                    app:tint="#FFFFFF"
+                    android:contentDescription="Close" />
+            </RelativeLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#22FFFFFF"
+                android:layout_marginBottom="14dp" />
+
+            <!-- Options: Properties, FAQ, Cast FAQ, Playback Issue -->
+            <LinearLayout
+                android:id="@+id/item_others_properties"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_chip_dark_inactive"
+                android:paddingHorizontal="16dp"
+                android:layout_marginBottom="10dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_edit_pencil"
+                    app:tint="#D71921"
+                    android:layout_marginEnd="12dp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="PROPERTIES"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="#66FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/item_others_faq"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_chip_dark_inactive"
+                android:paddingHorizontal="16dp"
+                android:layout_marginBottom="10dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_help"
+                    app:tint="#D71921"
+                    android:layout_marginEnd="12dp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="FAQ"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="#66FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/item_others_cast_faq"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_chip_dark_inactive"
+                android:paddingHorizontal="16dp"
+                android:layout_marginBottom="10dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_cast"
+                    app:tint="#D71921"
+                    android:layout_marginEnd="12dp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="CAST FAQ"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="#66FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/item_others_playback_issue"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_chip_dark_inactive"
+                android:paddingHorizontal="16dp"
+                android:layout_marginBottom="10dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_settings"
+                    app:tint="#D71921"
+                    android:layout_marginEnd="12dp" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="PLAYBACK ISSUE"
+                    android:textColor="#FFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="#66FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
 
 </FrameLayout>
