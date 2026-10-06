@@ -1,7 +1,9 @@
 package com.nothing.player;
 
-import android.app.AlertDialog;
 import android.content.ContentResolver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
@@ -21,8 +23,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.IntentSenderRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import android.app.Activity;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -30,15 +30,30 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClickListener {
+    private static final String PREFS_NAME = "nothing_player_prefs";
+    private static final String KEY_MUSIC_SORT = "pref_music_sort_mode";
+
+    public static final int SORT_DATE_DESC = 0;
+    public static final int SORT_DATE_ASC = 1;
+    public static final int SORT_NAME_ASC = 2;
+    public static final int SORT_NAME_DESC = 3;
+    public static final int SORT_ARTIST_ASC = 4;
+    public static final int SORT_DURATION_DESC = 5;
+
+    private int currentSortMode = SORT_DATE_DESC;
+
     private RecyclerView recyclerView;
     private MusicAdapter adapter;
     private SwipeRefreshLayout swipeRefresh;
     private EditText etSearch;
+    private ImageButton btnOverflowMenu;
     private TextView chipTracks, chipArtists, chipFavorites;
 
     // Multi-select Views
@@ -49,6 +64,30 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
 
     private List<MediaItem> allTracks = new ArrayList<>();
     private ActivityResultLauncher<IntentSenderRequest> deleteLauncher;
+
+    private final MediaAutoScanner.OnMediaChangeListener mediaChangeListener = () -> {
+        if (getActivity() != null && isAdded()) {
+            getActivity().runOnUiThread(() -> {
+                Context ctx = getContext();
+                if (ctx != null) {
+                    allTracks = MediaRepository.getCachedAudios(ctx.getApplicationContext());
+                    filterTracks();
+                }
+            });
+        }
+    };
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        MediaAutoScanner.getInstance().addListener(mediaChangeListener);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        MediaAutoScanner.getInstance().removeListener(mediaChangeListener);
+    }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -72,9 +111,19 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
         recyclerView = view.findViewById(R.id.recycler_music);
         swipeRefresh = view.findViewById(R.id.swipe_refresh_music);
         etSearch = view.findViewById(R.id.et_search_music);
+        btnOverflowMenu = view.findViewById(R.id.btn_music_overflow_menu);
         chipTracks = view.findViewById(R.id.chip_music_tracks);
         chipArtists = view.findViewById(R.id.chip_music_artists);
         chipFavorites = view.findViewById(R.id.chip_music_favorites);
+
+        if (btnOverflowMenu != null) {
+            btnOverflowMenu.setOnClickListener(v -> showMusicOptionsMenu());
+        }
+
+        if (getContext() != null) {
+            SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            currentSortMode = prefs.getInt(KEY_MUSIC_SORT, SORT_DATE_DESC);
+        }
 
         selectionActionBar = view.findViewById(R.id.music_selection_action_bar);
         tvSelectionCount = view.findViewById(R.id.tv_music_selection_count);
@@ -122,12 +171,15 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
         if (selected.isEmpty()) return;
 
         int count = selected.size();
-        new AlertDialog.Builder(getContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Delete " + count + " Track" + (count > 1 ? "s" : "") + "?")
-            .setMessage("These audio files will be permanently deleted from device storage.")
-            .setPositiveButton("DELETE", (dialog, which) -> deleteSelectedTracks(selected))
-            .setNegativeButton("CANCEL", null)
-            .show();
+        NothingDialogHelper.showConfirmDialog(
+            getContext(),
+            "DELETE " + count + " TRACK" + (count > 1 ? "S" : "") + "?",
+            "These audio files will be permanently deleted from device storage.",
+            "DELETE",
+            () -> deleteSelectedTracks(selected),
+            "CANCEL",
+            null
+        );
     }
 
     private void deleteSelectedTracks(Set<MediaItem> selected) {
@@ -188,14 +240,132 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
     }
 
     private void filterTracks() {
-        String query = etSearch.getText().toString().trim().toLowerCase();
+        String query = etSearch != null ? etSearch.getText().toString().trim().toLowerCase() : "";
         List<MediaItem> filtered = new ArrayList<>();
         for (MediaItem item : allTracks) {
-            if (query.isEmpty() || item.title.toLowerCase().contains(query) || item.artist.toLowerCase().contains(query)) {
+            String title = item.title != null ? item.title.toLowerCase() : "";
+            String artist = item.artist != null ? item.artist.toLowerCase() : "";
+            if (query.isEmpty() || title.contains(query) || artist.contains(query)) {
                 filtered.add(item);
             }
         }
+        sortTracks(filtered);
         adapter.setTracks(filtered);
+    }
+
+    private void sortTracks(List<MediaItem> list) {
+        if (list == null || list.size() <= 1) return;
+        switch (currentSortMode) {
+            case SORT_DATE_DESC:
+                Collections.sort(list, (a, b) -> Long.compare(b.addedAt, a.addedAt));
+                break;
+            case SORT_DATE_ASC:
+                Collections.sort(list, (a, b) -> Long.compare(a.addedAt, b.addedAt));
+                break;
+            case SORT_NAME_ASC:
+                Collections.sort(list, (a, b) -> {
+                    String ta = a.title != null ? a.title : "";
+                    String tb = b.title != null ? b.title : "";
+                    return ta.compareToIgnoreCase(tb);
+                });
+                break;
+            case SORT_NAME_DESC:
+                Collections.sort(list, (a, b) -> {
+                    String ta = a.title != null ? a.title : "";
+                    String tb = b.title != null ? b.title : "";
+                    return tb.compareToIgnoreCase(ta);
+                });
+                break;
+            case SORT_ARTIST_ASC:
+                Collections.sort(list, (a, b) -> {
+                    String ta = a.artist != null ? a.artist : "";
+                    String tb = b.artist != null ? b.artist : "";
+                    return ta.compareToIgnoreCase(tb);
+                });
+                break;
+            case SORT_DURATION_DESC:
+                Collections.sort(list, (a, b) -> Long.compare(b.duration, a.duration));
+                break;
+        }
+    }
+
+    private void showMusicOptionsMenu() {
+        if (getContext() == null) return;
+        List<NothingDialogHelper.MenuItemOption> options = new ArrayList<>();
+
+        options.add(new NothingDialogHelper.MenuItemOption(
+                "SORT TRACKS",
+                "CURRENT: " + getSortModeTitle(currentSortMode),
+                this::showSortDialog
+        ));
+
+        options.add(new NothingDialogHelper.MenuItemOption(
+                "RESCAN STORAGE",
+                "Auto-detect newly downloaded tracks",
+                this::triggerManualRescan
+        ));
+
+        options.add(new NothingDialogHelper.MenuItemOption(
+                "AUDIO EQUALIZER",
+                "Fine-tune sound & frequencies",
+                () -> {
+                    if (getContext() != null) {
+                        startActivity(new Intent(getContext(), EqualizerActivity.class));
+                    }
+                }
+        ));
+
+        options.add(new NothingDialogHelper.MenuItemOption(
+                "SETTINGS",
+                "Audio configurations & preferences",
+                () -> {
+                    if (getContext() != null) {
+                        startActivity(new Intent(getContext(), SettingsActivity.class));
+                    }
+                }
+        ));
+
+        NothingDialogHelper.showMenuDialog(getContext(), "MUSIC OPTIONS", options);
+    }
+
+    private void showSortDialog() {
+        if (getContext() == null) return;
+        List<String> items = Arrays.asList(
+                "DATE (NEWEST FIRST)",
+                "DATE (OLDEST FIRST)",
+                "TITLE (A - Z)",
+                "TITLE (Z - A)",
+                "ARTIST (A - Z)",
+                "DURATION (LONGEST FIRST)"
+        );
+
+        NothingDialogHelper.showSelectionDialog(getContext(), "SORT TRACKS BY", items, currentSortMode, (index, item) -> {
+            currentSortMode = index;
+            if (getContext() != null) {
+                getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit().putInt(KEY_MUSIC_SORT, currentSortMode).apply();
+            }
+            filterTracks();
+        });
+    }
+
+    private void triggerManualRescan() {
+        if (getContext() == null) return;
+        Toast.makeText(getContext(), "SCANNING STORAGE FOR NEW MEDIA...", Toast.LENGTH_SHORT).show();
+        if (swipeRefresh != null) swipeRefresh.setRefreshing(true);
+        MediaAutoScanner.getInstance().triggerImmediateScan(getContext());
+    }
+
+    private String getSortModeTitle(int sort) {
+        switch (sort) {
+            case SORT_DATE_ASC: return "DATE (OLDEST FIRST)";
+            case SORT_NAME_ASC: return "TITLE (A - Z)";
+            case SORT_NAME_DESC: return "TITLE (Z - A)";
+            case SORT_ARTIST_ASC: return "ARTIST (A - Z)";
+            case SORT_DURATION_DESC: return "DURATION (LONGEST)";
+            case SORT_DATE_DESC:
+            default: return "DATE (NEWEST FIRST)";
+        }
     }
 
     @Override

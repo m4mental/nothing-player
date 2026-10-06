@@ -36,6 +36,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -44,11 +45,26 @@ import java.util.Map;
 import java.util.Set;
 
 public class VideosFragment extends Fragment implements VideoAdapter.OnItemClickListener {
+    private static final String PREFS_NAME = "nothing_player_prefs";
+    private static final String KEY_VIEW_MODE = "pref_videos_view_mode";
+    private static final String KEY_SORT_MODE = "pref_videos_sort_mode";
+
+    public static final int SORT_DATE_DESC = 0;
+    public static final int SORT_DATE_ASC = 1;
+    public static final int SORT_NAME_ASC = 2;
+    public static final int SORT_NAME_DESC = 3;
+    public static final int SORT_SIZE_DESC = 4;
+    public static final int SORT_DURATION_DESC = 5;
+
+    private int currentViewMode = VideoAdapter.VIEW_MODE_GRID_2;
+    private int currentSortMode = SORT_DATE_DESC;
+
     private RecyclerView recyclerView;
     private VideoAdapter adapter;
     private SwipeRefreshLayout swipeRefresh;
     private EditText etSearch;
     private TextView chipFolders, chipAllVideos, chipNetworkStream;
+    private ImageButton btnOverflowMenu;
 
     // Multi-select Views
     private View selectionActionBar, searchFilterBar;
@@ -66,6 +82,31 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     private boolean isFoldersMode = true;
     private String currentSelectedFolder = null;
     private ActivityResultLauncher<IntentSenderRequest> deleteLauncher;
+
+    private final MediaAutoScanner.OnMediaChangeListener mediaChangeListener = () -> {
+        if (getActivity() != null && isAdded()) {
+            getActivity().runOnUiThread(() -> {
+                Context ctx = getContext();
+                if (ctx != null) {
+                    allVideos = MediaRepository.getCachedVideos(ctx.getApplicationContext());
+                    filterAndDisplay();
+                    updateHistorySection();
+                }
+            });
+        }
+    };
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        MediaAutoScanner.getInstance().addListener(mediaChangeListener);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        MediaAutoScanner.getInstance().removeListener(mediaChangeListener);
+    }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -92,6 +133,11 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         chipFolders = view.findViewById(R.id.chip_folders);
         chipAllVideos = view.findViewById(R.id.chip_all_videos);
         chipNetworkStream = view.findViewById(R.id.chip_network_stream);
+        btnOverflowMenu = view.findViewById(R.id.btn_videos_overflow_menu);
+
+        if (btnOverflowMenu != null) {
+            btnOverflowMenu.setOnClickListener(v -> showVideosOptionsMenu());
+        }
 
         selectionActionBar = view.findViewById(R.id.selection_action_bar);
         searchFilterBar = view.findViewById(R.id.search_filter_bar);
@@ -115,9 +161,15 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             btnOpenHistorySheet.setOnClickListener(v -> showHistoryBottomSheet());
         }
 
-        recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
+        if (getContext() != null) {
+            SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            currentViewMode = prefs.getInt(KEY_VIEW_MODE, VideoAdapter.VIEW_MODE_GRID_2);
+            currentSortMode = prefs.getInt(KEY_SORT_MODE, SORT_DATE_DESC);
+        }
+
         adapter = new VideoAdapter(getContext(), this);
         recyclerView.setAdapter(adapter);
+        applyCurrentViewMode();
 
         chipFolders.setOnClickListener(v -> {
             isFoldersMode = true;
@@ -216,12 +268,15 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         if (selected.isEmpty()) return;
 
         int count = selected.size();
-        new AlertDialog.Builder(getContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Delete " + count + " Item" + (count > 1 ? "s" : "") + "?")
-            .setMessage("These files will be permanently deleted from device storage.")
-            .setPositiveButton("DELETE", (dialog, which) -> deleteSelectedItems(selected))
-            .setNegativeButton("CANCEL", null)
-            .show();
+        NothingDialogHelper.showConfirmDialog(
+            getContext(),
+            "DELETE " + count + " ITEM" + (count > 1 ? "S" : "") + "?",
+            "These files will be permanently deleted from device storage.",
+            "DELETE",
+            () -> deleteSelectedItems(selected),
+            "CANCEL",
+            null
+        );
     }
 
     private void deleteSelectedItems(Set<Object> selected) {
@@ -322,12 +377,12 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
 
     private void filterAndDisplay() {
         updateHistorySection();
-        String query = etSearch.getText().toString().trim().toLowerCase();
+        applyCurrentViewMode();
+
+        String query = etSearch != null ? etSearch.getText().toString().trim().toLowerCase() : "";
         List<Object> displayItems = new ArrayList<>();
 
         if (isFoldersMode && currentSelectedFolder == null && query.isEmpty()) {
-            recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 1));
-
             // Dedicated "Recently" folder at the top of the folder list
             if (allVideos != null && !allVideos.isEmpty()) {
                 boolean hasAnyNew = MediaStateManager.hasAnyNewVideos(getContext(), allVideos);
@@ -339,37 +394,212 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 String folder = v.folder != null ? v.folder : "Storage";
                 folderMap.put(folder, folderMap.getOrDefault(folder, 0) + 1);
             }
+
+            List<VideoAdapter.FolderItem> folderItems = new ArrayList<>();
             for (Map.Entry<String, Integer> entry : folderMap.entrySet()) {
                 String folderName = entry.getKey();
                 int count = entry.getValue();
                 boolean hasNew = MediaStateManager.folderHasNewVideos(getContext(), folderName, allVideos);
-                displayItems.add(new VideoAdapter.FolderItem(folderName, count, hasNew, false));
+                folderItems.add(new VideoAdapter.FolderItem(folderName, count, hasNew, false));
             }
+
+            // Sort folders
+            if (currentSortMode == SORT_NAME_DESC) {
+                Collections.sort(folderItems, (a, b) -> b.name.compareToIgnoreCase(a.name));
+            } else {
+                Collections.sort(folderItems, (a, b) -> a.name.compareToIgnoreCase(b.name));
+            }
+            displayItems.addAll(folderItems);
+
             adapter.setItems(displayItems, true, false);
         } else if (currentSelectedFolder != null && currentSelectedFolder.equalsIgnoreCase("Recently")) {
-            recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
-            List<MediaItem> sortedVideos = new ArrayList<>(allVideos);
-            // Sort chronologically descending (newest arrival first)
-            Collections.sort(sortedVideos, (a, b) -> Long.compare(b.addedAt, a.addedAt));
-            for (MediaItem v : sortedVideos) {
-                if (!query.isEmpty() && !v.title.toLowerCase().contains(query)) {
+            List<MediaItem> sortedVideos = new ArrayList<>();
+            for (MediaItem v : allVideos) {
+                if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase().contains(query))) {
                     continue;
                 }
-                displayItems.add(v);
+                sortedVideos.add(v);
             }
+            sortVideoList(sortedVideos);
+            displayItems.addAll(sortedVideos);
             adapter.setItems(displayItems, false, true);
         } else {
-            recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
+            List<MediaItem> videoList = new ArrayList<>();
             for (MediaItem v : allVideos) {
                 if (currentSelectedFolder != null && !currentSelectedFolder.equalsIgnoreCase(v.folder)) {
                     continue;
                 }
-                if (!query.isEmpty() && !v.title.toLowerCase().contains(query)) {
+                if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase().contains(query))) {
                     continue;
                 }
-                displayItems.add(v);
+                videoList.add(v);
             }
+            sortVideoList(videoList);
+            displayItems.addAll(videoList);
             adapter.setItems(displayItems, false, false);
+        }
+    }
+
+    private void applyCurrentViewMode() {
+        if (getContext() == null || recyclerView == null) return;
+        String query = etSearch != null ? etSearch.getText().toString().trim() : "";
+        if (isFoldersMode && currentSelectedFolder == null && query.isEmpty()) {
+            recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 1));
+            if (adapter != null) adapter.setViewMode(VideoAdapter.VIEW_MODE_GRID_2);
+        } else {
+            int span = (currentViewMode == VideoAdapter.VIEW_MODE_GRID_3) ? 3 :
+                       (currentViewMode == VideoAdapter.VIEW_MODE_LIST) ? 1 : 2;
+            recyclerView.setLayoutManager(new GridLayoutManager(getContext(), span));
+            if (adapter != null) adapter.setViewMode(currentViewMode);
+        }
+    }
+
+    private void sortVideoList(List<MediaItem> list) {
+        if (list == null || list.size() <= 1) return;
+        switch (currentSortMode) {
+            case SORT_DATE_DESC:
+                Collections.sort(list, (a, b) -> Long.compare(b.addedAt, a.addedAt));
+                break;
+            case SORT_DATE_ASC:
+                Collections.sort(list, (a, b) -> Long.compare(a.addedAt, b.addedAt));
+                break;
+            case SORT_NAME_ASC:
+                Collections.sort(list, (a, b) -> {
+                    String ta = a.title != null ? a.title : "";
+                    String tb = b.title != null ? b.title : "";
+                    return ta.compareToIgnoreCase(tb);
+                });
+                break;
+            case SORT_NAME_DESC:
+                Collections.sort(list, (a, b) -> {
+                    String ta = a.title != null ? a.title : "";
+                    String tb = b.title != null ? b.title : "";
+                    return tb.compareToIgnoreCase(ta);
+                });
+                break;
+            case SORT_SIZE_DESC:
+                Collections.sort(list, (a, b) -> Long.compare(b.size, a.size));
+                break;
+            case SORT_DURATION_DESC:
+                Collections.sort(list, (a, b) -> Long.compare(b.duration, a.duration));
+                break;
+        }
+    }
+
+    private void showVideosOptionsMenu() {
+        if (getContext() == null) return;
+        List<NothingDialogHelper.MenuItemOption> options = new ArrayList<>();
+
+        options.add(new NothingDialogHelper.MenuItemOption(
+                "VIEW MODE",
+                "CURRENT: " + getViewModeTitle(currentViewMode),
+                this::showViewModeDialog
+        ));
+
+        options.add(new NothingDialogHelper.MenuItemOption(
+                "SORT VIDEOS",
+                "CURRENT: " + getSortModeTitle(currentSortMode),
+                this::showSortDialog
+        ));
+
+        options.add(new NothingDialogHelper.MenuItemOption(
+                "RESCAN STORAGE",
+                "Auto-detect newly downloaded media",
+                this::triggerManualRescan
+        ));
+
+        options.add(new NothingDialogHelper.MenuItemOption(
+                "AUDIO EQUALIZER",
+                "Fine-tune sound & frequencies",
+                () -> {
+                    if (getContext() != null) {
+                        startActivity(new Intent(getContext(), EqualizerActivity.class));
+                    }
+                }
+        ));
+
+        options.add(new NothingDialogHelper.MenuItemOption(
+                "SETTINGS",
+                "Hardware acceleration & gestures",
+                () -> {
+                    if (getContext() != null) {
+                        startActivity(new Intent(getContext(), SettingsActivity.class));
+                    }
+                }
+        ));
+
+        NothingDialogHelper.showMenuDialog(getContext(), "VIDEO OPTIONS", options);
+    }
+
+    private void showViewModeDialog() {
+        if (getContext() == null) return;
+        List<String> items = Arrays.asList(
+                "GRID (2 COLUMNS)",
+                "GRID (3 COLUMNS COMPACT)",
+                "LIST (DETAILED ROWS)"
+        );
+        int selectedIndex = 0;
+        if (currentViewMode == VideoAdapter.VIEW_MODE_GRID_3) selectedIndex = 1;
+        else if (currentViewMode == VideoAdapter.VIEW_MODE_LIST) selectedIndex = 2;
+
+        NothingDialogHelper.showSelectionDialog(getContext(), "SELECT VIEW MODE", items, selectedIndex, (index, item) -> {
+            int newMode = VideoAdapter.VIEW_MODE_GRID_2;
+            if (index == 1) newMode = VideoAdapter.VIEW_MODE_GRID_3;
+            else if (index == 2) newMode = VideoAdapter.VIEW_MODE_LIST;
+
+            currentViewMode = newMode;
+            if (getContext() != null) {
+                getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit().putInt(KEY_VIEW_MODE, currentViewMode).apply();
+            }
+            applyCurrentViewMode();
+            if (adapter != null) adapter.notifyDataSetChanged();
+        });
+    }
+
+    private void showSortDialog() {
+        if (getContext() == null) return;
+        List<String> items = Arrays.asList(
+                "DATE (NEWEST FIRST)",
+                "DATE (OLDEST FIRST)",
+                "NAME (A - Z)",
+                "NAME (Z - A)",
+                "SIZE (LARGEST FIRST)",
+                "DURATION (LONGEST FIRST)"
+        );
+
+        NothingDialogHelper.showSelectionDialog(getContext(), "SORT VIDEOS BY", items, currentSortMode, (index, item) -> {
+            currentSortMode = index;
+            if (getContext() != null) {
+                getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit().putInt(KEY_SORT_MODE, currentSortMode).apply();
+            }
+            filterAndDisplay();
+        });
+    }
+
+    private void triggerManualRescan() {
+        if (getContext() == null) return;
+        Toast.makeText(getContext(), "SCANNING STORAGE FOR NEW MEDIA...", Toast.LENGTH_SHORT).show();
+        if (swipeRefresh != null) swipeRefresh.setRefreshing(true);
+        MediaAutoScanner.getInstance().triggerImmediateScan(getContext());
+    }
+
+    private String getViewModeTitle(int mode) {
+        if (mode == VideoAdapter.VIEW_MODE_GRID_3) return "GRID (3 COLUMNS)";
+        if (mode == VideoAdapter.VIEW_MODE_LIST) return "LIST (ROWS)";
+        return "GRID (2 COLUMNS)";
+    }
+
+    private String getSortModeTitle(int sort) {
+        switch (sort) {
+            case SORT_DATE_ASC: return "DATE (OLDEST FIRST)";
+            case SORT_NAME_ASC: return "NAME (A - Z)";
+            case SORT_NAME_DESC: return "NAME (Z - A)";
+            case SORT_SIZE_DESC: return "SIZE (LARGEST)";
+            case SORT_DURATION_DESC: return "DURATION (LONGEST)";
+            case SORT_DATE_DESC:
+            default: return "DATE (NEWEST FIRST)";
         }
     }
 

@@ -12,6 +12,7 @@
         android:id="@+id/exo_player_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_gravity="center"
         android:background="#000000"
         app:use_controller="false"
         app:resize_mode="fit"
@@ -24,6 +25,7 @@
         android:id="@+id/vlc_video_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_gravity="center"
         android:visibility="gone" />
 
     <!-- YouTube Stream Video Surface (Inside Default Player) -->
@@ -31,6 +33,7 @@
         android:id="@+id/youtube_stream_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_gravity="center"
         android:background="#000000"
         android:visibility="gone" />
 

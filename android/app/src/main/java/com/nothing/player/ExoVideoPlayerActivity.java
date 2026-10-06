@@ -1,6 +1,5 @@
 package com.nothing.player;
 
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.graphics.drawable.ColorDrawable;
 import android.view.LayoutInflater;
@@ -32,6 +31,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import android.util.Rational;
 import android.view.GestureDetector;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -101,6 +101,8 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private ExoPlayer exoPlayer;
     private DefaultTrackSelector trackSelector;
     private PlayerView exoPlayerView;
+    private FrameLayout playerRootLayout;
+    private float targetCustomAspect = 0f;
 
     // LibVLC Universal Codec Elements (Universal EAC3, AC3, DTS, TrueHD, 10-Bit)
     private LibVLC libVLC;
@@ -610,19 +612,41 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         return point;
     }
 
+    private float getAspectFromLabel(String label) {
+        if (label == null) return 0f;
+        switch (label.toUpperCase()) {
+            case "16:9": return 16f / 9f;
+            case "4:3": return 4f / 3f;
+            case "18:9": return 18f / 9f;
+            case "19.5:9": return 19.5f / 9f;
+            case "20:9": return 20f / 9f;
+            case "21:9": return 21f / 9f;
+            case "1.85:1": return 1.85f;
+            case "2.21:1": return 2.21f;
+            case "2.35:1": return 2.35f;
+            case "2.39:1": return 2.39f;
+            default: return 0f;
+        }
+    }
+
     private void applyAspectRatio() {
         Point realSize = getRealScreenSize();
-        int sw = Math.max(realSize.x, realSize.y);
-        int sh = Math.min(realSize.x, realSize.y);
-        float screenAspect = (float) sw / (float) sh;
-        float videoAspect = (videoWidth > 0 && videoHeight > 0) ? ((float) videoWidth / videoHeight) : (16f / 9f);
-        float zoomRatio = screenAspect / videoAspect;
-        if (zoomRatio < 1.0f) zoomRatio = videoAspect / screenAspect;
-        if (zoomRatio < 1.01f) zoomRatio = 1.25f;
+        int rootW = (playerRootLayout != null && playerRootLayout.getWidth() > 0) ? playerRootLayout.getWidth() : realSize.x;
+        int rootH = (playerRootLayout != null && playerRootLayout.getHeight() > 0) ? playerRootLayout.getHeight() : realSize.y;
+
+        if (playerRootLayout != null && playerRootLayout.getWidth() == 0) {
+            playerRootLayout.post(this::applyAspectRatio);
+        }
+
+        if (targetCustomAspect <= 0.05f && currentRatioLabel != null) {
+            targetCustomAspect = getAspectFromLabel(currentRatioLabel);
+        }
 
         if (btnAspectRatio != null) {
             if (currentRatioLabel != null && !currentRatioLabel.isEmpty()) {
                 btnAspectRatio.setText(currentRatioLabel.toUpperCase());
+            } else if (targetCustomAspect > 0.05f) {
+                btnAspectRatio.setText("CUSTOM");
             } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
                 btnAspectRatio.setText("STRETCH");
             } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
@@ -632,38 +656,101 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             }
         }
 
-        if (exoPlayerView != null) {
-            exoPlayerView.setResizeMode(currentResizeMode);
-        }
-
-        if (isVlcActive && vlcPlayer != null) {
-            if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
-                vlcPlayer.setAspectRatio(sw + ":" + sh);
-                vlcPlayer.setScale(0);
-            } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
-                vlcPlayer.setAspectRatio(null);
-                vlcPlayer.setScale(zoomRatio);
+        if (targetCustomAspect > 0.05f) {
+            // STANDARD / CINEMA Aspect Ratio Modes (16:9, 4:3, 21:9, 1.85:1, 2.35:1, etc.)
+            float containerAspect = (float) rootW / (float) Math.max(1, rootH);
+            int targetW, targetH;
+            if (targetCustomAspect <= containerAspect) {
+                targetH = rootH;
+                targetW = Math.max(1, Math.round(targetH * targetCustomAspect));
             } else {
-                vlcPlayer.setAspectRatio(null);
+                targetW = rootW;
+                targetH = Math.max(1, Math.round(targetW / targetCustomAspect));
+            }
+
+            FrameLayout.LayoutParams customLp = new FrameLayout.LayoutParams(targetW, targetH, Gravity.CENTER);
+
+            if (exoPlayerView != null) {
+                exoPlayerView.setLayoutParams(customLp);
+                exoPlayerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
+                if (exoPlayerView.getVideoSurfaceView() != null) {
+                    exoPlayerView.getVideoSurfaceView().setScaleX(1.0f);
+                    exoPlayerView.getVideoSurfaceView().setScaleY(1.0f);
+                }
+            }
+
+            if (isVlcActive && vlcPlayer != null) {
+                if (vlcVideoLayout != null) {
+                    vlcVideoLayout.setLayoutParams(customLp);
+                }
+                vlcPlayer.setAspectRatio(currentRatioLabel != null ? currentRatioLabel.replace(":", "/") : null);
                 vlcPlayer.setScale(0);
             }
-        }
 
-        if (isYouTubeActive && youtubeStreamView != null) {
-            if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
-                youtubeStreamView.setScaleX(zoomRatio);
-                youtubeStreamView.setScaleY(1.0f);
-            } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
-                youtubeStreamView.setScaleX(zoomRatio);
-                youtubeStreamView.setScaleY(zoomRatio);
-            } else {
+            if (isYouTubeActive && youtubeStreamView != null) {
+                youtubeStreamView.setLayoutParams(customLp);
                 youtubeStreamView.setScaleX(1.0f);
                 youtubeStreamView.setScaleY(1.0f);
+            }
+        } else {
+            // SCREEN Aspect Ratio Modes: FIT, FILL, ORIGINAL, STRETCH
+            FrameLayout.LayoutParams fullLp = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                Gravity.CENTER
+            );
+
+            if (exoPlayerView != null) {
+                exoPlayerView.setLayoutParams(fullLp);
+                exoPlayerView.setResizeMode(currentResizeMode);
+                if (exoPlayerView.getVideoSurfaceView() != null) {
+                    exoPlayerView.getVideoSurfaceView().setScaleX(1.0f);
+                    exoPlayerView.getVideoSurfaceView().setScaleY(1.0f);
+                }
+            }
+
+            int sw = Math.max(rootW, rootH);
+            int sh = Math.min(rootW, rootH);
+            float screenAspect = (float) sw / (float) Math.max(1, sh);
+            float videoAspect = (videoWidth > 0 && videoHeight > 0) ? ((float) videoWidth / videoHeight) : (16f / 9f);
+            float zoomRatio = screenAspect / videoAspect;
+            if (zoomRatio < 1.0f) zoomRatio = videoAspect / screenAspect;
+            if (zoomRatio < 1.01f) zoomRatio = 1.25f;
+
+            if (isVlcActive && vlcPlayer != null) {
+                if (vlcVideoLayout != null) {
+                    vlcVideoLayout.setLayoutParams(fullLp);
+                }
+                if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
+                    vlcPlayer.setAspectRatio(sw + ":" + sh);
+                    vlcPlayer.setScale(0);
+                } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+                    vlcPlayer.setAspectRatio(null);
+                    vlcPlayer.setScale(zoomRatio);
+                } else {
+                    vlcPlayer.setAspectRatio(null);
+                    vlcPlayer.setScale(0);
+                }
+            }
+
+            if (isYouTubeActive && youtubeStreamView != null) {
+                youtubeStreamView.setLayoutParams(fullLp);
+                if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
+                    youtubeStreamView.setScaleX(zoomRatio);
+                    youtubeStreamView.setScaleY(1.0f);
+                } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+                    youtubeStreamView.setScaleX(zoomRatio);
+                    youtubeStreamView.setScaleY(zoomRatio);
+                } else {
+                    youtubeStreamView.setScaleX(1.0f);
+                    youtubeStreamView.setScaleY(1.0f);
+                }
             }
         }
     }
 
     private void initViews() {
+        playerRootLayout = findViewById(R.id.player_root_layout);
         exoPlayerView = findViewById(R.id.exo_player_view);
         if (exoPlayerView != null) {
             exoPlayerView.setKeepContentOnPlayerReset(true);
@@ -839,6 +926,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         }
         if (rememberRatio) {
             currentRatioLabel = prefs.getString("saved_ratio_label", "FIT");
+            targetCustomAspect = prefs.getFloat("saved_custom_aspect", 0f);
+            if (targetCustomAspect <= 0.05f && currentRatioLabel != null) {
+                targetCustomAspect = getAspectFromLabel(currentRatioLabel);
+            }
         }
         updateSpeedUI(playbackSpeed);
         updateRatioButtonText();
@@ -1297,7 +1388,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         exoPlayer.setAudioAttributes(audioAttributes, true);
 
         exoPlayerView.setPlayer(exoPlayer);
-        exoPlayerView.setResizeMode(currentResizeMode);
+        applyAspectRatio();
 
         Uri targetUri = resolveMediaUri();
 
@@ -1704,6 +1795,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (btnQuickEqualizer != null) {
             btnQuickEqualizer.setOnClickListener(v -> {
                 Intent eqIntent = new Intent(this, EqualizerActivity.class);
+                if (exoPlayer != null) {
+                    eqIntent.putExtra("audio_session_id", exoPlayer.getAudioSessionId());
+                }
                 startActivity(eqIntent);
             });
         }
@@ -2023,7 +2117,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             exoPlayerView.getVideoSurfaceView().setScaleY(1.0f);
         }
 
-        if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
+        if (targetCustomAspect > 0.05f || currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
             applyScreenRatio(AspectRatioFrameLayout.RESIZE_MODE_ZOOM, "FILL");
         } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
             applyScreenRatio(AspectRatioFrameLayout.RESIZE_MODE_FILL, "STRETCH");
@@ -2036,6 +2130,8 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (btnAspectRatio == null) return;
         if (currentRatioLabel != null && !currentRatioLabel.isEmpty()) {
             btnAspectRatio.setText(currentRatioLabel.toUpperCase());
+        } else if (targetCustomAspect > 0.05f) {
+            btnAspectRatio.setText("CUSTOM");
         } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
             btnAspectRatio.setText("FILL");
         } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
@@ -2074,6 +2170,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     }
 
     private void applyScreenRatio(int resizeMode, String modeName) {
+        targetCustomAspect = 0f;
         currentResizeMode = resizeMode;
         currentRatioLabel = modeName;
         currentVideoScale = 1.0f;
@@ -2086,6 +2183,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (rememberRatio) {
             SharedPreferences p = getSharedPreferences("nothing_player_prefs", MODE_PRIVATE);
             p.edit().putInt("aspect_ratio_mode", currentResizeMode)
+                    .putFloat("saved_custom_aspect", 0f)
                     .putString("saved_ratio_label", modeName)
                     .apply();
         }
@@ -2096,34 +2194,24 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     }
 
     private void applyCustomAspectRatio(float targetAspect, String label) {
-        Point realSize = getRealScreenSize();
-        int sw = Math.max(realSize.x, realSize.y);
-        int sh = Math.min(realSize.x, realSize.y);
-        float screenAspect = (float) sw / (float) sh;
-
+        targetCustomAspect = targetAspect;
         currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
         currentRatioLabel = label;
-        if (exoPlayerView != null) {
-            exoPlayerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
-            if (exoPlayerView.getVideoSurfaceView() != null) {
-                float scaleX = targetAspect / screenAspect;
-                float scaleY = 1.0f;
-                if (scaleX > 1.0f) {
-                    scaleY = 1.0f / scaleX;
-                    scaleX = 1.0f;
-                }
-                exoPlayerView.getVideoSurfaceView().setScaleX(scaleX);
-                exoPlayerView.getVideoSurfaceView().setScaleY(scaleY);
-            }
+        currentVideoScale = 1.0f;
+        if (exoPlayerView != null && exoPlayerView.getVideoSurfaceView() != null) {
+            exoPlayerView.getVideoSurfaceView().setScaleX(1.0f);
+            exoPlayerView.getVideoSurfaceView().setScaleY(1.0f);
         }
-        if (btnAspectRatio != null) btnAspectRatio.setText(label);
+        updateRatioButtonText();
         updateRatioPresetsUI(label);
         if (rememberRatio) {
             SharedPreferences p = getSharedPreferences("nothing_player_prefs", MODE_PRIVATE);
             p.edit().putInt("aspect_ratio_mode", currentResizeMode)
+                    .putFloat("saved_custom_aspect", targetAspect)
                     .putString("saved_ratio_label", label)
                     .apply();
         }
+        applyAspectRatio();
         showGestureHud("● RATIO: " + label, DotMatrixIconView.TYPE_SEEK_FORWARD, label, 100);
         if (panelRatio != null) panelRatio.setVisibility(View.GONE);
         scheduleHideControls();
@@ -2444,7 +2532,13 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
         View eqItem = findViewById(R.id.item_playopt_equalizer);
         if (eqItem != null) {
-            eqItem.setOnClickListener(v -> startActivity(new Intent(this, EqualizerActivity.class)));
+            eqItem.setOnClickListener(v -> {
+                Intent intent = new Intent(this, EqualizerActivity.class);
+                if (exoPlayer != null) {
+                    intent.putExtra("audio_session_id", exoPlayer.getAudioSessionId());
+                }
+                startActivity(intent);
+            });
         }
 
         View timerItem = findViewById(R.id.item_playopt_timer);
@@ -2804,10 +2898,12 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     }
 
     private void promptDeleteVideo() {
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("DELETE VIDEO")
-                .setMessage("Permanently delete this video file from storage?\n\n" + (videoTitle != null ? videoTitle : ""))
-                .setPositiveButton("DELETE", (dialog, which) -> {
+        NothingDialogHelper.showConfirmDialog(
+                this,
+                "DELETE VIDEO",
+                "Permanently delete this video file from storage?\n\n" + (videoTitle != null ? videoTitle : ""),
+                "DELETE",
+                () -> {
                     boolean deleted = false;
                     try {
                         if (videoPath != null) {
@@ -2838,9 +2934,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                     } else {
                         Toast.makeText(this, "Could not delete video file", Toast.LENGTH_SHORT).show();
                     }
-                })
-                .setNegativeButton("CANCEL", null)
-                .show();
+                },
+                "CANCEL",
+                null
+        );
     }
 
     private void shareCurrentVideo() {
@@ -2926,11 +3023,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
             dialog.show();
         } catch (Exception e) {
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle(title)
-                .setMessage(message)
-                .setPositiveButton("CLOSE", null)
-                .show();
+            NothingDialogHelper.showConfirmDialog(this, title, message, "CLOSE", null, null, null);
         }
     }
 
@@ -3643,14 +3736,18 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private void initPreviewRetriever() {
         previewExecutor.execute(() -> {
             try {
-                if (previewRetriever == null) {
-                    previewRetriever = new MediaMetadataRetriever();
+                if (previewRetriever != null) {
+                    try {
+                        previewRetriever.release();
+                    } catch (Exception ignored) {}
+                    previewRetriever = null;
                 }
+                previewRetriever = new MediaMetadataRetriever();
                 if (videoPath != null && new File(videoPath).exists()) {
                     previewRetriever.setDataSource(videoPath);
-                } else if (videoUriStr != null) {
+                } else if (videoUriStr != null && !videoUriStr.isEmpty()) {
                     previewRetriever.setDataSource(getApplicationContext(), Uri.parse(videoUriStr));
-                } else if (getIntent().getData() != null) {
+                } else if (getIntent() != null && getIntent().getData() != null) {
                     previewRetriever.setDataSource(getApplicationContext(), getIntent().getData());
                 }
             } catch (Exception e) {
@@ -3749,6 +3846,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             videoTitleText.setText(videoTitle);
         }
         updateQueueUI();
+        initPreviewRetriever();
 
         if (isYouTubeActive && isYouTubeLoaded && youtubeStreamView != null) {
             if (youtubePlaylistId != null && !youtubePlaylistId.isEmpty()) {

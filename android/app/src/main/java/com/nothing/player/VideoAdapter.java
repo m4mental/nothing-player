@@ -26,6 +26,22 @@ import java.util.Set;
 public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private static final int TYPE_FOLDER = 0;
     private static final int TYPE_VIDEO = 1;
+    private static final int TYPE_VIDEO_LIST = 2;
+
+    public static final int VIEW_MODE_GRID_2 = 2;
+    public static final int VIEW_MODE_GRID_3 = 3;
+    public static final int VIEW_MODE_LIST = 1;
+
+    private int viewMode = VIEW_MODE_GRID_2;
+
+    public void setViewMode(int mode) {
+        this.viewMode = mode;
+        notifyDataSetChanged();
+    }
+
+    public int getViewMode() {
+        return viewMode;
+    }
 
     public interface OnItemClickListener {
         void onVideoClick(MediaItem video);
@@ -113,7 +129,10 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
     @Override
     public int getItemViewType(int position) {
-        return items.get(position) instanceof FolderItem ? TYPE_FOLDER : TYPE_VIDEO;
+        if (items.get(position) instanceof FolderItem) {
+            return TYPE_FOLDER;
+        }
+        return viewMode == VIEW_MODE_LIST ? TYPE_VIDEO_LIST : TYPE_VIDEO;
     }
 
     @NonNull
@@ -122,6 +141,9 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         if (viewType == TYPE_FOLDER) {
             View v = LayoutInflater.from(context).inflate(R.layout.item_folder_card, parent, false);
             return new FolderViewHolder(v);
+        } else if (viewType == TYPE_VIDEO_LIST) {
+            View v = LayoutInflater.from(context).inflate(R.layout.item_video_list, parent, false);
+            return new VideoViewHolder(v);
         } else {
             View v = LayoutInflater.from(context).inflate(R.layout.item_video_card, parent, false);
             return new VideoViewHolder(v);

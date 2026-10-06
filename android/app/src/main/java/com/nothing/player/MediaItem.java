@@ -37,4 +37,21 @@ public class MediaItem implements Serializable {
         this.type = type;
         this.addedAt = System.currentTimeMillis();
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        MediaItem mediaItem = (MediaItem) o;
+        if (id != null && mediaItem.id != null) return id.equals(mediaItem.id);
+        if (path != null && mediaItem.path != null) return path.equals(mediaItem.path);
+        return java.util.Objects.equals(contentUri, mediaItem.contentUri);
+    }
+
+    @Override
+    public int hashCode() {
+        if (id != null) return id.hashCode();
+        if (path != null) return path.hashCode();
+        return contentUri != null ? contentUri.hashCode() : 0;
+    }
 }

@@ -245,6 +245,8 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
 
             if (uri != null) {
                 mediaPlayer.setDataSource(getApplicationContext(), uri);
+                isPlaying = true;
+                startForegroundNotification();
                 mediaPlayer.setOnPreparedListener(mp -> {
                     try {
                         mp.start();
@@ -252,7 +254,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
                         AudioEffectManager.getInstance().attachAudioSession(mp.getAudioSessionId(), MusicPlaybackService.this);
                         updateMediaSessionMetadata();
                         updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING);
-                        startForegroundNotification();
+                        updateNotification();
                         if (eventListener != null) {
                             eventListener.onPlayStateChanged(true);
                         }
@@ -476,12 +478,22 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
         this.isPlaying = false;
-        return false;
+        updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PAUSED);
+        updateNotification();
+        if (eventListener != null) {
+            eventListener.onPlayStateChanged(false);
+        }
+        if (callback != null) {
+            callback.onStateChanged(false);
+        }
+        return true;
     }
 
     @Override
     public void onDestroy() {
         instance = null;
+        eventListener = null;
+        callback = null;
         if (mediaPlayer != null) {
             try {
                 mediaPlayer.release();

@@ -90,9 +90,7 @@ public class EqualizerActivity extends AppCompatActivity {
         // Setup Reset
         btnReset.setOnClickListener(v -> {
             applyPresetLevels(new int[]{15, 15, 15, 15, 15});
-            seekbarBass.setProgress(60);
-            seekbarVirtualizer.setProgress(50);
-            seekbarPreamp.setProgress(12);
+            applyBassVirtualizerPreamp(60, 50, 12);
             selectPreset(chipPunch);
         });
 
@@ -172,59 +170,50 @@ public class EqualizerActivity extends AppCompatActivity {
         chipPunch.setOnClickListener(v -> {
             selectPreset(chipPunch);
             applyPresetLevels(new int[]{21, 18, 14, 18, 20});
-            seekbarBass.setProgress(80);
-            seekbarVirtualizer.setProgress(60);
+            applyBassVirtualizerPreamp(80, 60, -1);
         });
 
         chipCinema.setOnClickListener(v -> {
             selectPreset(chipCinema);
             applyPresetLevels(new int[]{24, 19, 17, 21, 23});
-            seekbarBass.setProgress(90);
-            seekbarVirtualizer.setProgress(100);
-            seekbarPreamp.setProgress(14);
+            applyBassVirtualizerPreamp(90, 100, 14);
             Toast.makeText(this, "🎬 CINEMA: Dolby 3D Theater Sound Applied", Toast.LENGTH_SHORT).show();
         });
 
         chipBass.setOnClickListener(v -> {
             selectPreset(chipBass);
             applyPresetLevels(new int[]{25, 22, 16, 13, 14});
-            seekbarBass.setProgress(100);
-            seekbarVirtualizer.setProgress(40);
+            applyBassVirtualizerPreamp(100, 40, -1);
         });
 
         chipEdm.setOnClickListener(v -> {
             selectPreset(chipEdm);
             applyPresetLevels(new int[]{22, 19, 13, 19, 23});
-            seekbarBass.setProgress(85);
-            seekbarVirtualizer.setProgress(70);
+            applyBassVirtualizerPreamp(85, 70, -1);
         });
 
         chipRock.setOnClickListener(v -> {
             selectPreset(chipRock);
             applyPresetLevels(new int[]{20, 16, 18, 21, 22});
-            seekbarBass.setProgress(70);
-            seekbarVirtualizer.setProgress(50);
+            applyBassVirtualizerPreamp(70, 50, -1);
         });
 
         chipPop.setOnClickListener(v -> {
             selectPreset(chipPop);
             applyPresetLevels(new int[]{13, 17, 21, 18, 14});
-            seekbarBass.setProgress(50);
-            seekbarVirtualizer.setProgress(45);
+            applyBassVirtualizerPreamp(50, 45, -1);
         });
 
         chipVocal.setOnClickListener(v -> {
             selectPreset(chipVocal);
             applyPresetLevels(new int[]{11, 14, 23, 20, 15});
-            seekbarBass.setProgress(30);
-            seekbarVirtualizer.setProgress(30);
+            applyBassVirtualizerPreamp(30, 30, -1);
         });
 
         chipFlat.setOnClickListener(v -> {
             selectPreset(chipFlat);
             applyPresetLevels(new int[]{15, 15, 15, 15, 15});
-            seekbarBass.setProgress(0);
-            seekbarVirtualizer.setProgress(0);
+            applyBassVirtualizerPreamp(0, 0, -1);
         });
 
         initAudioEffects();
@@ -283,8 +272,26 @@ public class EqualizerActivity extends AppCompatActivity {
         }
     }
 
+    private void applyBassVirtualizerPreamp(int bass, int virt, int preamp) {
+        seekbarBass.setProgress(bass);
+        seekbarVirtualizer.setProgress(virt);
+        tvBassVal.setText(bass + "%");
+        tvVirtualizerVal.setText(virt + "%");
+        SharedPreferences.Editor editor = prefs.edit().putInt(KEY_BASS, bass).putInt(KEY_VIRTUALIZER, virt);
+        if (preamp >= 0) {
+            seekbarPreamp.setProgress(preamp);
+            updatePreampText(preamp);
+            editor.putInt(KEY_PREAMP, preamp);
+        }
+        editor.apply();
+        applyEffects();
+    }
+
     private void initAudioEffects() {
-        if (MusicPlaybackService.instance != null && MusicPlaybackService.instance.getAudioSessionId() > 0) {
+        int extraSessionId = getIntent().getIntExtra("audio_session_id", -1);
+        if (extraSessionId > 0) {
+            AudioEffectManager.getInstance().attachAudioSession(extraSessionId, this);
+        } else if (MusicPlaybackService.instance != null && MusicPlaybackService.instance.getAudioSessionId() > 0) {
             AudioEffectManager.getInstance().attachAudioSession(MusicPlaybackService.instance.getAudioSessionId(), this);
         }
         applyEffects();

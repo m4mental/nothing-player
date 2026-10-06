@@ -34,15 +34,31 @@ public class SettingsFragment extends Fragment {
             startActivity(intent);
         });
 
-        seekbarAudioBoost.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int boost = 100 + progress;
-                tvAudioBoostVal.setText(boost + "%");
-            }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
+        SharedPreferences prefs = (getContext() != null) ? getContext().getSharedPreferences("nothing_player_prefs", Context.MODE_PRIVATE) : null;
+        int savedBoost = (prefs != null) ? prefs.getInt("audio_boost_pct", 100) : 100;
+        if (seekbarAudioBoost != null) {
+            seekbarAudioBoost.setProgress(Math.max(0, savedBoost - 100));
+        }
+        if (tvAudioBoostVal != null) {
+            tvAudioBoostVal.setText(savedBoost + "%");
+        }
+
+        if (seekbarAudioBoost != null) {
+            seekbarAudioBoost.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    int boost = 100 + progress;
+                    if (tvAudioBoostVal != null) {
+                        tvAudioBoostVal.setText(boost + "%");
+                    }
+                    if (fromUser && prefs != null) {
+                        prefs.edit().putInt("audio_boost_pct", boost).apply();
+                    }
+                }
+                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            });
+        }
 
         return view;
     }

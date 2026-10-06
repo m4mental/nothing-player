@@ -130,9 +130,11 @@ public class MainActivity extends AppCompatActivity {
         });
 
         miniPlayerContainer.setOnClickListener(v -> {
-            if (currentPlayingTrack != null) {
-                activeNowPlayingSheet = NowPlayingBottomSheet.newInstance(currentPlayingTrack);
-                activeNowPlayingSheet.show(getSupportFragmentManager(), "NowPlayingBottomSheet");
+            if (currentPlayingTrack != null && !isFinishing() && !getSupportFragmentManager().isStateSaved()) {
+                if (activeNowPlayingSheet == null || !activeNowPlayingSheet.isAdded()) {
+                    activeNowPlayingSheet = NowPlayingBottomSheet.newInstance(currentPlayingTrack);
+                    activeNowPlayingSheet.show(getSupportFragmentManager(), "NowPlayingBottomSheet");
+                }
             }
         });
 
@@ -146,6 +148,8 @@ public class MainActivity extends AppCompatActivity {
         checkAndRequestPermissions();
         bindMusicService();
         startProgressUpdater();
+
+        MediaAutoScanner.getInstance().startWatching(this);
 
         handleIncomingSharedIntent(getIntent());
     }
@@ -201,6 +205,8 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQ_CODE) {
+            MediaAutoScanner.getInstance().startWatching(this);
+            MediaAutoScanner.getInstance().triggerImmediateScan(this);
             if (pagerAdapter.getVideosFragment() != null) pagerAdapter.getVideosFragment().loadVideos();
             if (pagerAdapter.getMusicFragment() != null) pagerAdapter.getMusicFragment().loadTracks();
         }
@@ -346,8 +352,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        MediaAutoScanner.getInstance().stopWatching();
         progressHandler.removeCallbacksAndMessages(null);
         if (isBound) {
+            if (musicService != null) {
+                musicService.setCallback(null);
+            }
             unbindService(serviceConnection);
             isBound = false;
         }

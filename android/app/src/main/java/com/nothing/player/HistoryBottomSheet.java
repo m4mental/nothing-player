@@ -1,6 +1,5 @@
 package com.nothing.player;
 
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -76,17 +75,22 @@ public class HistoryBottomSheet extends BottomSheetDialogFragment implements His
 
     private void confirmClearAll() {
         if (getContext() == null) return;
-        new AlertDialog.Builder(getContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Clear Watch History?")
-                .setMessage("All playback progress and watch history entries will be cleared.")
-                .setPositiveButton("CLEAR", (dialog, which) -> {
-                    PlaybackHistoryManager.clearHistory(getContext());
-                    loadHistoryData();
-                    if (changeListener != null) changeListener.onHistoryChanged();
-                    Toast.makeText(getContext(), "Watch history cleared", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("CANCEL", null)
-                .show();
+        NothingDialogHelper.showConfirmDialog(
+                getContext(),
+                "CLEAR WATCH HISTORY?",
+                "All playback progress and watch history entries will be cleared.",
+                "CLEAR",
+                () -> {
+                    if (getContext() != null) {
+                        PlaybackHistoryManager.clearHistory(getContext());
+                        loadHistoryData();
+                        if (changeListener != null) changeListener.onHistoryChanged();
+                        Toast.makeText(getContext(), "Watch history cleared", Toast.LENGTH_SHORT).show();
+                    }
+                },
+                "CANCEL",
+                null
+        );
     }
 
     @Override

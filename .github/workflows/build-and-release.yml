@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - master
+      - dev
+      - alpha
     tags:
       - 'v*'
   workflow_dispatch:
@@ -165,16 +167,16 @@ jobs:
 
       - name: Create GitHub Release with APK
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
         with:
-          tag_name: v2.0.${{ github.run_number }}
-          name: "🔴 Nothing Player v2.0 (Build #${{ github.run_number }})"
+          tag_name: ${{ github.ref == 'refs/heads/dev' && 'beta-latest' || format('v2.0.{0}', github.run_number) }}
+          name: ${{ github.ref == 'refs/heads/dev' && '🟡 Nothing Player Beta (dev)' || format('🔴 Nothing Player v2.0 (Build #{0})', github.run_number) }}
           body_path: release_notes.md
           files: |
             release-assets/*.apk
             release-assets/nothing-player-web-bundle.zip
           draft: false
-          prerelease: false
+          prerelease: ${{ github.ref == 'refs/heads/dev' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

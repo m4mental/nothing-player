@@ -386,6 +386,86 @@ public class DotMatrixTextView extends View {
             {1, 1, 1, 1, 1}
         });
 
+        FONT_MAP.put('G', new int[][]{
+            {0, 1, 1, 1, 1},
+            {1, 0, 0, 0, 0},
+            {1, 0, 0, 0, 0},
+            {1, 0, 1, 1, 1},
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {0, 1, 1, 1, 0}
+        });
+
+        FONT_MAP.put('H', new int[][]{
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {1, 1, 1, 1, 1},
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1}
+        });
+
+        FONT_MAP.put('J', new int[][]{
+            {0, 0, 0, 0, 1},
+            {0, 0, 0, 0, 1},
+            {0, 0, 0, 0, 1},
+            {0, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {0, 1, 1, 1, 0}
+        });
+
+        FONT_MAP.put('Q', new int[][]{
+            {0, 1, 1, 1, 0},
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {1, 0, 1, 0, 1},
+            {1, 0, 0, 1, 0},
+            {0, 1, 1, 0, 1}
+        });
+
+        FONT_MAP.put('V', new int[][]{
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {0, 1, 0, 1, 0},
+            {0, 0, 1, 0, 0}
+        });
+
+        FONT_MAP.put('W', new int[][]{
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {1, 0, 1, 0, 1},
+            {1, 0, 1, 0, 1},
+            {1, 1, 0, 1, 1},
+            {1, 0, 0, 0, 1}
+        });
+
+        FONT_MAP.put('X', new int[][]{
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {0, 1, 0, 1, 0},
+            {0, 0, 1, 0, 0},
+            {0, 1, 0, 1, 0},
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1}
+        });
+
+        FONT_MAP.put('Y', new int[][]{
+            {1, 0, 0, 0, 1},
+            {1, 0, 0, 0, 1},
+            {0, 1, 0, 1, 0},
+            {0, 0, 1, 0, 0},
+            {0, 0, 1, 0, 0},
+            {0, 0, 1, 0, 0},
+            {0, 0, 1, 0, 0}
+        });
+
         FONT_MAP.put(' ', new int[][]{
             {0, 0, 0, 0, 0},
             {0, 0, 0, 0, 0},
@@ -470,8 +550,11 @@ public class DotMatrixTextView extends View {
         float startY = (height - FONT_HEIGHT * dotSpacing) / 2f + dotSpacing / 2f;
 
         for (int c = 0; c < charCount; c++) {
-            char ch = text.charAt(c);
+            char rawCh = text.charAt(c);
+            char ch = Character.toUpperCase(rawCh);
             int[][] pattern = FONT_MAP.get(ch);
+            if (pattern == null) pattern = FONT_MAP.get(rawCh);
+            if (pattern == null) pattern = FONT_MAP.get(' ');
 
             float charOffsetX = startX + c * (FONT_WIDTH + 1) * dotSpacing;
 

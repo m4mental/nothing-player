@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="84dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/bg_card_nothing"
+    android:layout_marginHorizontal="2dp"
+    android:layout_marginVertical="3dp"
+    android:padding="6dp"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Video Thumbnail Box (Horizontal List Format) -->
+    <RelativeLayout
+        android:layout_width="106dp"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/video_thumb"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:background="@color/nothing_surface" />
+
+        <!-- Resolution & 5.1 & New Badges -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentStart="true"
+            android:layout_margin="4dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/badge_resolution"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="#CC000000"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="1dp"
+                android:text="1080P"
+                android:textColor="@color/nothing_white"
+                android:textSize="8sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/badge_surround"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="3dp"
+                android:background="#CC10B981"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="1dp"
+                android:text="5.1"
+                android:textColor="@color/nothing_white"
+                android:textSize="8sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/badge_new"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="3dp"
+                android:background="@drawable/bg_badge_new"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="1dp"
+                android:text="NEW"
+                android:textColor="#FFFFFF"
+                android:textSize="8sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Duration Tag -->
+        <TextView
+            android:id="@+id/video_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentEnd="true"
+            android:layout_margin="4dp"
+            android:background="#CC000000"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="1dp"
+            android:text="00:00"
+            android:textColor="@color/nothing_white"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold" />
+
+        <!-- Selection Check Indicator -->
+        <ImageView
+            android:id="@+id/selection_check"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:layout_margin="3dp"
+            android:src="@drawable/ic_check_circle"
+            app:tint="@color/nothing_red"
+            android:visibility="gone" />
+    </RelativeLayout>
+
+    <!-- Details Section -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="10dp">
+
+        <TextView
+            android:id="@+id/video_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Video Title"
+            android:textColor="@color/nothing_white"
+            android:textSize="12sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/video_subtext"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Folder • 120 MB"
+            android:textColor="@color/nothing_white_70"
+            android:textSize="10sp"
+            android:fontFamily="@font/ndot"
+            android:singleLine="true"
+            android:ellipsize="middle" />
+
+        <!-- Dot Matrix Progress Bar -->
+        <com.nothing.player.DotMatrixProgressBar
+            android:id="@+id/video_progress_bar"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginTop="6dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- 3-Dot More Action Menu Button -->
+    <ImageButton
+        android:id="@+id/btn_video_menu"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_more_vert"
+        app:tint="@color/nothing_white_70"
+        android:contentDescription="Video Menu" />
+
+</LinearLayout>

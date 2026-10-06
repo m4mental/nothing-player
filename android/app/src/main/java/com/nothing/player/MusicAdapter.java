@@ -104,7 +104,7 @@ public class MusicAdapter extends RecyclerView.Adapter<MusicAdapter.MusicViewHol
         holder.artistAlbum.setText(track.artist + " • " + track.album + " • " + track.format);
         holder.duration.setText(formatDuration(track.duration));
 
-        if (track.id.equals(currentPlayingId)) {
+        if (track.id != null && track.id.equals(currentPlayingId)) {
             holder.title.setTextColor(context.getResources().getColor(R.color.nothing_red));
         } else {
             holder.title.setTextColor(context.getResources().getColor(R.color.nothing_white));

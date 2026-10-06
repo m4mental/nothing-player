@@ -1,7 +1,6 @@
 package com.nothing.player;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.IntentSender;
@@ -69,16 +68,15 @@ public class FileDeleteHelper {
 
         // If Android 11+ and user hasn't granted All Files Access, ask them once so future deletes are 100% silent
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-            new AlertDialog.Builder(activity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Direct File Delete Permission")
-                .setMessage("Allow 'All files access' once in system settings so Nothing Player can delete files instantly without asking system confirmation every time.")
-                .setPositiveButton("ALLOW IN SETTINGS", (dialog, which) -> {
-                    requestAllFilesAccess(activity);
-                })
-                .setNegativeButton("USE SYSTEM POPUP", (dialog, which) -> {
-                    performDeletion(activity, items, deleteLauncher, callback);
-                })
-                .show();
+            NothingDialogHelper.showConfirmDialog(
+                activity,
+                "DIRECT FILE DELETE PERMISSION",
+                "Allow 'All files access' once in system settings so Nothing Player can delete files instantly without asking system confirmation every time.",
+                "ALLOW IN SETTINGS",
+                () -> requestAllFilesAccess(activity),
+                "USE SYSTEM POPUP",
+                () -> performDeletion(activity, items, deleteLauncher, callback)
+            );
             return;
         }
 
@@ -110,8 +108,8 @@ public class FileDeleteHelper {
                     } catch (Exception ignored) {}
                 }
 
-                // 2. ContentResolver delete
-                if (!success && item.contentUri != null && !item.contentUri.isEmpty()) {
+                // 2. ContentResolver delete (ensures MediaStore row is immediately cleared)
+                if (item.contentUri != null && !item.contentUri.isEmpty()) {
                     try {
                         int rows = resolver.delete(Uri.parse(item.contentUri), null, null);
                         if (rows > 0) {

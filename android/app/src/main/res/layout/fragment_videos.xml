@@ -104,13 +104,13 @@
             android:singleLine="true" />
 
         <ImageButton
-            android:id="@+id/btn_toggle_layout"
+            android:id="@+id/btn_videos_overflow_menu"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_marginStart="8dp"
             android:background="@drawable/bg_circle_button"
-            android:src="@android:drawable/ic_menu_sort_by_size"
-            android:contentDescription="Toggle Grid/List"
+            android:src="@drawable/ic_more_vert"
+            android:contentDescription="More Options"
             app:tint="@color/nothing_white" />
     </LinearLayout>
 

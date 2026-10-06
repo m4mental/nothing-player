@@ -73,14 +73,18 @@ public class MediaRepository {
             List<MediaItem> freshVideos = scanVideos(context);
             List<MediaItem> freshAudios = scanAudios(context);
 
-            boolean videosChanged = hasListChanged(cachedVideos, freshVideos);
-            boolean audiosChanged = hasListChanged(cachedAudios, freshAudios);
-
-            if (videosChanged || audiosChanged || cachedVideos == null || cachedAudios == null) {
-                synchronized (MediaRepository.class) {
+            boolean videosChanged;
+            boolean audiosChanged;
+            synchronized (MediaRepository.class) {
+                videosChanged = hasListChanged(cachedVideos, freshVideos);
+                audiosChanged = hasListChanged(cachedAudios, freshAudios);
+                if (videosChanged || audiosChanged || cachedVideos == null || cachedAudios == null) {
                     cachedVideos = freshVideos;
                     cachedAudios = freshAudios;
                 }
+            }
+
+            if (videosChanged || audiosChanged) {
                 saveListToDisk(context, CACHE_VIDEOS_FILE, freshVideos);
                 saveListToDisk(context, CACHE_AUDIOS_FILE, freshAudios);
             }
@@ -122,15 +126,22 @@ public class MediaRepository {
 
         // Quick check first and last item
         if (!oldList.isEmpty()) {
-            if (!oldList.get(0).path.equals(newList.get(0).path)) return true;
+            String oldFirst = oldList.get(0) != null ? oldList.get(0).path : null;
+            String newFirst = newList.get(0) != null ? newList.get(0).path : null;
+            if (!java.util.Objects.equals(oldFirst, newFirst)) return true;
+
             int lastIdx = oldList.size() - 1;
-            if (!oldList.get(lastIdx).path.equals(newList.get(lastIdx).path)) return true;
+            String oldLast = oldList.get(lastIdx) != null ? oldList.get(lastIdx).path : null;
+            String newLast = newList.get(lastIdx) != null ? newList.get(lastIdx).path : null;
+            if (!java.util.Objects.equals(oldLast, newLast)) return true;
         }
 
         Set<String> oldPaths = new HashSet<>(oldList.size());
-        for (MediaItem m : oldList) oldPaths.add(m.path);
+        for (MediaItem m : oldList) {
+            if (m != null && m.path != null) oldPaths.add(m.path);
+        }
         for (MediaItem m : newList) {
-            if (!oldPaths.contains(m.path)) return true;
+            if (m != null && m.path != null && !oldPaths.contains(m.path)) return true;
         }
         return false;
     }
@@ -343,7 +354,7 @@ public class MediaRepository {
                 MediaStore.Audio.Media.DATE_ADDED
         };
 
-        String selection = MediaStore.Audio.Media.IS_MUSIC + "!= 0";
+        String selection = "(" + MediaStore.Audio.Media.IS_MUSIC + " != 0 OR " + MediaStore.Audio.Media.DURATION + " >= 5000)";
 
         try (Cursor cursor = context.getContentResolver().query(uri, projection, selection, null, MediaStore.Audio.Media.DATE_ADDED + " DESC")) {
             if (cursor != null) {

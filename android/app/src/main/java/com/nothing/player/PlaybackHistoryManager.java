@@ -81,6 +81,9 @@ public class PlaybackHistoryManager {
         }
     }
 
+    private static List<HistoryItem> cachedHistory = null;
+    private static final java.util.Map<String, HistoryItem> cachedHistoryMap = new java.util.HashMap<>();
+
     public static synchronized void saveProgress(Context context, String pathOrUri, String title, long positionMs, long durationMs) {
         if (context == null || pathOrUri == null || pathOrUri.isEmpty()) return;
 
@@ -112,27 +115,37 @@ public class PlaybackHistoryManager {
             items.remove(items.size() - 1);
         }
 
+        cachedHistory = new ArrayList<>(items);
+        cachedHistoryMap.clear();
+        for (HistoryItem item : cachedHistory) {
+            cachedHistoryMap.put(item.pathOrUri, item);
+        }
+
         persistHistory(prefs, items);
     }
 
     public static synchronized HistoryItem getProgress(Context context, String pathOrUri) {
         if (context == null || pathOrUri == null || pathOrUri.isEmpty()) return null;
-        List<HistoryItem> items = getHistoryList(context);
-        for (HistoryItem item : items) {
-            if (pathOrUri.equals(item.pathOrUri)) {
-                return item;
-            }
+        if (cachedHistory == null) {
+            getHistoryList(context);
         }
-        return null;
+        return cachedHistoryMap.get(pathOrUri);
     }
 
     public static synchronized List<HistoryItem> getHistoryList(Context context) {
+        if (cachedHistory != null) {
+            return new ArrayList<>(cachedHistory);
+        }
         List<HistoryItem> list = new ArrayList<>();
         if (context == null) return list;
 
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         String json = prefs.getString(KEY_HISTORY_ARRAY, null);
-        if (json == null || json.isEmpty()) return list;
+        if (json == null || json.isEmpty()) {
+            cachedHistory = list;
+            cachedHistoryMap.clear();
+            return new ArrayList<>(list);
+        }
 
         try {
             JSONArray arr = new JSONArray(json);
@@ -149,7 +162,13 @@ public class PlaybackHistoryManager {
                 }
             }
         } catch (Exception ignored) {}
-        return list;
+
+        cachedHistory = list;
+        cachedHistoryMap.clear();
+        for (HistoryItem item : cachedHistory) {
+            cachedHistoryMap.put(item.pathOrUri, item);
+        }
+        return new ArrayList<>(list);
     }
 
     public static synchronized void deleteEntry(Context context, String pathOrUri) {
@@ -166,11 +185,15 @@ public class PlaybackHistoryManager {
             }
         }
         if (removed) {
+            cachedHistory = new ArrayList<>(items);
+            cachedHistoryMap.remove(pathOrUri);
             persistHistory(prefs, items);
         }
     }
 
     public static synchronized void clearHistory(Context context) {
+        if (cachedHistory != null) cachedHistory.clear();
+        cachedHistoryMap.clear();
         if (context == null) return;
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         prefs.edit().remove(KEY_HISTORY_ARRAY).apply();
