@@ -97,6 +97,30 @@
 
 ---
 
+### 9. 🔲 Dynamic Multi-View Modes & List Layouts
+- **Multiple Layout Densities**: Instant switching between **Grid (2 Columns)**, **Grid (3 Columns Compact)**, and **List (Detailed Rows)**.
+- **Detailed Row List Card (`item_video_list.xml`)**: High-contrast row representation featuring video thumbnail, title in NDOT typography, resolution badge, duration chip, file size, and dot-matrix progress indicator.
+- **Preference Persistence**: User-selected view modes are stored across sessions in `SharedPreferences`.
+
+---
+
+### 10. 🔀 Multi-Attribute Media Sorting Engine
+- **Versatile Sort Modes**: Sort media items in both Video and Music tabs by:
+  - **Date Added**: Newest First / Oldest First
+  - **Alphabetical**: Name (A – Z) / Name (Z – A)
+  - **File Size**: Largest First
+  - **Duration**: Longest First
+- **Instant Non-Blocking Reordering**: Re-sorts and updates in-memory cached lists without re-reading disks or triggering UI latency.
+
+---
+
+### 11. 🛰️ Autonomous Storage Observer (`MediaAutoScanner`) & Custom NDOT Dialogs
+- **`MediaAutoScanner` Background Observer**: Automatically monitors storage changes and triggers differential scanning when new files are downloaded or recorded.
+- **Manual Rescan Action**: 1-tap "RESCAN STORAGE" trigger in the options menu for forced synchronization.
+- **Nothing OS NDOT Dialog Framework (`NothingDialogHelper`)**: System-wide custom dialogs featuring AMOLED pure black backgrounds, Nothing Red LED accents, and NDOT typography for selections, options menus, and destructive confirmation prompts.
+
+---
+
 ## 🛠️ Tech Stack
 
 - **Android Native**: Java / Kotlin (Android SDK 34+ / Android 16 API 36)
