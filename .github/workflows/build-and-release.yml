@@ -124,6 +124,16 @@ jobs:
           COMMIT_HASH=$(git log -1 --pretty=format:"%h")
           COMMITS_LOG=$(git log -n 10 --pretty=format:"- [%h] %s (%an)")
 
+          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            echo "tag_name=beta-latest" >> $GITHUB_OUTPUT
+            echo "release_name=🟡 Nothing Player Beta (dev)" >> $GITHUB_OUTPUT
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "tag_name=v2.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
+            echo "release_name=🔴 Nothing Player v2.0 (Build #${{ github.run_number }})" >> $GITHUB_OUTPUT
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
           cat << EOF > release_notes.md
           # 🔴 NOTHING PLAYER v2.0 // MULTI-ARCH ANDROID RELEASE
 
@@ -169,14 +179,14 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
         with:
-          tag_name: ${{ github.ref == 'refs/heads/dev' && 'beta-latest' || format('v2.0.{0}', github.run_number) }}
-          name: ${{ github.ref == 'refs/heads/dev' && '🟡 Nothing Player Beta (dev)' || format('🔴 Nothing Player v2.0 (Build #{0})', github.run_number) }}
+          tag_name: ${{ steps.changelog.outputs.tag_name }}
+          name: ${{ steps.changelog.outputs.release_name }}
           body_path: release_notes.md
           files: |
             release-assets/*.apk
             release-assets/nothing-player-web-bundle.zip
           draft: false
-          prerelease: ${{ github.ref == 'refs/heads/dev' }}
+          prerelease: ${{ steps.changelog.outputs.is_prerelease == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
