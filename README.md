@@ -55,8 +55,26 @@
 
 ---
 
-### 5. 🎬 Pro Gesture Cinema Controls & Floating Thumbnail Scrubber
+### 5. 🎬 Pro Gesture Cinema Controls, Zero-Lag Seeking & Chapters
+- **Zero-Lag Instant Seeking Architecture**:
+  - **Ultra-Low Rebuffer Wait (200ms)**: Replaced default 2000ms rebuffer delay with a 200ms instant threshold in `DefaultLoadControl`.
+  - **15-Second RAM Back-Buffer (`setBackBuffer(15000, true)`)**: Preserves the last 15 seconds of decoded frames in memory for instantaneous 0ms rewind without disk re-reading.
+  - **Optimized LibVLC Caching**: Reduced `:file-caching` to 150ms for instantaneous scrubbing across local media.
+  - **Synchronized Touch Scrubbing**: Background progress loops pause during swipe gestures, eliminating stutter and keeping the seekbar and time HUD synchronized in real time.
+- **MKV / MP4 Chapter Markers & Chapter Dialog (`[CH]`)**:
+  - Embedded chapters extracted directly from media metadata via LibVLC.
+  - Distinct Nothing Red LED chapter divider ticks drawn directly onto the `DotMatrixSeekBar`.
+  - Dedicated chapter selection dialog displaying chapter numbers, names, and timestamp offsets.
+- **Skip Intro / Recap Pill (`SKIP INTRO +85S`)**:
+  - Interactive discrete Nothing OS pill auto-appears during the first 5 to 90 seconds of any episode.
+  - One-tap instant 85-second jump to bypass theme songs and intros with auto-dismissal.
+- **Precision Subtitle Delay Micro-Tuner (`SUBTITLE DELAY`)**:
+  - Dedicated live offset tuner dialog supporting ±0.1s fine tuning and ±0.5s coarse adjustments.
+  - Instant live audio/subtitle synchronization without stopping video playback.
 - **Floating Video Preview Pop-up Box**: Live multi-threaded `MediaMetadataRetriever` frame extractor showing real-time video thumbnail preview card and timestamp directly following the seekbar thumb during scrubbing.
+- **Watched Episode Storage Cleaner**:
+  - Automatically prompts upon video completion to delete the watched episode and reclaim storage.
+  - Displays reclaimed file size (MB/GB) and frees memory with synchronized MediaStore purge.
 - **Remaining Time Countdown Display**: Right-side timer toggles between Remaining Countdown (`-MM:SS`) and Total Duration (`MM:SS`).
 - **Calibrated Swipe Gestures with Axis Locking**:
   - **Left Vertical Swipe**: Screen Brightness (0% – 100%) with Dot-Matrix HUD.

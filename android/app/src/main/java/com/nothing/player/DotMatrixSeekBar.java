@@ -8,12 +8,17 @@ import android.graphics.Rect;
 import android.util.AttributeSet;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatSeekBar;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DotMatrixSeekBar extends AppCompatSeekBar {
     private final Paint paintActive = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint paintInactive = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint paintThumbOuter = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint paintThumbInner = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintChapter = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+    private final List<Float> chapterRatios = new ArrayList<>();
 
     private int activeColor = Color.parseColor("#D71921"); // Nothing Red
     private int inactiveColor = Color.parseColor("#26FFFFFF"); // Faint LED dots
@@ -60,6 +65,18 @@ public class DotMatrixSeekBar extends AppCompatSeekBar {
         invalidate();
     }
 
+    public void setChapterPositions(List<Long> chapterOffsetsMs, long totalDurationMs) {
+        chapterRatios.clear();
+        if (chapterOffsetsMs != null && totalDurationMs > 0) {
+            for (Long offset : chapterOffsetsMs) {
+                if (offset > 0 && offset < totalDurationMs) {
+                    chapterRatios.add((float) offset / (float) totalDurationMs);
+                }
+            }
+        }
+        invalidate();
+    }
+
     @Override
     protected synchronized void onDraw(Canvas canvas) {
         int width = getWidth();
@@ -99,7 +116,17 @@ public class DotMatrixSeekBar extends AppCompatSeekBar {
         canvas.drawLine(paddingL, cy, thumbX, cy, paintActive);
         paintActive.setStyle(Paint.Style.FILL);
 
-        // 3. Draw Nothing OS Micro Scrubber Thumb (Clean concentric circular LED)
+        // 3. Draw Chapter Break Markers
+        if (!chapterRatios.isEmpty()) {
+            paintChapter.setColor(Color.WHITE);
+            paintChapter.setStyle(Paint.Style.FILL);
+            for (float r : chapterRatios) {
+                float chapX = paddingL + (r * availableWidth);
+                canvas.drawCircle(chapX, cy, 2.0f * density, paintChapter);
+            }
+        }
+
+        // 4. Draw Nothing OS Micro Scrubber Thumb (Clean concentric circular LED)
         float thumbRadiusOuter = 5.5f * density;
         float thumbRadiusInner = 2.2f * density;
 

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_card_nothing"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:layout_margin="16dp"
+    android:minWidth="320dp">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <View
+            android:layout_width="6dp"
+            android:layout_height="6dp"
+            android:background="@drawable/led_red"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="SMART STORAGE SAVER"
+            android:textColor="#D71921"
+            android:textSize="9sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_clean_watched_subtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="THE FOLLOWING EPISODES ARE ALREADY WATCHED. DELETE TO FREE STORAGE?"
+        android:textColor="@color/nothing_white_40"
+        android:textSize="7.5sp"
+        android:fontFamily="@font/ndot"
+        android:layout_marginBottom="12dp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:maxHeight="200dp"
+        android:scrollbars="none"
+        android:layout_marginBottom="12dp">
+
+        <LinearLayout
+            android:id="@+id/layout_clean_episodes_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#1AFFFFFF"
+        android:layout_marginBottom="12dp" />
+
+    <TextView
+        android:id="@+id/tv_clean_total_reclaimable"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="TOTAL RECLAIMABLE: 0.0 MB"
+        android:textColor="#D71921"
+        android:textSize="8.5sp"
+        android:fontFamily="@font/ndot"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Bottom Actions -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/btn_clean_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:background="@drawable/bg_chip_unselected"
+            android:text="KEEP ALL"
+            android:textColor="@color/nothing_white"
+            android:textSize="8.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:paddingHorizontal="16dp"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btn_clean_confirm"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:background="@drawable/bg_chip_red_active"
+            android:text="DELETE &amp; FREE UP"
+            android:textColor="#FFFFFF"
+            android:textSize="8.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:paddingHorizontal="18dp" />
+    </LinearLayout>
+
+</LinearLayout>

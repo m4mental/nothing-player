@@ -222,6 +222,11 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private Button btnPlayNowNextEpisode;
     private boolean hasCancelledNextEpisodeForCurrent = false;
 
+    // Skip Intro Pill Button
+    private Button btnSkipIntro;
+    private boolean hasSkippedIntroForCurrent = false;
+    private long introEndMs = 85000L;
+
     // Online Subtitles
     private Uri activeSubtitleUri = null;
 
@@ -836,6 +841,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         btnQuickMirror = findViewById(R.id.btn_quick_mirror);
         btnQuickScreenshot = findViewById(R.id.btn_quick_screenshot);
         btnFloatingLock = findViewById(R.id.btn_floating_lock);
+        btnSkipIntro = findViewById(R.id.btn_skip_intro);
 
         btnBottomSpeed = findViewById(R.id.btn_bottom_speed);
         btnAspectRatio = findViewById(R.id.btn_aspect_ratio);
@@ -1407,11 +1413,12 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                20000,
-                60000,
-                1000,
-                2000
+                15000,
+                50000,
+                100,
+                200
             )
+            .setBackBuffer(15000, true)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build();
 
@@ -1544,7 +1551,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             Media media = createVlcMedia();
             if (media != null) {
                 media.setHWDecoderEnabled(true, true);
-                media.addOption(":file-caching=2000");
+                media.addOption(":file-caching=150");
                 vlcPlayer.setMedia(media);
                 media.release();
                 vlcPlayer.play();
@@ -1571,6 +1578,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         options.add("--audio-time-stretch");
         options.add("--audio-resampler=soxr");
         options.add("--avcodec-threads=0");
+        options.add("--file-caching=150");
         options.add("--network-caching=3000");
 
         libVLC = new LibVLC(this, options);
@@ -1590,7 +1598,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
         if (media != null) {
             media.setHWDecoderEnabled(true, true);
-            media.addOption(":file-caching=2000");
+            media.addOption(":file-caching=150");
             vlcPlayer.setMedia(media);
             media.release();
 
@@ -1607,17 +1615,20 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                         startProgressTracker();
                         scheduleHideControls();
                         applyAspectRatio();
+                        updateChapters();
                     } else if (event.type == MediaPlayer.Event.Paused) {
                         btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
                     } else if (event.type == MediaPlayer.Event.LengthChanged) {
                         totalDurationMs = vlcPlayer.getLength();
                         videoSeekBar.setMax((int) totalDurationMs);
                         updateTimeDisplay(currentPositionMs);
+                        updateChapters();
                     } else if (event.type == MediaPlayer.Event.TimeChanged) {
                         long pos = event.getTimeChanged();
                         currentPositionMs = pos;
                         updateTimeDisplay(pos);
                         videoSeekBar.setProgress((int) pos);
+                        checkSkipIntroButton(pos, totalDurationMs);
                         if (Math.abs(pos - lastSavedProgressMs) >= 2000) {
                             lastSavedProgressMs = pos;
                             saveCurrentPlaybackProgress(pos, totalDurationMs);
@@ -1894,6 +1905,22 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             btnAspectRatio.setOnLongClickListener(v -> {
                 togglePanel(panelRatio);
                 return true;
+            });
+        }
+
+        if (btnSkipIntro != null) {
+            btnSkipIntro.setOnClickListener(v -> {
+                long targetSeek = introEndMs > 0 ? introEndMs : 85000L;
+                if (isVlcActive && vlcPlayer != null) {
+                    vlcPlayer.setTime(targetSeek);
+                } else if (exoPlayer != null) {
+                    exoPlayer.seekTo(targetSeek);
+                }
+                videoSeekBar.setProgress((int) targetSeek);
+                updateTimeDisplay(targetSeek);
+                btnSkipIntro.setVisibility(View.GONE);
+                hasSkippedIntroForCurrent = true;
+                showGestureHud("● INTRO SKIPPED", DotMatrixIconView.TYPE_SEEK_FORWARD, "+85S", (int) (targetSeek * 100 / Math.max(1, totalDurationMs)));
             });
         }
 
@@ -2546,6 +2573,22 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             subItem.setOnClickListener(v -> {
                 if (isVlcActive) showVlcSubtitleTrackDialog();
                 else showExoSubtitleTrackDialog();
+            });
+        }
+
+        View chaptersItem = findViewById(R.id.item_menu_chapters);
+        if (chaptersItem != null) {
+            chaptersItem.setOnClickListener(v -> {
+                panelMoreMenu.setVisibility(View.GONE);
+                showChaptersDialog();
+            });
+        }
+
+        View subDelayItem = findViewById(R.id.item_menu_sub_delay);
+        if (subDelayItem != null) {
+            subDelayItem.setOnClickListener(v -> {
+                panelMoreMenu.setVisibility(View.GONE);
+                showSubtitleDelayDialog();
             });
         }
 
@@ -3340,10 +3383,16 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
         final int searchOnlineIndex = trackLabels.size();
         trackLabels.add("● SEARCH ONLINE SUBTITLES");
+        final int subDelayIndex = trackLabels.size();
+        trackLabels.add("● SUBTITLE DELAY / SYNC TUNER");
 
         showNothingSelectionDialog("SELECT SUBTITLE (ESUB / CC)", trackLabels, selectedIndex, which -> {
             if (which == searchOnlineIndex) {
                 showOnlineSubtitleSearchDialog();
+                return;
+            }
+            if (which == subDelayIndex) {
+                showSubtitleDelayDialog();
                 return;
             }
             if (which == 0) {
@@ -3387,10 +3436,16 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
         final int searchOnlineIndex = labels.size();
         labels.add("● SEARCH ONLINE SUBTITLES");
+        final int subDelayIndex = labels.size();
+        labels.add("● SUBTITLE DELAY / SYNC TUNER");
 
         showNothingSelectionDialog("SELECT SUBTITLE (VLC)", labels, selectedIndex, which -> {
             if (which == searchOnlineIndex) {
                 showOnlineSubtitleSearchDialog();
+                return;
+            }
+            if (which == subDelayIndex) {
+                showSubtitleDelayDialog();
                 return;
             }
             vlcPlayer.setSpuTrack(trackIds.get(which));
@@ -3679,6 +3734,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                     } else if (totalDx > 35 && totalDx > totalDy * 1.25f) {
                         gestureMode[0] = GESTURE_HORIZONTAL;
                         seekStartPosition[0] = isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0);
+                        stopProgressTracker();
                     } else {
                         return false;
                     }
@@ -3733,6 +3789,8 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                     int dotType = diffSec >= 0 ? DotMatrixIconView.TYPE_SEEK_FORWARD : DotMatrixIconView.TYPE_SEEK_REWIND;
 
                     showGestureHud(tag, dotType, text, progress);
+                    videoSeekBar.setProgress((int) targetSeekPosition[0]);
+                    updateTimeDisplay(targetSeekPosition[0]);
                     return true;
                 }
                 return false;
@@ -3810,6 +3868,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                     }
                     videoSeekBar.setProgress((int) target);
                     timeCurrentText.setText(formatTime(target));
+                    startProgressTracker();
                 }
                 gestureMode[0] = GESTURE_NONE;
                 volumeAccumulator[0] = 0f;
@@ -3991,6 +4050,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 videoSeekBar.setProgress((int) pos);
                 updateTimeDisplay(pos);
                 checkNextEpisodeCountdown(pos, totalDurationMs);
+                checkSkipIntroButton(pos, totalDurationMs);
                 if (Math.abs(pos - lastSavedProgressMs) >= 2000) {
                     lastSavedProgressMs = pos;
                     saveCurrentPlaybackProgress(pos, totalDurationMs);
@@ -4005,6 +4065,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 videoSeekBar.setProgress((int) pos);
                 updateTimeDisplay(pos);
                 checkNextEpisodeCountdown(pos, totalDurationMs);
+                checkSkipIntroButton(pos, totalDurationMs);
                 progressHandler.postDelayed(this, 500);
             }
         }
@@ -4147,6 +4208,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (playlistPaths == null || index < 0 || index >= playlistPaths.size()) return;
         playlistIndex = index;
         hasCancelledNextEpisodeForCurrent = false;
+        hasSkippedIntroForCurrent = false;
+        introEndMs = 85000L;
+        if (btnSkipIntro != null) btnSkipIntro.setVisibility(View.GONE);
+        if (videoSeekBar != null) videoSeekBar.setChapterPositions(new ArrayList<>(), 1);
         activeSubtitleUri = null;
         if (layoutNextEpisodeCard != null) layoutNextEpisodeCard.setVisibility(View.GONE);
         showTransitionOverlay();
@@ -4190,6 +4255,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     }
 
     private void handleVideoCompletion() {
+        checkWatchedEpisodeOnEnd();
         if (sleepTimerEndOfVideo) {
             cancelSleepTimer();
             if (isYouTubeActive && youtubeStreamView != null) {
@@ -4573,4 +4639,256 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         releaseExoPlayer();
         releaseVlcPlayer();
     }
+
+    // ==========================================
+    // IMPROVEMENTS 1 - 4 HELPER IMPLEMENTATIONS
+    // ==========================================
+
+    private void checkSkipIntroButton(long pos, long dur) {
+        if (btnSkipIntro == null) return;
+        if (hasSkippedIntroForCurrent || isLocked) {
+            if (btnSkipIntro.getVisibility() == View.VISIBLE) {
+                btnSkipIntro.setVisibility(View.GONE);
+            }
+            return;
+        }
+        // Show between 3s and introEndMs - 2s if video is at least 3 minutes long
+        if (dur >= 180000L && pos >= 3000L && pos <= (introEndMs - 2000L)) {
+            if (btnSkipIntro.getVisibility() != View.VISIBLE) {
+                btnSkipIntro.setVisibility(View.VISIBLE);
+                btnSkipIntro.setAlpha(0f);
+                btnSkipIntro.animate().alpha(1f).setDuration(220).start();
+            }
+        } else {
+            if (btnSkipIntro.getVisibility() == View.VISIBLE) {
+                btnSkipIntro.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    private void updateChapters() {
+        if (vlcPlayer == null) return;
+        try {
+            MediaPlayer.Chapter[] chapters = vlcPlayer.getChapters(-1);
+            if (chapters != null && chapters.length > 0) {
+                List<Long> offsets = new ArrayList<>();
+                for (MediaPlayer.Chapter c : chapters) {
+                    if (c != null && c.timeOffset >= 0) {
+                        offsets.add(c.timeOffset);
+                    }
+                }
+                if (videoSeekBar != null && totalDurationMs > 0) {
+                    videoSeekBar.setChapterPositions(offsets, totalDurationMs);
+                }
+                // If chapter 1 is intro (ends between 30s and 130s), adapt introEndMs
+                if (chapters.length > 1 && chapters[1] != null) {
+                    long firstChapEnd = chapters[1].timeOffset;
+                    if (firstChapEnd >= 30000L && firstChapEnd <= 130000L) {
+                        introEndMs = firstChapEnd;
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void showChaptersDialog() {
+        if (!isVlcActive) {
+            Toast.makeText(this, "Activating Universal VLC Engine for chapters...", Toast.LENGTH_SHORT).show();
+            long cur = exoPlayer != null ? exoPlayer.getCurrentPosition() : 0;
+            startVlcPlayer(cur);
+        }
+        if (vlcPlayer == null) return;
+
+        MediaPlayer.Chapter[] chapters = vlcPlayer.getChapters(-1);
+        if (chapters == null || chapters.length == 0) {
+            Toast.makeText(this, "No embedded chapters found in this video", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int currentChapter = vlcPlayer.getChapter();
+        List<String> labels = new ArrayList<>();
+        for (int i = 0; i < chapters.length; i++) {
+            MediaPlayer.Chapter c = chapters[i];
+            String name = (c.name != null && !c.name.trim().isEmpty()) ? c.name.trim() : ("CHAPTER " + (i + 1));
+            String timeStr = formatTime(c.timeOffset);
+            labels.add(String.format(java.util.Locale.US, "[%s]  %s", timeStr, name));
+        }
+
+        showNothingSelectionDialog("SELECT CHAPTER", labels, currentChapter, which -> {
+            if (which >= 0 && which < chapters.length) {
+                vlcPlayer.setChapter(which);
+                long target = chapters[which].timeOffset;
+                videoSeekBar.setProgress((int) target);
+                updateTimeDisplay(target);
+                showGestureHud("● CHAPTER", DotMatrixIconView.TYPE_SEEK_FORWARD, "CH " + (which + 1), (int) (target * 100 / Math.max(1, totalDurationMs)));
+            }
+        });
+    }
+
+    private void showSubtitleDelayDialog() {
+        if (!isVlcActive) {
+            Toast.makeText(this, "Switching to VLC for live subtitle sync...", Toast.LENGTH_SHORT).show();
+            long cur = exoPlayer != null ? exoPlayer.getCurrentPosition() : 0;
+            startVlcPlayer(cur);
+        }
+
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_subtitle_delay);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.88f);
+            dialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        TextView tvDisplay = dialog.findViewById(R.id.tv_sub_delay_display);
+        Button btnMinus500 = dialog.findViewById(R.id.btn_sub_delay_minus_500);
+        Button btnMinus100 = dialog.findViewById(R.id.btn_sub_delay_minus_100);
+        Button btnReset = dialog.findViewById(R.id.btn_sub_delay_reset);
+        Button btnPlus100 = dialog.findViewById(R.id.btn_sub_delay_plus_100);
+        Button btnPlus500 = dialog.findViewById(R.id.btn_sub_delay_plus_500);
+        Button btnDone = dialog.findViewById(R.id.btn_sub_delay_done);
+
+        long currentDelayUs = (vlcPlayer != null) ? vlcPlayer.getSpuDelay() : 0L;
+        final long[] delayUs = {currentDelayUs};
+
+        Runnable updateDisplay = () -> {
+            double seconds = delayUs[0] / 1000000.0;
+            String text = String.format(java.util.Locale.US, "%+.1f S", seconds);
+            if (Math.abs(seconds) < 0.001) text = "0.0 S";
+            if (tvDisplay != null) tvDisplay.setText(text);
+            if (vlcPlayer != null) {
+                vlcPlayer.setSpuDelay(delayUs[0]);
+            }
+        };
+        updateDisplay.run();
+
+        if (btnMinus500 != null) btnMinus500.setOnClickListener(v -> {
+            delayUs[0] -= 500000L;
+            updateDisplay.run();
+        });
+        if (btnMinus100 != null) btnMinus100.setOnClickListener(v -> {
+            delayUs[0] -= 100000L;
+            updateDisplay.run();
+        });
+        if (btnReset != null) btnReset.setOnClickListener(v -> {
+            delayUs[0] = 0L;
+            updateDisplay.run();
+        });
+        if (btnPlus100 != null) btnPlus100.setOnClickListener(v -> {
+            delayUs[0] += 100000L;
+            updateDisplay.run();
+        });
+        if (btnPlus500 != null) btnPlus500.setOnClickListener(v -> {
+            delayUs[0] += 500000L;
+            updateDisplay.run();
+        });
+        if (btnDone != null) btnDone.setOnClickListener(v -> {
+            double finalSec = delayUs[0] / 1000000.0;
+            showGestureHud("● SUB DELAY", DotMatrixIconView.TYPE_SEEK_FORWARD, String.format(java.util.Locale.US, "%+.1fS", finalSec), 100);
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    private void checkWatchedEpisodeOnEnd() {
+        if (videoPath == null || videoPath.isEmpty()) return;
+        File file = new File(videoPath);
+        if (!file.exists()) return;
+
+        // Only prompt for videos that are substantial (> 10MB)
+        if (file.length() < 10L * 1024L * 1024L) return;
+
+        showWatchedEpisodeCleanupDialog(videoPath, videoTitle != null ? videoTitle : file.getName());
+    }
+
+    private void showWatchedEpisodeCleanupDialog(String targetPath, String targetTitle) {
+        if (isFinishing() || isDestroyed()) return;
+
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_clean_watched);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.88f);
+            dialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        TextView tvSubtitle = dialog.findViewById(R.id.tv_clean_watched_subtitle);
+        LinearLayout layoutList = dialog.findViewById(R.id.layout_clean_episodes_list);
+        TextView tvReclaimable = dialog.findViewById(R.id.tv_clean_total_reclaimable);
+        Button btnKeep = dialog.findViewById(R.id.btn_clean_cancel);
+        Button btnDelete = dialog.findViewById(R.id.btn_clean_confirm);
+
+        if (tvSubtitle != null) {
+            tvSubtitle.setText("EPISODE COMPLETED. DELETE TO FREE UP STORAGE?");
+        }
+
+        File targetFile = new File(targetPath);
+        long bytes = targetFile.exists() ? targetFile.length() : 0L;
+        double mb = bytes / (1024.0 * 1024.0);
+        String sizeStr = mb >= 1024.0
+                ? String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
+                : String.format(java.util.Locale.US, "%.1f MB", mb);
+
+        if (tvReclaimable != null) {
+            tvReclaimable.setText("TOTAL RECLAIMABLE: " + sizeStr);
+        }
+
+        if (layoutList != null) {
+            layoutList.removeAllViews();
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(0, dpToPx(6), 0, dpToPx(6));
+
+            TextView dot = new TextView(this);
+            dot.setText("● ");
+            dot.setTextColor(Color.parseColor("#D71921"));
+            dot.setTextSize(10f);
+            row.addView(dot);
+
+            TextView name = new TextView(this);
+            name.setText(targetTitle.toUpperCase());
+            name.setTextColor(Color.WHITE);
+            name.setTextSize(8.5f);
+            name.setSingleLine(true);
+            name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            name.setLayoutParams(lp);
+            row.addView(name);
+
+            TextView sz = new TextView(this);
+            sz.setText(sizeStr);
+            sz.setTextColor(Color.parseColor("#88FFFFFF"));
+            sz.setTextSize(8f);
+            row.addView(sz);
+
+            layoutList.addView(row);
+        }
+
+        if (btnKeep != null) btnKeep.setOnClickListener(v -> dialog.dismiss());
+        if (btnDelete != null) btnDelete.setOnClickListener(v -> {
+            dialog.dismiss();
+            boolean deleted = false;
+            try {
+                if (targetFile.exists()) {
+                    deleted = targetFile.delete();
+                }
+                if (!deleted && videoUriStr != null && !videoUriStr.isEmpty()) {
+                    getContentResolver().delete(Uri.parse(videoUriStr), null, null);
+                    deleted = true;
+                }
+            } catch (Exception ignored) {}
+
+            if (deleted) {
+                Toast.makeText(this, "Deleted & freed " + sizeStr, Toast.LENGTH_SHORT).show();
+                showGestureHud("● STORAGE SAVED", DotMatrixIconView.TYPE_SEEK_FORWARD, sizeStr + " FREED", 100);
+            }
+        });
+
+        dialog.show();
+    }
 }
+

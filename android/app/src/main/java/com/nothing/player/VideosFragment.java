@@ -2,6 +2,9 @@ package com.nothing.player;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
+import android.view.Window;
+import android.view.Gravity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -794,6 +797,12 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         ));
 
         options.add(new NothingDialogHelper.MenuItemOption(
+                "CLEAN WATCHED EPISODES",
+                "Reclaim storage by removing finished episodes",
+                this::showCleanWatchedEpisodesDialog
+        ));
+
+        options.add(new NothingDialogHelper.MenuItemOption(
                 "SETTINGS",
                 "Hardware acceleration & gestures",
                 () -> {
@@ -804,6 +813,115 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         ));
 
         NothingDialogHelper.showMenuDialog(getContext(), "VIDEO OPTIONS", options);
+    }
+
+    private void showCleanWatchedEpisodesDialog() {
+        if (getContext() == null || getActivity() == null) return;
+
+        List<MediaItem> watchedEpisodes = new ArrayList<>();
+        long totalBytes = 0;
+
+        for (MediaItem item : allVideos) {
+            String path = item.path != null ? item.path : item.contentUri;
+            if (path == null) continue;
+            if (currentSelectedSeries != null && !currentSelectedSeries.equalsIgnoreCase(item.seriesName)) {
+                continue;
+            }
+            if (!"series".equalsIgnoreCase(item.mediaCategory) && currentSelectedSeries == null) {
+                if (item.episodeNumber <= 0 && item.seasonNumber <= 0) continue;
+            }
+
+            PlaybackHistoryManager.HistoryItem h = PlaybackHistoryManager.getProgress(getContext(), path);
+            if (h != null && h.getProgressPercent() >= 90) {
+                watchedEpisodes.add(item);
+                totalBytes += item.size;
+            }
+        }
+
+        if (watchedEpisodes.isEmpty()) {
+            Toast.makeText(getContext(), "No completed episodes found (>= 90% watched)", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Dialog dialog = new Dialog(getContext());
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_clean_watched);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.88f);
+            dialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        TextView tvSubtitle = dialog.findViewById(R.id.tv_clean_watched_subtitle);
+        LinearLayout layoutList = dialog.findViewById(R.id.layout_clean_episodes_list);
+        TextView tvReclaimable = dialog.findViewById(R.id.tv_clean_total_reclaimable);
+        Button btnKeep = dialog.findViewById(R.id.btn_clean_cancel);
+        Button btnDelete = dialog.findViewById(R.id.btn_clean_confirm);
+
+        double totalMb = totalBytes / (1024.0 * 1024.0);
+        String totalSizeStr = totalMb >= 1024.0
+                ? String.format(java.util.Locale.US, "%.2f GB", totalMb / 1024.0)
+                : String.format(java.util.Locale.US, "%.1f MB", totalMb);
+
+        if (tvSubtitle != null) {
+            tvSubtitle.setText(String.format(java.util.Locale.US, "%d WATCHED EPISODE(S) FOUND. DELETE TO FREE STORAGE?", watchedEpisodes.size()));
+        }
+        if (tvReclaimable != null) {
+            tvReclaimable.setText("TOTAL RECLAIMABLE: " + totalSizeStr);
+        }
+
+        if (layoutList != null) {
+            layoutList.removeAllViews();
+            float density = getResources().getDisplayMetrics().density;
+            for (MediaItem ep : watchedEpisodes) {
+                LinearLayout row = new LinearLayout(getContext());
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setPadding(0, (int) (6 * density), 0, (int) (6 * density));
+
+                TextView dot = new TextView(getContext());
+                dot.setText("● ");
+                dot.setTextColor(Color.parseColor("#D71921"));
+                dot.setTextSize(9f);
+                row.addView(dot);
+
+                TextView name = new TextView(getContext());
+                String title = ep.cleanTitle != null && !ep.cleanTitle.isEmpty() ? ep.cleanTitle : (ep.title != null ? ep.title : "Episode");
+                if (ep.episodeNumber > 0) {
+                    title = String.format(java.util.Locale.US, "EP %02d • %s", ep.episodeNumber, title);
+                }
+                name.setText(title.toUpperCase());
+                name.setTextColor(Color.WHITE);
+                name.setTextSize(8f);
+                name.setSingleLine(true);
+                name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                name.setLayoutParams(lp);
+                row.addView(name);
+
+                double epMb = ep.size / (1024.0 * 1024.0);
+                String epSizeStr = epMb >= 1024.0
+                        ? String.format(java.util.Locale.US, "%.2f GB", epMb / 1024.0)
+                        : String.format(java.util.Locale.US, "%.1f MB", epMb);
+
+                TextView sz = new TextView(getContext());
+                sz.setText(epSizeStr);
+                sz.setTextColor(Color.parseColor("#88FFFFFF"));
+                sz.setTextSize(7.5f);
+                row.addView(sz);
+
+                layoutList.addView(row);
+            }
+        }
+
+        if (btnKeep != null) btnKeep.setOnClickListener(v -> dialog.dismiss());
+        if (btnDelete != null) btnDelete.setOnClickListener(v -> {
+            dialog.dismiss();
+            deleteSelectedItems(new HashSet<>(watchedEpisodes));
+            Toast.makeText(getContext(), "Reclaimed " + totalSizeStr + " of storage", Toast.LENGTH_SHORT).show();
+        });
+
+        dialog.show();
     }
 
     private void showViewModeDialog() {
