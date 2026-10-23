@@ -3211,22 +3211,4 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Skip Intro / Recap Floating Button -->
-    <Button
-        android:id="@+id/btn_skip_intro"
-        android:layout_width="wrap_content"
-        android:layout_height="32dp"
-        android:layout_gravity="bottom|start"
-        android:layout_marginStart="32dp"
-        android:layout_marginBottom="90dp"
-        android:background="@drawable/bg_chip_dark_inactive"
-        android:text=">| SKIP INTRO"
-        android:textColor="#FFFFFF"
-        android:textSize="8sp"
-        android:textStyle="bold"
-        android:fontFamily="@font/ndot"
-        android:paddingHorizontal="14dp"
-        android:elevation="14dp"
-        android:visibility="gone" />
-
 </FrameLayout>
