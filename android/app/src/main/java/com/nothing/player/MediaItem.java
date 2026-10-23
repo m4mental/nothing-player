@@ -20,6 +20,15 @@ public class MediaItem implements Serializable {
     public long lastPosition;
     public long addedAt;
     public String type; // "video" or "audio"
+    public String mediaCategory; // "movie", "series", "clip"
+    public String seriesName;
+    public int seasonNumber = -1;
+    public int episodeNumber = -1;
+    public String cleanTitle;
+    public String posterUrl;
+    public String releaseYear;
+    public String rating;
+    public String synopsis;
 
     public MediaItem() {
         this.type = "video";

@@ -181,9 +181,21 @@ public class MediaRepository {
                 item.audioChannels = obj.optString("audioChannels");
                 item.type = obj.optString("type", "video");
                 item.addedAt = obj.optLong("addedAt");
+                item.mediaCategory = obj.optString("mediaCategory", null);
+                item.seriesName = obj.optString("seriesName", null);
+                item.seasonNumber = obj.optInt("seasonNumber", -1);
+                item.episodeNumber = obj.optInt("episodeNumber", -1);
+                item.cleanTitle = obj.optString("cleanTitle", null);
+                item.posterUrl = obj.optString("posterUrl", null);
+                item.releaseYear = obj.optString("releaseYear", null);
+                item.rating = obj.optString("rating", null);
+                item.synopsis = obj.optString("synopsis", null);
 
                 // Verify file still exists on disk before adding
                 if (item.path != null && new File(item.path).exists()) {
+                    if (item.mediaCategory == null) {
+                        MediaOrganizerEngine.processItem(item);
+                    }
                     list.add(item);
                 }
             }
@@ -216,6 +228,15 @@ public class MediaRepository {
                     obj.put("audioChannels", item.audioChannels);
                     obj.put("type", item.type);
                     obj.put("addedAt", item.addedAt);
+                    if (item.mediaCategory != null) obj.put("mediaCategory", item.mediaCategory);
+                    if (item.seriesName != null) obj.put("seriesName", item.seriesName);
+                    if (item.seasonNumber != -1) obj.put("seasonNumber", item.seasonNumber);
+                    if (item.episodeNumber != -1) obj.put("episodeNumber", item.episodeNumber);
+                    if (item.cleanTitle != null) obj.put("cleanTitle", item.cleanTitle);
+                    if (item.posterUrl != null) obj.put("posterUrl", item.posterUrl);
+                    if (item.releaseYear != null) obj.put("releaseYear", item.releaseYear);
+                    if (item.rating != null) obj.put("rating", item.rating);
+                    if (item.synopsis != null) obj.put("synopsis", item.synopsis);
                     arr.put(obj);
                 }
 
@@ -336,6 +357,7 @@ public class MediaRepository {
             Log.e(TAG, "Error performing full disk video scan", e);
         }
 
+        MediaOrganizerEngine.processAll(list);
         return list;
     }
 

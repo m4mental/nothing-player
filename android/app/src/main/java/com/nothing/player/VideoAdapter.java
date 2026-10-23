@@ -45,7 +45,7 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
     public interface OnItemClickListener {
         void onVideoClick(MediaItem video);
-        void onFolderClick(String folderName);
+        void onFolderClick(FolderItem folder);
         void onMenuClick(MediaItem video);
         void onSelectionChanged(int selectedCount);
     }
@@ -63,16 +63,26 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         public int count;
         public boolean hasNew;
         public boolean isRecentFolder;
+        public String folderType; // "storage", "recent", "series", "movies"
+        public String posterUrl;
+        public String subtitle;
 
         public FolderItem(String name, int count, boolean hasNew) {
-            this(name, count, hasNew, false);
+            this(name, count, hasNew, false, "storage", null, null);
         }
 
         public FolderItem(String name, int count, boolean hasNew, boolean isRecentFolder) {
+            this(name, count, hasNew, isRecentFolder, isRecentFolder ? "recent" : "storage", null, null);
+        }
+
+        public FolderItem(String name, int count, boolean hasNew, boolean isRecentFolder, String folderType, String posterUrl, String subtitle) {
             this.name = name;
             this.count = count;
             this.hasNew = hasNew;
             this.isRecentFolder = isRecentFolder;
+            this.folderType = folderType;
+            this.posterUrl = posterUrl;
+            this.subtitle = subtitle;
         }
     }
 
@@ -159,19 +169,42 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             FolderItem folder = (FolderItem) item;
             FolderViewHolder fHolder = (FolderViewHolder) holder;
             fHolder.folderName.setText(folder.name);
-            
-            if (fHolder.folderIcon != null) {
-                if (folder.isRecentFolder) {
-                    fHolder.folderIcon.setImageResource(R.drawable.ic_folder_recent);
-                    fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
-                    fHolder.folderCount.setText(folder.count + " Videos • Chronological");
-                } else {
-                    fHolder.folderIcon.setImageResource(android.R.drawable.ic_menu_agenda);
-                    fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
-                    fHolder.folderCount.setText(folder.count + " Videos");
+
+            if (folder.posterUrl != null && !folder.posterUrl.isEmpty()) {
+                if (fHolder.folderThumb != null) {
+                    fHolder.folderThumb.setVisibility(View.VISIBLE);
+                    if (fHolder.folderIcon != null) fHolder.folderIcon.setVisibility(View.GONE);
+                    Glide.with(context)
+                            .load(folder.posterUrl)
+                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                            .centerCrop()
+                            .into(fHolder.folderThumb);
                 }
             } else {
-                fHolder.folderCount.setText(folder.count + " Videos");
+                if (fHolder.folderThumb != null) fHolder.folderThumb.setVisibility(View.GONE);
+                if (fHolder.folderIcon != null) {
+                    fHolder.folderIcon.setVisibility(View.VISIBLE);
+                    if ("series".equalsIgnoreCase(folder.folderType)) {
+                        fHolder.folderIcon.setImageResource(R.drawable.ic_dotmatrix_playlist);
+                        fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
+                    } else if (folder.isRecentFolder) {
+                        fHolder.folderIcon.setImageResource(R.drawable.ic_folder_recent);
+                        fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
+                    } else {
+                        fHolder.folderIcon.setImageResource(android.R.drawable.ic_menu_agenda);
+                        fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
+                    }
+                }
+            }
+
+            if (folder.subtitle != null && !folder.subtitle.isEmpty()) {
+                fHolder.folderCount.setText(folder.subtitle);
+            } else if ("series".equalsIgnoreCase(folder.folderType)) {
+                fHolder.folderCount.setText(folder.count + (folder.count == 1 ? " Episode" : " Episodes"));
+            } else if (folder.isRecentFolder) {
+                fHolder.folderCount.setText(folder.count + " Videos • Chronological");
+            } else {
+                fHolder.folderCount.setText(folder.count + (folder.count == 1 ? " Video" : " Videos"));
             }
 
             if (fHolder.badgeNew != null) {
@@ -189,7 +222,7 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 if (isSelectionMode) {
                     toggleSelection(folder);
                 } else if (listener != null) {
-                    listener.onFolderClick(folder.name);
+                    listener.onFolderClick(folder);
                 }
             });
 
@@ -200,11 +233,18 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         } else if (holder instanceof VideoViewHolder) {
             MediaItem video = (MediaItem) item;
             VideoViewHolder vHolder = (VideoViewHolder) holder;
-            vHolder.title.setText(video.title);
 
-            if (isRecentlyMode || "Recently".equalsIgnoreCase(video.folder)) {
+            if ("series".equalsIgnoreCase(video.mediaCategory) && video.episodeNumber > 0) {
+                vHolder.title.setText(String.format(Locale.US, "EP %02d • %s", video.episodeNumber, video.title));
+                vHolder.subtext.setText(video.seriesName != null ? (video.seriesName + " • S" + Math.max(1, video.seasonNumber)) : video.folder);
+            } else if ("movie".equalsIgnoreCase(video.mediaCategory) && video.cleanTitle != null) {
+                vHolder.title.setText(video.cleanTitle);
+                vHolder.subtext.setText((video.releaseYear != null ? (video.releaseYear + " • ") : "") + formatSize(video.size));
+            } else if (isRecentlyMode || "Recently".equalsIgnoreCase(video.folder)) {
+                vHolder.title.setText(video.title);
                 vHolder.subtext.setText(formatArrivalDate(video.addedAt) + " • " + formatSize(video.size));
             } else {
+                vHolder.title.setText(video.title);
                 vHolder.subtext.setText(video.folder + " • " + formatSize(video.size));
             }
 
@@ -244,8 +284,11 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 }
             }
 
+            Object thumbSource = (video.posterUrl != null && !video.posterUrl.isEmpty()) ?
+                    video.posterUrl : (video.path != null ? video.path : video.contentUri);
+
             Glide.with(context)
-                    .load(video.path != null ? video.path : video.contentUri)
+                    .load(thumbSource)
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
                     .centerCrop()
                     .into(vHolder.thumb);
@@ -275,13 +318,14 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     }
 
     static class FolderViewHolder extends RecyclerView.ViewHolder {
-        ImageView folderIcon;
+        ImageView folderIcon, folderThumb;
         TextView folderName, folderCount, folderArrow, badgeNew;
         ImageView selectionCheck;
 
         FolderViewHolder(View v) {
             super(v);
             folderIcon = v.findViewById(R.id.folder_icon);
+            folderThumb = v.findViewById(R.id.folder_thumb);
             folderName = v.findViewById(R.id.folder_name);
             folderCount = v.findViewById(R.id.folder_video_count);
             folderArrow = v.findViewById(R.id.folder_arrow);

@@ -57,13 +57,19 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     public static final int SORT_DURATION_DESC = 5;
 
     private int currentViewMode = VideoAdapter.VIEW_MODE_GRID_2;
+    public static final int CATEGORY_FOLDERS = 0;
+    public static final int CATEGORY_SERIES = 1;
+    public static final int CATEGORY_MOVIES = 2;
+    public static final int CATEGORY_ALL_VIDEOS = 3;
+
+    private int currentCategory = CATEGORY_FOLDERS;
     private int currentSortMode = SORT_DATE_DESC;
 
     private RecyclerView recyclerView;
     private VideoAdapter adapter;
     private SwipeRefreshLayout swipeRefresh;
     private EditText etSearch;
-    private TextView chipFolders, chipAllVideos, chipNetworkStream;
+    private TextView chipFolders, chipSeries, chipMovies, chipAllVideos, chipNetworkStream;
     private ImageButton btnOverflowMenu;
 
     // Multi-select Views
@@ -79,8 +85,8 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     private HistoryAdapter historyAdapter;
 
     private List<MediaItem> allVideos = new ArrayList<>();
-    private boolean isFoldersMode = true;
     private String currentSelectedFolder = null;
+    private String currentSelectedSeries = null;
     private ActivityResultLauncher<IntentSenderRequest> deleteLauncher;
 
     private final MediaAutoScanner.OnMediaChangeListener mediaChangeListener = () -> {
@@ -131,6 +137,8 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         swipeRefresh = view.findViewById(R.id.swipe_refresh_videos);
         etSearch = view.findViewById(R.id.et_search_videos);
         chipFolders = view.findViewById(R.id.chip_folders);
+        chipSeries = view.findViewById(R.id.chip_series);
+        chipMovies = view.findViewById(R.id.chip_movies);
         chipAllVideos = view.findViewById(R.id.chip_all_videos);
         chipNetworkStream = view.findViewById(R.id.chip_network_stream);
         btnOverflowMenu = view.findViewById(R.id.btn_videos_overflow_menu);
@@ -172,15 +180,37 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         applyCurrentViewMode();
 
         chipFolders.setOnClickListener(v -> {
-            isFoldersMode = true;
+            currentCategory = CATEGORY_FOLDERS;
             currentSelectedFolder = null;
+            currentSelectedSeries = null;
             updateChipsUI();
             filterAndDisplay();
         });
 
+        if (chipSeries != null) {
+            chipSeries.setOnClickListener(v -> {
+                currentCategory = CATEGORY_SERIES;
+                currentSelectedFolder = null;
+                currentSelectedSeries = null;
+                updateChipsUI();
+                filterAndDisplay();
+            });
+        }
+
+        if (chipMovies != null) {
+            chipMovies.setOnClickListener(v -> {
+                currentCategory = CATEGORY_MOVIES;
+                currentSelectedFolder = null;
+                currentSelectedSeries = null;
+                updateChipsUI();
+                filterAndDisplay();
+            });
+        }
+
         chipAllVideos.setOnClickListener(v -> {
-            isFoldersMode = false;
+            currentCategory = CATEGORY_ALL_VIDEOS;
             currentSelectedFolder = null;
+            currentSelectedSeries = null;
             updateChipsUI();
             filterAndDisplay();
         });
@@ -212,9 +242,9 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     private void updateHistorySection() {
         if (getContext() == null || sectionHistory == null || historyAdapter == null) return;
         
-        // Show recently watched ONLY on the root home page (not inside any opened folder or active search)
+        // Show recently watched ONLY on the root home page (not inside any opened folder, series or active search)
         String query = etSearch != null ? etSearch.getText().toString().trim() : "";
-        if (currentSelectedFolder != null || !query.isEmpty()) {
+        if (currentSelectedFolder != null || currentSelectedSeries != null || !query.isEmpty()) {
             sectionHistory.setVisibility(View.GONE);
             return;
         }
@@ -288,9 +318,17 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 itemsToDelete.add((MediaItem) item);
             } else if (item instanceof VideoAdapter.FolderItem) {
                 VideoAdapter.FolderItem folder = (VideoAdapter.FolderItem) item;
-                for (MediaItem v : allVideos) {
-                    if (folder.name.equalsIgnoreCase(v.folder)) {
-                        itemsToDelete.add(v);
+                if ("series".equalsIgnoreCase(folder.folderType)) {
+                    for (MediaItem v : allVideos) {
+                        if (folder.name.equalsIgnoreCase(v.seriesName)) {
+                            itemsToDelete.add(v);
+                        }
+                    }
+                } else {
+                    for (MediaItem v : allVideos) {
+                        if (folder.name.equalsIgnoreCase(v.folder)) {
+                            itemsToDelete.add(v);
+                        }
                     }
                 }
             }
@@ -353,16 +391,20 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     }
 
     private void updateChipsUI() {
-        if (isFoldersMode && currentSelectedFolder == null) {
-            chipFolders.setBackgroundResource(R.drawable.bg_chip_selected);
-            chipFolders.setTextColor(getResources().getColor(R.color.nothing_black));
-            chipAllVideos.setBackgroundResource(R.drawable.bg_chip_unselected);
-            chipAllVideos.setTextColor(getResources().getColor(R.color.nothing_white_70));
+        setChipState(chipFolders, currentCategory == CATEGORY_FOLDERS);
+        setChipState(chipSeries, currentCategory == CATEGORY_SERIES);
+        setChipState(chipMovies, currentCategory == CATEGORY_MOVIES);
+        setChipState(chipAllVideos, currentCategory == CATEGORY_ALL_VIDEOS);
+    }
+
+    private void setChipState(TextView chip, boolean isSelected) {
+        if (chip == null || getContext() == null) return;
+        if (isSelected) {
+            chip.setBackgroundResource(R.drawable.bg_chip_selected);
+            chip.setTextColor(getResources().getColor(R.color.nothing_black));
         } else {
-            chipAllVideos.setBackgroundResource(R.drawable.bg_chip_selected);
-            chipAllVideos.setTextColor(getResources().getColor(R.color.nothing_black));
-            chipFolders.setBackgroundResource(R.drawable.bg_chip_unselected);
-            chipFolders.setTextColor(getResources().getColor(R.color.nothing_white_70));
+            chip.setBackgroundResource(R.drawable.bg_chip_unselected);
+            chip.setTextColor(getResources().getColor(R.color.nothing_white_70));
         }
     }
 
@@ -382,53 +424,167 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         String query = etSearch != null ? etSearch.getText().toString().trim().toLowerCase() : "";
         List<Object> displayItems = new ArrayList<>();
 
-        if (isFoldersMode && currentSelectedFolder == null && query.isEmpty()) {
-            // Dedicated "Recently" folder at the top of the folder list
-            if (allVideos != null && !allVideos.isEmpty()) {
-                boolean hasAnyNew = MediaStateManager.hasAnyNewVideos(getContext(), allVideos);
-                displayItems.add(new VideoAdapter.FolderItem("Recently", allVideos.size(), hasAnyNew, true));
-            }
-
-            Map<String, Integer> folderMap = new HashMap<>();
-            for (MediaItem v : allVideos) {
-                String folder = v.folder != null ? v.folder : "Storage";
-                folderMap.put(folder, folderMap.getOrDefault(folder, 0) + 1);
-            }
-
-            List<VideoAdapter.FolderItem> folderItems = new ArrayList<>();
-            for (Map.Entry<String, Integer> entry : folderMap.entrySet()) {
-                String folderName = entry.getKey();
-                int count = entry.getValue();
-                boolean hasNew = MediaStateManager.folderHasNewVideos(getContext(), folderName, allVideos);
-                folderItems.add(new VideoAdapter.FolderItem(folderName, count, hasNew, false));
-            }
-
-            // Sort folders
-            if (currentSortMode == SORT_NAME_DESC) {
-                Collections.sort(folderItems, (a, b) -> b.name.compareToIgnoreCase(a.name));
-            } else {
-                Collections.sort(folderItems, (a, b) -> a.name.compareToIgnoreCase(b.name));
-            }
-            displayItems.addAll(folderItems);
-
-            adapter.setItems(displayItems, true, false);
-        } else if (currentSelectedFolder != null && currentSelectedFolder.equalsIgnoreCase("Recently")) {
-            List<MediaItem> sortedVideos = new ArrayList<>();
-            for (MediaItem v : allVideos) {
-                if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase().contains(query))) {
-                    continue;
+        if (currentCategory == CATEGORY_FOLDERS) {
+            if (currentSelectedFolder == null && query.isEmpty()) {
+                // Dedicated "Recently" folder at the top of the folder list
+                if (allVideos != null && !allVideos.isEmpty()) {
+                    boolean hasAnyNew = MediaStateManager.hasAnyNewVideos(getContext(), allVideos);
+                    displayItems.add(new VideoAdapter.FolderItem("Recently", allVideos.size(), hasAnyNew, true));
                 }
-                sortedVideos.add(v);
+
+                Map<String, Integer> folderMap = new HashMap<>();
+                for (MediaItem v : allVideos) {
+                    String folder = v.folder != null ? v.folder : "Storage";
+                    folderMap.put(folder, folderMap.getOrDefault(folder, 0) + 1);
+                }
+
+                List<VideoAdapter.FolderItem> folderItems = new ArrayList<>();
+                for (Map.Entry<String, Integer> entry : folderMap.entrySet()) {
+                    String folderName = entry.getKey();
+                    int count = entry.getValue();
+                    boolean hasNew = MediaStateManager.folderHasNewVideos(getContext(), folderName, allVideos);
+                    folderItems.add(new VideoAdapter.FolderItem(folderName, count, hasNew, false, "storage", null, null));
+                }
+
+                // Sort folders
+                if (currentSortMode == SORT_NAME_DESC) {
+                    Collections.sort(folderItems, (a, b) -> b.name.compareToIgnoreCase(a.name));
+                } else {
+                    Collections.sort(folderItems, (a, b) -> a.name.compareToIgnoreCase(b.name));
+                }
+                displayItems.addAll(folderItems);
+
+                adapter.setItems(displayItems, true, false);
+            } else if (currentSelectedFolder != null && currentSelectedFolder.equalsIgnoreCase("Recently")) {
+                List<MediaItem> sortedVideos = new ArrayList<>();
+                for (MediaItem v : allVideos) {
+                    if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase().contains(query))) {
+                        continue;
+                    }
+                    sortedVideos.add(v);
+                }
+                sortVideoList(sortedVideos);
+                displayItems.addAll(sortedVideos);
+                adapter.setItems(displayItems, false, true);
+            } else {
+                List<MediaItem> videoList = new ArrayList<>();
+                for (MediaItem v : allVideos) {
+                    if (currentSelectedFolder != null && !currentSelectedFolder.equalsIgnoreCase(v.folder)) {
+                        continue;
+                    }
+                    if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase().contains(query))) {
+                        continue;
+                    }
+                    videoList.add(v);
+                }
+                sortVideoList(videoList);
+                displayItems.addAll(videoList);
+                adapter.setItems(displayItems, false, false);
             }
-            sortVideoList(sortedVideos);
-            displayItems.addAll(sortedVideos);
-            adapter.setItems(displayItems, false, true);
-        } else {
+        } else if (currentCategory == CATEGORY_SERIES) {
+            if (currentSelectedSeries == null) {
+                // Group videos into virtual series folders
+                Map<String, List<MediaItem>> seriesMap = new HashMap<>();
+                for (MediaItem v : allVideos) {
+                    if ("series".equalsIgnoreCase(v.mediaCategory) && v.seriesName != null && !v.seriesName.isEmpty()) {
+                        List<MediaItem> list = seriesMap.get(v.seriesName);
+                        if (list == null) {
+                            list = new ArrayList<>();
+                            seriesMap.put(v.seriesName, list);
+                        }
+                        list.add(v);
+                    }
+                }
+
+                List<VideoAdapter.FolderItem> seriesItems = new ArrayList<>();
+                for (Map.Entry<String, List<MediaItem>> entry : seriesMap.entrySet()) {
+                    String seriesName = entry.getKey();
+                    List<MediaItem> epList = entry.getValue();
+
+                    if (!query.isEmpty() && !seriesName.toLowerCase().contains(query)) {
+                        continue;
+                    }
+
+                    boolean hasNew = false;
+                    for (MediaItem ep : epList) {
+                        String path = ep.path != null ? ep.path : ep.contentUri;
+                        if (MediaStateManager.isVideoNew(getContext(), path)) {
+                            hasNew = true;
+                            break;
+                        }
+                    }
+
+                    OnlineMetadataManager.MetadataInfo meta = OnlineMetadataManager.getCached(getContext(), seriesName);
+                    String posterUrl = meta != null ? meta.posterUrl : null;
+                    String subtitle = epList.size() + (epList.size() == 1 ? " Episode" : " Episodes");
+                    if (meta != null && meta.releaseYear != null && !meta.releaseYear.isEmpty()) {
+                        subtitle = meta.releaseYear + " • " + subtitle;
+                    }
+
+                    if (posterUrl == null && getContext() != null) {
+                        OnlineMetadataManager.enrichSeries(getContext(), seriesName, info -> {
+                            if (isAdded() && currentCategory == CATEGORY_SERIES && currentSelectedSeries == null) {
+                                filterAndDisplay();
+                            }
+                        });
+                    }
+
+                    seriesItems.add(new VideoAdapter.FolderItem(
+                            seriesName,
+                            epList.size(),
+                            hasNew,
+                            false,
+                            "series",
+                            posterUrl,
+                            subtitle
+                    ));
+                }
+
+                if (currentSortMode == SORT_NAME_DESC) {
+                    Collections.sort(seriesItems, (a, b) -> b.name.compareToIgnoreCase(a.name));
+                } else {
+                    Collections.sort(seriesItems, (a, b) -> a.name.compareToIgnoreCase(b.name));
+                }
+                displayItems.addAll(seriesItems);
+                adapter.setItems(displayItems, true, false);
+            } else {
+                List<MediaItem> episodes = new ArrayList<>();
+                for (MediaItem v : allVideos) {
+                    if (currentSelectedSeries.equalsIgnoreCase(v.seriesName)) {
+                        if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase().contains(query))) {
+                            continue;
+                        }
+                        episodes.add(v);
+                    }
+                }
+                sortEpisodes(episodes);
+                displayItems.addAll(episodes);
+                adapter.setItems(displayItems, false, false);
+            }
+        } else if (currentCategory == CATEGORY_MOVIES) {
+            List<MediaItem> movieList = new ArrayList<>();
+            for (MediaItem v : allVideos) {
+                if ("movie".equalsIgnoreCase(v.mediaCategory)) {
+                    if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase().contains(query))) {
+                        continue;
+                    }
+                    movieList.add(v);
+
+                    if (v.posterUrl == null || v.posterUrl.isEmpty()) {
+                        OnlineMetadataManager.enrichItem(getContext(), v, info -> {
+                            if (isAdded() && currentCategory == CATEGORY_MOVIES) {
+                                adapter.notifyDataSetChanged();
+                            }
+                        });
+                    }
+                }
+            }
+            sortVideoList(movieList);
+            displayItems.addAll(movieList);
+            adapter.setItems(displayItems, false, false);
+        } else { // CATEGORY_ALL_VIDEOS
             List<MediaItem> videoList = new ArrayList<>();
             for (MediaItem v : allVideos) {
-                if (currentSelectedFolder != null && !currentSelectedFolder.equalsIgnoreCase(v.folder)) {
-                    continue;
-                }
                 if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase().contains(query))) {
                     continue;
                 }
@@ -440,10 +596,26 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         }
     }
 
+    private void sortEpisodes(List<MediaItem> list) {
+        if (list == null || list.size() <= 1) return;
+        Collections.sort(list, (a, b) -> {
+            int sCompare = Integer.compare(a.seasonNumber, b.seasonNumber);
+            if (sCompare != 0) return sCompare;
+            int eCompare = Integer.compare(a.episodeNumber, b.episodeNumber);
+            if (eCompare != 0) return eCompare;
+            String ta = a.title != null ? a.title : "";
+            String tb = b.title != null ? b.title : "";
+            return ta.compareToIgnoreCase(tb);
+        });
+    }
+
     private void applyCurrentViewMode() {
         if (getContext() == null || recyclerView == null) return;
         String query = etSearch != null ? etSearch.getText().toString().trim() : "";
-        if (isFoldersMode && currentSelectedFolder == null && query.isEmpty()) {
+        boolean isFolderGrid = (currentCategory == CATEGORY_FOLDERS && currentSelectedFolder == null && query.isEmpty())
+                || (currentCategory == CATEGORY_SERIES && currentSelectedSeries == null && query.isEmpty());
+
+        if (isFolderGrid) {
             recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 1));
             if (adapter != null) adapter.setViewMode(VideoAdapter.VIEW_MODE_GRID_2);
         } else {
@@ -629,6 +801,20 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         if (currentSelectedFolder != null && currentSelectedFolder.equalsIgnoreCase("Recently")) {
             activeList = new ArrayList<>(allVideos);
             Collections.sort(activeList, (a, b) -> Long.compare(b.addedAt, a.addedAt));
+        } else if (currentSelectedSeries != null) {
+            for (MediaItem v : allVideos) {
+                if (currentSelectedSeries.equalsIgnoreCase(v.seriesName)) {
+                    activeList.add(v);
+                }
+            }
+            sortEpisodes(activeList);
+        } else if (currentCategory == CATEGORY_MOVIES) {
+            for (MediaItem v : allVideos) {
+                if ("movie".equalsIgnoreCase(v.mediaCategory)) {
+                    activeList.add(v);
+                }
+            }
+            sortVideoList(activeList);
         } else if (allVideos != null) {
             for (MediaItem v : allVideos) {
                 if (currentSelectedFolder != null && !currentSelectedFolder.equalsIgnoreCase(v.folder)) {
@@ -636,6 +822,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 }
                 activeList.add(v);
             }
+            sortVideoList(activeList);
         }
 
         for (int i = 0; i < activeList.size(); i++) {
@@ -660,9 +847,13 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     }
 
     @Override
-    public void onFolderClick(String folderName) {
-        currentSelectedFolder = folderName;
-        isFoldersMode = false;
+    public void onFolderClick(VideoAdapter.FolderItem folder) {
+        if (folder == null) return;
+        if ("series".equalsIgnoreCase(folder.folderType)) {
+            currentSelectedSeries = folder.name;
+        } else {
+            currentSelectedFolder = folder.name;
+        }
         updateChipsUI();
         filterAndDisplay();
     }
@@ -678,9 +869,14 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             adapter.clearSelection();
             return true;
         }
+        if (currentSelectedSeries != null) {
+            currentSelectedSeries = null;
+            updateChipsUI();
+            filterAndDisplay();
+            return true;
+        }
         if (currentSelectedFolder != null) {
             currentSelectedFolder = null;
-            isFoldersMode = true;
             updateChipsUI();
             filterAndDisplay();
             return true;
