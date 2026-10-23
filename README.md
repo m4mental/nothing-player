@@ -121,6 +121,32 @@
 
 ---
 
+### 12. 🍿 Smart Media Organizer & Series Season Hub
+- **Autonomous Regex Classifier (`MediaItem.detectCategory`)**: Intelligently classifies downloaded videos into **Movies**, **Web Series**, and general videos using high-precision regex matching (`S\d+E\d+`, `\d+x\d+`, `Season \d+`, `EP\d+`).
+- **Online Metadata Enrichment (`OnlineMetadataManager`)**: Seamlessly enriches local series and movies with official posters, clean display titles, and release years via open REST endpoints (TVMaze & iTunes).
+- **Smart "Continue Watching" Series Hub**: Dedicated interactive banner atop the Series catalog featuring the last-watched episode, remaining time (`X MIN LEFT`), `DotMatrixProgressBar`, and 1-tap instant `RESUME`.
+- **Manual Re-Classifier ("MATCH SHOW / MOVIE INFO")**: Interactive Nothing OS dialog in File Info to reclassify and search metadata for obscure or misnamed files with instant cache synchronization.
+
+---
+
+### 13. ⏱️ Next Episode Countdown Overlay (Netflix Style)
+- **Automatic 15-Second HUD Trigger**: When playing a folder or series playlist, a discrete Nothing OS HUD card appears in the bottom-right corner during the last 15 seconds of the episode.
+- **Live Dot-Matrix Countdown**: Shows active red LED countdown (`● NEXT EPISODE IN 10S`) and the title of the next episode.
+- **Interactive Controls**:
+  - `CANCEL`: Suppresses the overlay and allows watching the current episode's credits.
+  - `PLAY NOW`: Instantly transitions to the next episode without waiting.
+  - **Auto-Play**: Automatically plays the next episode seamlessly when the timer reaches 0s.
+
+---
+
+### 14. 💬 Keyless Online Subtitles Downloader (`OnlineSubtitleManager`)
+- **Built-in Subtitle Repository Client**: Keyless, open search directly integrated into the player's subtitle selector dialog for both ExoPlayer (HW+) and LibVLC (SW+).
+- **Multi-Language Filters**: Search by video title with language filters (**ALL**, **ENGLISH**, **HINDI**), displaying ratings and download counts.
+- **In-Memory GZIP Extraction**: Automatically downloads and uncompresses `.gz` subtitle streams into `.srt` format in memory.
+- **Instant Engine Attachment**: Auto-loads downloaded subtitles into the active player with zero playback interruption.
+
+---
+
 ## 🛠️ Tech Stack
 
 - **Android Native**: Java / Kotlin (Android SDK 34+ / Android 16 API 36)
