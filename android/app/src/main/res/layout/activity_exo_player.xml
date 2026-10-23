@@ -83,7 +83,7 @@
             android:layout_height="wrap_content"
             android:text="● VOLUME"
             android:textColor="#D71921"
-            android:textSize="10sp"
+            android:textSize="8.5sp"
             android:textStyle="bold"
             android:fontFamily="@font/ndot"
             android:letterSpacing="0.15" />
@@ -125,7 +125,7 @@
             <com.nothing.player.DotMatrixTextView
                 android:id="@+id/gesture_hud_dot_matrix_text"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp" />
+                android:layout_height="24dp" />
 
             <TextView
                 android:id="@+id/gesture_hud_text"
@@ -203,7 +203,7 @@
                     android:layout_height="wrap_content"
                     android:text="VIDEO TITLE"
                     android:textColor="#FFFFFF"
-                    android:textSize="14sp"
+                    android:textSize="11.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:singleLine="true"
@@ -215,7 +215,7 @@
                     android:layout_height="wrap_content"
                     android:text="EXOPLAYER / HW+ DECODER"
                     android:textColor="#D71921"
-                    android:textSize="10sp"
+                    android:textSize="8.5sp"
                     android:fontFamily="@font/ndot"
                     android:textStyle="bold" />
             </LinearLayout>
@@ -246,7 +246,7 @@
                     android:layout_height="32dp"
                     android:text="HW+"
                     android:textColor="#D71921"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_player_pill_button"
@@ -337,7 +337,7 @@
                     android:layout_height="30dp"
                     android:text="1X"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_player_pill_button"
@@ -484,7 +484,7 @@
             <com.nothing.player.DotMatrixTextView
                 android:id="@+id/preview_time_text"
                 android:layout_width="wrap_content"
-                android:layout_height="14dp"
+                android:layout_height="11dp"
                 android:layout_gravity="bottom|center_horizontal"
                 android:background="#CC000000"
                 android:paddingHorizontal="6dp"
@@ -503,7 +503,7 @@
             <com.nothing.player.DotMatrixTextView
                 android:id="@+id/time_current_text"
                 android:layout_width="wrap_content"
-                android:layout_height="14dp"
+                android:layout_height="11dp"
                 android:layout_marginEnd="6dp" />
 
             <!-- Dot Matrix LED Timeline Scrubber Track -->
@@ -520,7 +520,7 @@
             <com.nothing.player.DotMatrixTextView
                 android:id="@+id/time_total_text"
                 android:layout_width="wrap_content"
-                android:layout_height="14dp"
+                android:layout_height="11dp"
                 android:layout_marginStart="6dp" />
         </LinearLayout>
 
@@ -616,7 +616,7 @@
                     android:layout_height="36dp"
                     android:text="SPEED"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:drawableStart="@drawable/ic_speed"
@@ -633,7 +633,7 @@
                     android:layout_height="36dp"
                     android:text="FIT"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:drawableStart="@drawable/ic_aspect_ratio"
@@ -671,7 +671,7 @@
                 android:layout_height="wrap_content"
                 android:text="PLAYLIST • 01 / 01"
                 android:textColor="#FFFFFF"
-                android:textSize="14sp"
+                android:textSize="11.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:layout_centerVertical="true" />
@@ -738,7 +738,7 @@
                     android:layout_height="wrap_content"
                     android:text="ASPECT RATIO"
                     android:textColor="#FFFFFF"
-                    android:textSize="15sp"
+                    android:textSize="12.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:layout_centerVertical="true" />
@@ -767,7 +767,7 @@
                 android:layout_height="wrap_content"
                 android:text="● SCREEN"
                 android:textColor="#D71921"
-                android:textSize="11sp"
+                android:textSize="9.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:layout_marginBottom="8dp" />
@@ -787,7 +787,7 @@
                     android:layout_margin="3dp"
                     android:text="FIT"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_red_active" />
@@ -800,7 +800,7 @@
                     android:layout_margin="3dp"
                     android:text="FILL"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -813,7 +813,7 @@
                     android:layout_margin="3dp"
                     android:text="ORIGINAL"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -826,7 +826,7 @@
                     android:layout_margin="3dp"
                     android:text="STRETCH"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -838,7 +838,7 @@
                 android:layout_height="wrap_content"
                 android:text="● STANDARD"
                 android:textColor="#D71921"
-                android:textSize="11sp"
+                android:textSize="9.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:layout_marginBottom="8dp" />
@@ -858,7 +858,7 @@
                     android:layout_margin="3dp"
                     android:text="16:9"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -871,7 +871,7 @@
                     android:layout_margin="3dp"
                     android:text="4:3"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -884,7 +884,7 @@
                     android:layout_margin="3dp"
                     android:text="18:9"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -897,7 +897,7 @@
                     android:layout_margin="3dp"
                     android:text="19.5:9"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -910,7 +910,7 @@
                     android:layout_margin="3dp"
                     android:text="20:9"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -923,7 +923,7 @@
                     android:layout_margin="3dp"
                     android:text="21:9"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -935,7 +935,7 @@
                 android:layout_height="wrap_content"
                 android:text="● CINEMA"
                 android:textColor="#D71921"
-                android:textSize="11sp"
+                android:textSize="9.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:layout_marginBottom="8dp" />
@@ -955,7 +955,7 @@
                     android:layout_margin="3dp"
                     android:text="1.85:1"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -968,7 +968,7 @@
                     android:layout_margin="3dp"
                     android:text="2.21:1"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -981,7 +981,7 @@
                     android:layout_margin="3dp"
                     android:text="2.35:1"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -994,7 +994,7 @@
                     android:layout_margin="3dp"
                     android:text="2.39:1"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -1019,7 +1019,7 @@
                     android:layout_centerVertical="true"
                     android:text="REMEMBER RATIO"
                     android:textColor="#FFFFFF"
-                    android:textSize="12sp"
+                    android:textSize="10.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot" />
 
@@ -1050,7 +1050,7 @@
                         android:layout_height="wrap_content"
                         android:text="TAP RATIOS TO SWITCH DIRECTLY"
                         android:textColor="#FFFFFF"
-                        android:textSize="12sp"
+                        android:textSize="10.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot" />
 
@@ -1059,7 +1059,7 @@
                         android:layout_height="wrap_content"
                         android:text="(LONG PRESS OPENS FULL MENU)"
                         android:textColor="#88FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:fontFamily="@font/ndot" />
                 </LinearLayout>
 
@@ -1111,7 +1111,7 @@
                         android:layout_height="wrap_content"
                         android:text="PLAYBACK SPEED"
                         android:textColor="#FFFFFF"
-                        android:textSize="15sp"
+                        android:textSize="12.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:layout_centerVertical="true" />
@@ -1148,7 +1148,7 @@
                         android:layout_height="40dp"
                         android:text="-0.05"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="8.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:background="@drawable/bg_chip_dark_inactive" />
@@ -1160,7 +1160,7 @@
                         android:gravity="center"
                         android:text="1.00X"
                         android:textColor="#D71921"
-                        android:textSize="26sp"
+                        android:textSize="20sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot" />
 
@@ -1170,7 +1170,7 @@
                         android:layout_height="40dp"
                         android:text="+0.05"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="8.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:background="@drawable/bg_chip_dark_inactive" />
@@ -1199,7 +1199,7 @@
                         android:layout_alignParentStart="true"
                         android:text="0.25X"
                         android:textColor="#88FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="8.5sp"
                         android:fontFamily="@font/ndot" />
 
                     <TextView
@@ -1208,7 +1208,7 @@
                         android:layout_alignParentEnd="true"
                         android:text="8.0X"
                         android:textColor="#88FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="8.5sp"
                         android:fontFamily="@font/ndot" />
                 </RelativeLayout>
 
@@ -1218,7 +1218,7 @@
                     android:layout_height="wrap_content"
                     android:text="● PRESETS"
                     android:textColor="#D71921"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:layout_marginBottom="8dp" />
@@ -1238,7 +1238,7 @@
                         android:layout_margin="2dp"
                         android:text="0.25X"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="8.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:background="@drawable/bg_chip_dark_inactive" />
@@ -1251,7 +1251,7 @@
                         android:layout_margin="2dp"
                         android:text="0.5X"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="8.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:background="@drawable/bg_chip_dark_inactive" />
@@ -1264,7 +1264,7 @@
                         android:layout_margin="2dp"
                         android:text="1.0X"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="8.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:background="@drawable/bg_chip_red_active" />
@@ -1277,7 +1277,7 @@
                         android:layout_margin="2dp"
                         android:text="1.25X"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="8.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:background="@drawable/bg_chip_dark_inactive" />
@@ -1290,7 +1290,7 @@
                         android:layout_margin="2dp"
                         android:text="1.5X"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="8.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:background="@drawable/bg_chip_dark_inactive" />
@@ -1303,7 +1303,7 @@
                         android:layout_margin="2dp"
                         android:text="2.0X"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="8.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:background="@drawable/bg_chip_dark_inactive" />
@@ -1316,7 +1316,7 @@
                         android:layout_margin="2dp"
                         android:text="4.0X"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="8.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:background="@drawable/bg_chip_dark_inactive" />
@@ -1329,7 +1329,7 @@
                         android:layout_margin="2dp"
                         android:text="8.0X"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="8.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:background="@drawable/bg_chip_dark_inactive" />
@@ -1356,7 +1356,7 @@
                         android:layout_centerVertical="true"
                         android:text="ADVANCED SETTINGS"
                         android:textColor="#FFFFFF"
-                        android:textSize="12sp"
+                        android:textSize="10.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot" />
 
@@ -1407,7 +1407,7 @@
                         android:layout_marginStart="8dp"
                         android:text="ADVANCED SETTINGS"
                         android:textColor="#FFFFFF"
-                        android:textSize="14sp"
+                        android:textSize="11.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot" />
                 </RelativeLayout>
@@ -1436,7 +1436,7 @@
                             android:layout_height="wrap_content"
                             android:text="REMEMBER SPEED"
                             android:textColor="#FFFFFF"
-                            android:textSize="12sp"
+                            android:textSize="10.5sp"
                             android:textStyle="bold"
                             android:fontFamily="@font/ndot" />
 
@@ -1445,7 +1445,7 @@
                             android:layout_height="wrap_content"
                             android:text="REMEMBER SPEED FOR ALL VIDEOS"
                             android:textColor="#88FFFFFF"
-                            android:textSize="9sp"
+                            android:textSize="7.5sp"
                             android:fontFamily="@font/ndot" />
                     </LinearLayout>
 
@@ -1477,7 +1477,7 @@
                             android:layout_height="wrap_content"
                             android:text="LONG PRESS TO SPEED UP"
                             android:textColor="#FFFFFF"
-                            android:textSize="12sp"
+                            android:textSize="10.5sp"
                             android:textStyle="bold"
                             android:fontFamily="@font/ndot" />
 
@@ -1486,7 +1486,7 @@
                             android:layout_height="wrap_content"
                             android:text="HOLD SCREEN TO BOOST SPEED"
                             android:textColor="#88FFFFFF"
-                            android:textSize="9sp"
+                            android:textSize="7.5sp"
                             android:fontFamily="@font/ndot" />
                     </LinearLayout>
 
@@ -1515,7 +1515,7 @@
                         android:layout_centerVertical="true"
                         android:text="LONG-PRESS SPEED"
                         android:textColor="#FFFFFF"
-                        android:textSize="12sp"
+                        android:textSize="10.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot" />
 
@@ -1550,7 +1550,7 @@
                             android:layout_height="wrap_content"
                             android:text="LONG PRESS VIBRATION"
                             android:textColor="#FFFFFF"
-                            android:textSize="12sp"
+                            android:textSize="10.5sp"
                             android:textStyle="bold"
                             android:fontFamily="@font/ndot" />
 
@@ -1559,7 +1559,7 @@
                             android:layout_height="wrap_content"
                             android:text="HAPTIC FEEDBACK ON BOOST"
                             android:textColor="#88FFFFFF"
-                            android:textSize="9sp"
+                            android:textSize="7.5sp"
                             android:fontFamily="@font/ndot" />
                     </LinearLayout>
 
@@ -1606,7 +1606,7 @@
                     android:layout_height="wrap_content"
                     android:text="MORE OPTIONS"
                     android:textColor="#FFFFFF"
-                    android:textSize="15sp"
+                    android:textSize="12.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:layout_centerVertical="true" />
@@ -1660,7 +1660,7 @@
                         android:layout_height="wrap_content"
                         android:text="AUDIO"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -1690,7 +1690,7 @@
                         android:layout_height="wrap_content"
                         android:text="SUBTITLE"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -1720,7 +1720,7 @@
                         android:layout_height="wrap_content"
                         android:text="BG PLAY"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -1750,7 +1750,7 @@
                         android:layout_height="wrap_content"
                         android:text="POP-UP"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -1788,7 +1788,7 @@
                         android:layout_height="wrap_content"
                         android:text="CAST"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -1818,7 +1818,7 @@
                         android:layout_height="wrap_content"
                         android:text="DELETE"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -1849,7 +1849,7 @@
                         android:layout_height="wrap_content"
                         android:text="BOOKMARK"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -1880,7 +1880,7 @@
                         android:layout_height="wrap_content"
                         android:text="FAVORITE"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -1900,7 +1900,7 @@
                 android:layout_height="wrap_content"
                 android:text="● PLAY OPTION"
                 android:textColor="#D71921"
-                android:textSize="11sp"
+                android:textSize="9.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:layout_marginBottom="8dp" />
@@ -1935,7 +1935,7 @@
                         android:layout_height="wrap_content"
                         android:text="AB REPEAT"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -1965,7 +1965,7 @@
                         android:layout_height="wrap_content"
                         android:text="EQUALIZER"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -1997,7 +1997,7 @@
                         android:layout_height="wrap_content"
                         android:text="TIMER"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -2027,7 +2027,7 @@
                         android:layout_height="wrap_content"
                         android:text="VISUAL"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -2054,7 +2054,7 @@
                     android:layout_centerVertical="true"
                     android:text="REPEAT MODE"
                     android:textColor="#FFFFFF"
-                    android:textSize="12sp"
+                    android:textSize="10.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot" />
 
@@ -2066,7 +2066,7 @@
                     android:layout_centerVertical="true"
                     android:text="LOOP ALL"
                     android:textColor="#D71921"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot" />
             </RelativeLayout>
@@ -2145,7 +2145,7 @@
                 android:layout_height="wrap_content"
                 android:text="BRIGHTNESS"
                 android:textColor="#FFFFFF"
-                android:textSize="11sp"
+                android:textSize="9.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:layout_marginBottom="4dp" />
@@ -2181,7 +2181,7 @@
                     android:gravity="end"
                     android:text="50"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot" />
             </LinearLayout>
@@ -2192,7 +2192,7 @@
                 android:layout_height="wrap_content"
                 android:text="VOLUME"
                 android:textColor="#FFFFFF"
-                android:textSize="11sp"
+                android:textSize="9.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:layout_marginBottom="4dp" />
@@ -2228,7 +2228,7 @@
                     android:gravity="end"
                     android:text="100"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot" />
             </LinearLayout>
@@ -2245,7 +2245,7 @@
                 android:layout_height="wrap_content"
                 android:text="DECODER"
                 android:textColor="#FFFFFF"
-                android:textSize="11sp"
+                android:textSize="9.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:layout_marginBottom="8dp" />
@@ -2264,7 +2264,7 @@
                     android:layout_marginEnd="4dp"
                     android:text="HW DECODER"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_red_active" />
@@ -2277,7 +2277,7 @@
                     android:layout_marginStart="4dp"
                     android:text="SW DECODER"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_chip_dark_inactive" />
@@ -2295,7 +2295,7 @@
                 android:layout_height="wrap_content"
                 android:text="● CUSTOM"
                 android:textColor="#D71921"
-                android:textSize="11sp"
+                android:textSize="9.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:layout_marginBottom="8dp" />
@@ -2312,7 +2312,7 @@
                     android:layout_centerVertical="true"
                     android:text="SCREENSHOT BUTTON"
                     android:textColor="#FFFFFF"
-                    android:textSize="12sp"
+                    android:textSize="10.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot" />
 
@@ -2356,7 +2356,7 @@
                         android:layout_height="wrap_content"
                         android:text="EDIT"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -2386,7 +2386,7 @@
                         android:layout_height="wrap_content"
                         android:text="FILTER"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -2416,7 +2416,7 @@
                         android:layout_height="wrap_content"
                         android:text="SHARE"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -2446,7 +2446,7 @@
                         android:layout_height="wrap_content"
                         android:text="OTHERS"
                         android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:textSize="7.5sp"
                         android:textStyle="bold"
                         android:fontFamily="@font/ndot"
                         android:gravity="center"
@@ -2501,7 +2501,7 @@
                     android:layout_marginStart="8dp"
                     android:text="VISUAL ENHANCER"
                     android:textColor="#FFFFFF"
-                    android:textSize="14sp"
+                    android:textSize="11.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot" />
 
@@ -2538,7 +2538,7 @@
                     android:layout_margin="4dp"
                     android:text="ORIGINAL"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_filter_card_selected" />
@@ -2551,7 +2551,7 @@
                     android:layout_margin="4dp"
                     android:text="HDR"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_filter_card" />
@@ -2564,7 +2564,7 @@
                     android:layout_margin="4dp"
                     android:text="CLEAR"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_filter_card" />
@@ -2577,7 +2577,7 @@
                     android:layout_margin="4dp"
                     android:text="ULTRA CLEAR"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_filter_card" />
@@ -2590,7 +2590,7 @@
                     android:layout_margin="4dp"
                     android:text="ARCTIC BLUE"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_filter_card" />
@@ -2603,7 +2603,7 @@
                     android:layout_margin="4dp"
                     android:text="WARM GLOW"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_filter_card" />
@@ -2616,7 +2616,7 @@
                     android:layout_margin="4dp"
                     android:text="CINEMATIC"
                     android:textColor="#FFFFFF"
-                    android:textSize="11sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:background="@drawable/bg_filter_card" />
@@ -2635,7 +2635,7 @@
                     android:layout_centerVertical="true"
                     android:text="APPLY TO ALL"
                     android:textColor="#FFFFFF"
-                    android:textSize="12sp"
+                    android:textSize="10.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot" />
 
@@ -2695,7 +2695,7 @@
                     android:layout_marginStart="8dp"
                     android:text="SLEEP TIMER"
                     android:textColor="#FFFFFF"
-                    android:textSize="14sp"
+                    android:textSize="11.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot" />
 
@@ -2724,7 +2724,7 @@
                 android:layout_height="wrap_content"
                 android:text="STATUS: OFF"
                 android:textColor="#D71921"
-                android:textSize="12sp"
+                android:textSize="10.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:layout_marginBottom="14dp" />
@@ -2736,7 +2736,7 @@
                 android:layout_height="44dp"
                 android:text="OFF"
                 android:textColor="#FFFFFF"
-                android:textSize="12sp"
+                android:textSize="10.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:background="@drawable/bg_chip_red_active"
@@ -2748,7 +2748,7 @@
                 android:layout_height="44dp"
                 android:text="15 MINUTES"
                 android:textColor="#FFFFFF"
-                android:textSize="12sp"
+                android:textSize="10.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:background="@drawable/bg_chip_dark_inactive"
@@ -2760,7 +2760,7 @@
                 android:layout_height="44dp"
                 android:text="30 MINUTES"
                 android:textColor="#FFFFFF"
-                android:textSize="12sp"
+                android:textSize="10.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:background="@drawable/bg_chip_dark_inactive"
@@ -2772,7 +2772,7 @@
                 android:layout_height="44dp"
                 android:text="60 MINUTES"
                 android:textColor="#FFFFFF"
-                android:textSize="12sp"
+                android:textSize="10.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:background="@drawable/bg_chip_dark_inactive"
@@ -2784,7 +2784,7 @@
                 android:layout_height="44dp"
                 android:text="90 MINUTES"
                 android:textColor="#FFFFFF"
-                android:textSize="12sp"
+                android:textSize="10.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:background="@drawable/bg_chip_dark_inactive"
@@ -2796,7 +2796,7 @@
                 android:layout_height="44dp"
                 android:text="END OF CURRENT VIDEO"
                 android:textColor="#FFFFFF"
-                android:textSize="12sp"
+                android:textSize="10.5sp"
                 android:textStyle="bold"
                 android:fontFamily="@font/ndot"
                 android:background="@drawable/bg_chip_dark_inactive"
@@ -2845,7 +2845,7 @@
                     android:layout_height="wrap_content"
                     android:text="OTHERS"
                     android:textColor="#FFFFFF"
-                    android:textSize="15sp"
+                    android:textSize="12.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot"
                     android:layout_toEndOf="@id/btn_back_others"
@@ -2896,7 +2896,7 @@
                     android:layout_weight="1"
                     android:text="PROPERTIES"
                     android:textColor="#FFFFFF"
-                    android:textSize="13sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot" />
 
@@ -2934,7 +2934,7 @@
                     android:layout_weight="1"
                     android:text="FAQ"
                     android:textColor="#FFFFFF"
-                    android:textSize="13sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot" />
 
@@ -2972,7 +2972,7 @@
                     android:layout_weight="1"
                     android:text="CAST FAQ"
                     android:textColor="#FFFFFF"
-                    android:textSize="13sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot" />
 
@@ -3010,7 +3010,7 @@
                     android:layout_weight="1"
                     android:text="PLAYBACK ISSUE"
                     android:textColor="#FFFFFF"
-                    android:textSize="13sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold"
                     android:fontFamily="@font/ndot" />
 

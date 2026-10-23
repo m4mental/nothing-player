@@ -18,7 +18,7 @@ public class DotMatrixTextView extends View {
 
     private String text = "50%";
     private int textColor = Color.WHITE;
-    private int inactiveDotColor = Color.parseColor("#15FFFFFF");
+    private int inactiveDotColor = Color.parseColor("#10FFFFFF");
 
     private final Paint activePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint inactivePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -517,7 +517,7 @@ public class DotMatrixTextView extends View {
         int heightSize = MeasureSpec.getSize(heightMeasureSpec);
 
         int charCount = Math.max(1, text.length());
-        int desiredHeight = (int) (18 * getResources().getDisplayMetrics().density);
+        int desiredHeight = (int) (14 * getResources().getDisplayMetrics().density);
         if (heightMode == MeasureSpec.EXACTLY || (heightMode == MeasureSpec.AT_MOST && heightSize > 0)) {
             desiredHeight = heightSize;
         }
@@ -542,7 +542,7 @@ public class DotMatrixTextView extends View {
 
         int charCount = text.length();
         float dotSpacing = Math.min((float) height / FONT_HEIGHT, (float) width / (charCount * (FONT_WIDTH + 1)));
-        float dotDiameter = dotSpacing * 0.72f;
+        float dotDiameter = dotSpacing * 0.48f;
         float dotRadius = dotDiameter / 2f;
 
         float totalTextWidth = charCount * (FONT_WIDTH + 1) * dotSpacing - dotSpacing;

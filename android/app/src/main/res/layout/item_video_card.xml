@@ -39,7 +39,7 @@
                 android:paddingVertical="1dp"
                 android:text="1080p"
                 android:textColor="@color/nothing_white"
-                android:textSize="8sp"
+                android:textSize="7sp"
                 android:fontFamily="@font/ndot"
                 android:textStyle="bold" />
 
@@ -53,7 +53,7 @@
                 android:paddingVertical="1dp"
                 android:text="5.1"
                 android:textColor="@color/nothing_white"
-                android:textSize="8sp"
+                android:textSize="7sp"
                 android:fontFamily="@font/ndot"
                 android:textStyle="bold"
                 android:visibility="gone" />
@@ -68,7 +68,7 @@
                 android:paddingVertical="1dp"
                 android:text="NEW"
                 android:textColor="#FFFFFF"
-                android:textSize="8sp"
+                android:textSize="7sp"
                 android:fontFamily="@font/ndot"
                 android:textStyle="bold"
                 android:visibility="gone" />
@@ -87,7 +87,7 @@
             android:paddingVertical="2dp"
             android:text="00:00"
             android:textColor="@color/nothing_white"
-            android:textSize="9sp"
+            android:textSize="8sp"
             android:fontFamily="@font/ndot"
             android:textStyle="bold" />
 
@@ -129,7 +129,7 @@
                 android:layout_height="wrap_content"
                 android:text="Video Title"
                 android:textColor="@color/nothing_white"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:fontFamily="@font/ndot"
                 android:textStyle="bold"
                 android:maxLines="2"
@@ -142,7 +142,7 @@
                 android:layout_marginTop="2dp"
                 android:text="Movies • 1.2 GB"
                 android:textColor="@color/nothing_white_40"
-                android:textSize="9sp"
+                android:textSize="8sp"
                 android:fontFamily="@font/ndot"
                 android:singleLine="true" />
         </LinearLayout>

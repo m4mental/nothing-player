@@ -29,7 +29,7 @@
             android:layout_centerVertical="true"
             android:text="● WATCH HISTORY"
             android:textColor="@color/nothing_white"
-            android:textSize="16sp"
+            android:textSize="13.5sp"
             android:fontFamily="@font/ndot"
             android:textStyle="bold" />
 
@@ -43,7 +43,7 @@
             app:backgroundTint="@null"
             android:text="CLEAR ALL"
             android:textColor="#FFFFFF"
-            android:textSize="10sp"
+            android:textSize="8.5sp"
             android:fontFamily="@font/ndot"
             android:textStyle="bold"
             android:paddingHorizontal="14dp" />
@@ -55,7 +55,7 @@
         android:layout_marginBottom="12dp"
         android:text="Resume playback from where you left off or start over"
         android:textColor="@color/nothing_white_40"
-        android:textSize="10sp"
+        android:textSize="8.5sp"
         android:fontFamily="@font/ndot" />
 
     <!-- Separator Line -->
@@ -86,7 +86,7 @@
             android:layout_height="wrap_content"
             android:text="NO WATCH HISTORY"
             android:textColor="@color/nothing_white_70"
-            android:textSize="13sp"
+            android:textSize="11sp"
             android:fontFamily="@font/ndot"
             android:textStyle="bold" />
 
@@ -96,7 +96,7 @@
             android:layout_marginTop="4dp"
             android:text="Videos you watch will appear here"
             android:textColor="@color/nothing_white_40"
-            android:textSize="10sp"
+            android:textSize="8.5sp"
             android:fontFamily="@font/ndot" />
     </LinearLayout>
 

@@ -34,7 +34,7 @@
             android:layout_height="wrap_content"
             android:text="Track Title"
             android:textColor="@color/nothing_white"
-            android:textSize="12sp"
+            android:textSize="10.5sp"
             android:fontFamily="@font/ndot"
             android:textStyle="bold"
             android:singleLine="true"
@@ -47,7 +47,7 @@
             android:layout_marginTop="2dp"
             android:text="Artist • Album • MP3"
             android:textColor="@color/nothing_white_40"
-            android:textSize="10sp"
+            android:textSize="8.5sp"
             android:fontFamily="@font/ndot"
             android:singleLine="true" />
     </LinearLayout>
@@ -67,7 +67,7 @@
             android:layout_height="wrap_content"
             android:text="03:45"
             android:textColor="@color/nothing_white_40"
-            android:textSize="10sp"
+            android:textSize="8.5sp"
             android:fontFamily="@font/ndot"
             android:layout_marginEnd="6dp" />
 

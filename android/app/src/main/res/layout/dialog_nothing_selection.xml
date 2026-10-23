@@ -28,7 +28,7 @@
             android:layout_weight="1"
             android:text="SELECT AUDIO TRACK"
             android:textColor="#FFFFFF"
-            android:textSize="15sp"
+            android:textSize="12.5sp"
             android:textStyle="bold"
             android:fontFamily="@font/ndot"
             android:letterSpacing="0.04" />
@@ -64,7 +64,7 @@
         android:layout_marginTop="14dp"
         android:text="CANCEL"
         android:textColor="#FFFFFF"
-        android:textSize="12sp"
+        android:textSize="10sp"
         android:textStyle="bold"
         android:fontFamily="@font/ndot"
         android:background="@drawable/bg_chip_dark_inactive" />

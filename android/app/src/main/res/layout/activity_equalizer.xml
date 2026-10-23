@@ -87,7 +87,7 @@
                 android:layout_height="wrap_content"
                 android:text="ON"
                 android:textColor="@color/nothing_white"
-                android:textSize="11sp"
+                android:textSize="9.5sp"
                 android:fontFamily="@font/ndot"
                 android:textStyle="bold"
                 app:thumbTint="@color/switch_thumb_color"
@@ -102,7 +102,7 @@
                 android:background="@drawable/bg_chip_unselected"
                 android:text="RESET"
                 android:textColor="@color/nothing_white_70"
-                android:textSize="10sp"
+                android:textSize="8.5sp"
                 android:fontFamily="@font/ndot"
                 android:paddingHorizontal="8dp" />
         </LinearLayout>
