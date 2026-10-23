@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_card_nothing"
+    android:orientation="vertical"
+    android:padding="18dp"
+    android:layout_margin="16dp"
+    android:minWidth="320dp">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="12dp">
+
+        <View
+            android:layout_width="6dp"
+            android:layout_height="6dp"
+            android:background="@drawable/led_red"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="ONLINE SUBTITLES (OPENSUBTITLES)"
+            android:textColor="#D71921"
+            android:textSize="9sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+    </LinearLayout>
+
+    <!-- Search Bar Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="10dp">
+
+        <EditText
+            android:id="@+id/et_subtitle_query"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_chip_unselected"
+            android:hint="Enter movie or series title..."
+            android:textColorHint="@color/nothing_white_40"
+            android:textColor="@color/nothing_white"
+            android:textSize="9.5sp"
+            android:fontFamily="@font/ndot"
+            android:paddingHorizontal="12dp"
+            android:singleLine="true"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btn_subtitle_search"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:background="@drawable/bg_chip_red_active"
+            android:text="SEARCH"
+            android:textColor="#FFFFFF"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:paddingHorizontal="14dp" />
+    </LinearLayout>
+
+    <!-- Language Filter Pills -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="10dp">
+
+        <Button
+            android:id="@+id/btn_lang_all"
+            android:layout_width="0dp"
+            android:layout_height="28dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_chip_unselected"
+            android:text="ALL"
+            android:textColor="@color/nothing_white"
+            android:textSize="7.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btn_lang_eng"
+            android:layout_width="0dp"
+            android:layout_height="28dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_chip_selected"
+            android:text="ENGLISH"
+            android:textColor="@color/nothing_black"
+            android:textSize="7.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:layout_marginHorizontal="2dp" />
+
+        <Button
+            android:id="@+id/btn_lang_hin"
+            android:layout_width="0dp"
+            android:layout_height="28dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_chip_unselected"
+            android:text="HINDI"
+            android:textColor="@color/nothing_white"
+            android:textSize="7.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:layout_marginStart="4dp" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#26FFFFFF"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Loading Indicator -->
+    <ProgressBar
+        android:id="@+id/pb_subtitles_loading"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_gravity="center"
+        android:indeterminateTint="#D71921"
+        android:layout_marginVertical="12dp"
+        android:visibility="gone" />
+
+    <!-- Status Text -->
+    <TextView
+        android:id="@+id/tv_subtitles_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ENTER TITLE AND TAP SEARCH"
+        android:textColor="@color/nothing_white_40"
+        android:textSize="8sp"
+        android:fontFamily="@font/ndot"
+        android:gravity="center"
+        android:layout_marginVertical="12dp" />
+
+    <!-- Results List -->
+    <ScrollView
+        android:id="@+id/scroll_subtitles"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:maxHeight="220dp"
+        android:scrollbars="none"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/layout_subtitles_results"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+
+    <!-- Bottom Actions -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="10dp">
+
+        <Button
+            android:id="@+id/btn_subtitle_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:background="@drawable/bg_chip_unselected"
+            android:text="CLOSE"
+            android:textColor="@color/nothing_white"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:paddingHorizontal="16dp" />
+    </LinearLayout>
+
+</LinearLayout>

@@ -49,6 +49,7 @@ public class FileInfoBottomSheet extends BottomSheetDialogFragment {
         TextView tvChannels = view.findViewById(R.id.info_audio_channels);
         TextView badgeFormat = view.findViewById(R.id.badge_audio_format);
         Button btnCopy = view.findViewById(R.id.btn_copy_path);
+        Button btnMatch = view.findViewById(R.id.btn_match_metadata);
         Button btnPlay = view.findViewById(R.id.btn_play_from_info);
         View btnClose = view.findViewById(R.id.btn_close_info);
 
@@ -72,6 +73,10 @@ public class FileInfoBottomSheet extends BottomSheetDialogFragment {
             Toast.makeText(getContext(), "Path Copied to Clipboard", Toast.LENGTH_SHORT).show();
         });
 
+        if (btnMatch != null) {
+            btnMatch.setOnClickListener(v -> showMatchDialog());
+        }
+
         btnPlay.setOnClickListener(v -> {
             dismiss();
             if ("video".equals(item.type)) {
@@ -87,5 +92,67 @@ public class FileInfoBottomSheet extends BottomSheetDialogFragment {
         btnClose.setOnClickListener(v -> dismiss());
 
         return view;
+    }
+
+    private void showMatchDialog() {
+        if (getContext() == null || item == null) return;
+
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(getContext());
+        View view = LayoutInflater.from(getContext()).inflate(R.layout.dialog_match_metadata, null);
+        builder.setView(view);
+        android.app.AlertDialog dialog = builder.create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+
+        android.widget.EditText etQuery = view.findViewById(R.id.et_match_query);
+        android.widget.Button btnSeries = view.findViewById(R.id.btn_type_series);
+        android.widget.Button btnMovie = view.findViewById(R.id.btn_type_movie);
+        android.widget.Button btnSearch = view.findViewById(R.id.btn_match_search);
+        android.widget.Button btnCancel = view.findViewById(R.id.btn_match_cancel);
+
+        final String[] selectedType = {"series"};
+        if ("movie".equalsIgnoreCase(item.mediaCategory)) selectedType[0] = "movie";
+
+        Runnable updateButtons = () -> {
+            boolean isSeries = "series".equalsIgnoreCase(selectedType[0]);
+            btnSeries.setBackgroundResource(isSeries ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
+            btnSeries.setTextColor(getResources().getColor(isSeries ? R.color.nothing_black : R.color.nothing_white));
+            btnMovie.setBackgroundResource(!isSeries ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
+            btnMovie.setTextColor(getResources().getColor(!isSeries ? R.color.nothing_black : R.color.nothing_white));
+        };
+        updateButtons.run();
+
+        btnSeries.setOnClickListener(v -> {
+            selectedType[0] = "series";
+            updateButtons.run();
+        });
+        btnMovie.setOnClickListener(v -> {
+            selectedType[0] = "movie";
+            updateButtons.run();
+        });
+
+        String initial = item.cleanTitle != null ? item.cleanTitle : (item.seriesName != null ? item.seriesName : item.title);
+        etQuery.setText(initial);
+        etQuery.setSelection(etQuery.getText().length());
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnSearch.setOnClickListener(v -> {
+            String query = etQuery.getText().toString().trim();
+            if (query.isEmpty()) return;
+
+            Toast.makeText(getContext(), "SEARCHING ONLINE REGISTRY...", Toast.LENGTH_SHORT).show();
+            OnlineMetadataManager.searchAndApply(getContext(), item, query, selectedType[0], info -> {
+                if (info != null) {
+                    Toast.makeText(getContext(), "MATCHED: " + info.title, Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                    dismiss();
+                } else {
+                    Toast.makeText(getContext(), "NO ONLINE MATCH FOUND", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+
+        dialog.show();
     }
 }

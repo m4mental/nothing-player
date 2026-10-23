@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="?attr/selectableItemBackground"
+    android:paddingVertical="8dp"
+    android:paddingHorizontal="4dp">
+
+    <TextView
+        android:id="@+id/tv_sub_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Game.of.Thrones.S01E01.720p.HDTV.x264.srt"
+        android:textColor="#FFFFFF"
+        android:textSize="8.5sp"
+        android:fontFamily="@font/ndot"
+        android:textStyle="bold"
+        android:singleLine="true"
+        android:ellipsize="middle" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="3dp">
+
+        <TextView
+            android:id="@+id/tv_sub_meta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="[ENG] • ★ 4.8 • 14.2K DOWNLOADS"
+            android:textColor="#D71921"
+            android:textSize="7sp"
+            android:fontFamily="@font/ndot"
+            android:letterSpacing="0.04" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#14FFFFFF"
+        android:layout_marginTop="8dp" />
+
+</LinearLayout>

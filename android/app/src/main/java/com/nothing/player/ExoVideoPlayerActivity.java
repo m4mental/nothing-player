@@ -37,11 +37,13 @@ import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -212,6 +214,16 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private ImageButton btnQuickScreenshot;
     private ImageButton btnFloatingLock;
     private String currentRatioLabel = "FIT";
+    // Next Episode Countdown Overlay
+    private View layoutNextEpisodeCard;
+    private TextView tvNextEpisodeTag;
+    private TextView tvNextEpisodeTitle;
+    private Button btnCancelNextEpisode;
+    private Button btnPlayNowNextEpisode;
+    private boolean hasCancelledNextEpisodeForCurrent = false;
+
+    // Online Subtitles
+    private Uri activeSubtitleUri = null;
 
     // Bottom Controls
     private Button btnBottomSpeed;
@@ -902,6 +914,25 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         btnTimer90 = findViewById(R.id.btn_timer_90);
         btnTimerEndOfVideo = findViewById(R.id.btn_timer_end_of_video);
 
+        layoutNextEpisodeCard = findViewById(R.id.layout_next_episode_card);
+        tvNextEpisodeTag = findViewById(R.id.tv_next_episode_tag);
+        tvNextEpisodeTitle = findViewById(R.id.tv_next_episode_title);
+        btnCancelNextEpisode = findViewById(R.id.btn_cancel_next_episode);
+        btnPlayNowNextEpisode = findViewById(R.id.btn_play_now_next_episode);
+
+        if (btnCancelNextEpisode != null) {
+            btnCancelNextEpisode.setOnClickListener(v -> {
+                hasCancelledNextEpisodeForCurrent = true;
+                if (layoutNextEpisodeCard != null) layoutNextEpisodeCard.setVisibility(View.GONE);
+            });
+        }
+        if (btnPlayNowNextEpisode != null) {
+            btnPlayNowNextEpisode.setOnClickListener(v -> {
+                if (layoutNextEpisodeCard != null) layoutNextEpisodeCard.setVisibility(View.GONE);
+                playNextVideo();
+            });
+        }
+
         try {
             vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         } catch (Exception ignored) {}
@@ -1337,7 +1368,19 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (exoPlayer != null) {
             Uri targetUri = resolveMediaUri();
             if (targetUri != null) {
-                MediaItem mediaItem = MediaItem.fromUri(targetUri);
+                MediaItem mediaItem;
+                if (activeSubtitleUri != null) {
+                    MediaItem.SubtitleConfiguration subtitleConfig = new MediaItem.SubtitleConfiguration.Builder(activeSubtitleUri)
+                            .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_SUBRIP)
+                            .setLanguage("eng")
+                            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                            .build();
+                    mediaItem = new MediaItem.Builder().setUri(targetUri)
+                            .setSubtitleConfigurations(java.util.Collections.singletonList(subtitleConfig))
+                            .build();
+                } else {
+                    mediaItem = MediaItem.fromUri(targetUri);
+                }
                 exoPlayer.setMediaItem(mediaItem, resumePos > 0 ? resumePos : 0);
                 exoPlayer.prepare();
                 exoPlayer.play();
@@ -1402,6 +1445,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 mediaItemBuilder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8);
             } else if (urlLower.contains(".mpd") || urlLower.contains("dash")) {
                 mediaItemBuilder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MPD);
+            }
+            if (activeSubtitleUri != null) {
+                MediaItem.SubtitleConfiguration subtitleConfig = new MediaItem.SubtitleConfiguration.Builder(activeSubtitleUri)
+                        .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_SUBRIP)
+                        .setLanguage("eng")
+                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                        .build();
+                mediaItemBuilder.setSubtitleConfigurations(java.util.Collections.singletonList(subtitleConfig));
             }
             MediaItem mediaItem = mediaItemBuilder.build();
             
@@ -1497,6 +1548,11 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 vlcPlayer.setMedia(media);
                 media.release();
                 vlcPlayer.play();
+                if (activeSubtitleUri != null) {
+                    try {
+                        vlcPlayer.addSlave(Media.Slave.Type.Subtitle, activeSubtitleUri, true);
+                    } catch (Exception ignored) {}
+                }
                 if (resumePos > 0) {
                     vlcPlayer.setTime(resumePos);
                 }
@@ -1542,6 +1598,11 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     if (event.type == MediaPlayer.Event.Playing) {
                         hideTransitionOverlay();
+                        if (activeSubtitleUri != null) {
+                            try {
+                                vlcPlayer.addSlave(Media.Slave.Type.Subtitle, activeSubtitleUri, true);
+                            } catch (Exception ignored) {}
+                        }
                         btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
                         startProgressTracker();
                         scheduleHideControls();
@@ -3277,7 +3338,14 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             }
         }
 
+        final int searchOnlineIndex = trackLabels.size();
+        trackLabels.add("● SEARCH ONLINE SUBTITLES");
+
         showNothingSelectionDialog("SELECT SUBTITLE (ESUB / CC)", trackLabels, selectedIndex, which -> {
+            if (which == searchOnlineIndex) {
+                showOnlineSubtitleSearchDialog();
+                return;
+            }
             if (which == 0) {
                 trackSelector.setParameters(
                     trackSelector.buildUponParameters()
@@ -3301,28 +3369,233 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private void showVlcSubtitleTrackDialog() {
         if (vlcPlayer == null) return;
         MediaPlayer.TrackDescription[] tracks = vlcPlayer.getSpuTracks();
-        if (tracks == null || tracks.length == 0) {
-            Toast.makeText(this, "No subtitles found", Toast.LENGTH_SHORT).show();
-            return;
-        }
 
         int currentTrackId = vlcPlayer.getSpuTrack();
         int selectedIndex = 0;
         final List<String> labels = new ArrayList<>();
         final List<Integer> trackIds = new ArrayList<>();
 
-        for (int i = 0; i < tracks.length; i++) {
-            labels.add(tracks[i].name);
-            trackIds.add(tracks[i].id);
-            if (tracks[i].id == currentTrackId) {
-                selectedIndex = i;
+        if (tracks != null) {
+            for (int i = 0; i < tracks.length; i++) {
+                labels.add(tracks[i].name);
+                trackIds.add(tracks[i].id);
+                if (tracks[i].id == currentTrackId) {
+                    selectedIndex = i;
+                }
             }
         }
 
+        final int searchOnlineIndex = labels.size();
+        labels.add("● SEARCH ONLINE SUBTITLES");
+
         showNothingSelectionDialog("SELECT SUBTITLE (VLC)", labels, selectedIndex, which -> {
+            if (which == searchOnlineIndex) {
+                showOnlineSubtitleSearchDialog();
+                return;
+            }
             vlcPlayer.setSpuTrack(trackIds.get(which));
             Toast.makeText(this, "Selected: " + labels.get(which), Toast.LENGTH_SHORT).show();
         });
+    }
+
+    private void applyExternalSubtitle(File srtFile) {
+        if (srtFile == null || !srtFile.exists()) return;
+        activeSubtitleUri = Uri.fromFile(srtFile);
+
+        if (isVlcActive && vlcPlayer != null) {
+            try {
+                vlcPlayer.addSlave(Media.Slave.Type.Subtitle, activeSubtitleUri, true);
+                Toast.makeText(this, "Online Subtitle Attached (VLC)", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Failed to load subtitle in VLC: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        } else if (exoPlayer != null) {
+            try {
+                long curPos = exoPlayer.getCurrentPosition();
+                boolean isPlaying = exoPlayer.isPlaying();
+                Uri targetUri = resolveMediaUri();
+                if (targetUri != null) {
+                    MediaItem.SubtitleConfiguration subtitleConfig = new MediaItem.SubtitleConfiguration.Builder(activeSubtitleUri)
+                            .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_SUBRIP)
+                            .setLanguage("eng")
+                            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                            .build();
+
+                    MediaItem.Builder builder = new MediaItem.Builder().setUri(targetUri);
+                    String urlLower = targetUri.toString().toLowerCase();
+                    if (urlLower.contains(".m3u8") || urlLower.contains("m3u8")) {
+                        builder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8);
+                    } else if (urlLower.contains(".mpd") || urlLower.contains("dash")) {
+                        builder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MPD);
+                    }
+                    builder.setSubtitleConfigurations(java.util.Collections.singletonList(subtitleConfig));
+                    MediaItem mediaItem = builder.build();
+
+                    DefaultDataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(this);
+                    DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(dataSourceFactory);
+
+                    exoPlayer.setMediaSource(mediaSourceFactory.createMediaSource(mediaItem));
+                    exoPlayer.seekTo(curPos);
+                    exoPlayer.prepare();
+                    if (isPlaying) {
+                        exoPlayer.play();
+                    }
+                    if (trackSelector != null) {
+                        trackSelector.setParameters(
+                                trackSelector.buildUponParameters()
+                                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                        );
+                    }
+                    Toast.makeText(this, "Online Subtitle Attached", Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
+                Toast.makeText(this, "Failed to load subtitle in Exo: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void showOnlineSubtitleSearchDialog() {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_online_subtitles);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.90f),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+        }
+
+        EditText etQuery = dialog.findViewById(R.id.et_subtitle_query);
+        Button btnSearch = dialog.findViewById(R.id.btn_subtitle_search);
+        Button btnLangAll = dialog.findViewById(R.id.btn_lang_all);
+        Button btnLangEng = dialog.findViewById(R.id.btn_lang_eng);
+        Button btnLangHin = dialog.findViewById(R.id.btn_lang_hin);
+        ProgressBar pbLoading = dialog.findViewById(R.id.pb_subtitles_loading);
+        TextView tvStatus = dialog.findViewById(R.id.tv_subtitles_status);
+        ScrollView scrollSubtitles = dialog.findViewById(R.id.scroll_subtitles);
+        LinearLayout layoutResults = dialog.findViewById(R.id.layout_subtitles_results);
+        Button btnCancel = dialog.findViewById(R.id.btn_subtitle_cancel);
+
+        final String[] currentLang = {"eng"};
+
+        View.OnClickListener langListener = v -> {
+            if (v == btnLangAll) {
+                currentLang[0] = "all";
+                btnLangAll.setBackgroundResource(R.drawable.bg_chip_selected);
+                btnLangAll.setTextColor(Color.BLACK);
+                btnLangEng.setBackgroundResource(R.drawable.bg_chip_unselected);
+                btnLangEng.setTextColor(Color.WHITE);
+                btnLangHin.setBackgroundResource(R.drawable.bg_chip_unselected);
+                btnLangHin.setTextColor(Color.WHITE);
+            } else if (v == btnLangEng) {
+                currentLang[0] = "eng";
+                btnLangAll.setBackgroundResource(R.drawable.bg_chip_unselected);
+                btnLangAll.setTextColor(Color.WHITE);
+                btnLangEng.setBackgroundResource(R.drawable.bg_chip_selected);
+                btnLangEng.setTextColor(Color.BLACK);
+                btnLangHin.setBackgroundResource(R.drawable.bg_chip_unselected);
+                btnLangHin.setTextColor(Color.WHITE);
+            } else if (v == btnLangHin) {
+                currentLang[0] = "hin";
+                btnLangAll.setBackgroundResource(R.drawable.bg_chip_unselected);
+                btnLangAll.setTextColor(Color.WHITE);
+                btnLangEng.setBackgroundResource(R.drawable.bg_chip_unselected);
+                btnLangEng.setTextColor(Color.WHITE);
+                btnLangHin.setBackgroundResource(R.drawable.bg_chip_selected);
+                btnLangHin.setTextColor(Color.BLACK);
+            }
+        };
+
+        btnLangAll.setOnClickListener(langListener);
+        btnLangEng.setOnClickListener(langListener);
+        btnLangHin.setOnClickListener(langListener);
+
+        String initialQuery = videoTitle != null ? videoTitle : "";
+        initialQuery = initialQuery.replaceAll("(?i)\\b(1080p|720p|480p|2160p|4k|x264|x265|hevc|bluray|webrip|web-dl|mkv|mp4)\\b", " ")
+                .replaceAll("[\\[\\]\\(\\)\\._\\-]+", " ")
+                .trim();
+        etQuery.setText(initialQuery);
+
+        Runnable performSearch = () -> {
+            String query = etQuery.getText().toString().trim();
+            if (query.isEmpty()) {
+                Toast.makeText(this, "Please enter title to search", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            pbLoading.setVisibility(View.VISIBLE);
+            tvStatus.setVisibility(View.GONE);
+            scrollSubtitles.setVisibility(View.GONE);
+            layoutResults.removeAllViews();
+
+            OnlineSubtitleManager.searchSubtitles(this, query, currentLang[0], new OnlineSubtitleManager.SubtitleSearchCallback() {
+                @Override
+                public void onResults(List<OnlineSubtitleManager.SubtitleItem> results) {
+                    pbLoading.setVisibility(View.GONE);
+                    if (results.isEmpty()) {
+                        tvStatus.setText("NO SUBTITLES FOUND FOR THIS QUERY");
+                        tvStatus.setVisibility(View.VISIBLE);
+                        scrollSubtitles.setVisibility(View.GONE);
+                        return;
+                    }
+
+                    tvStatus.setVisibility(View.GONE);
+                    scrollSubtitles.setVisibility(View.VISIBLE);
+                    layoutResults.removeAllViews();
+                    LayoutInflater inflater = LayoutInflater.from(ExoVideoPlayerActivity.this);
+
+                    for (OnlineSubtitleManager.SubtitleItem item : results) {
+                        View itemView = inflater.inflate(R.layout.item_nothing_subtitle, layoutResults, false);
+                        TextView tvTitle = itemView.findViewById(R.id.tv_sub_title);
+                        TextView tvMeta = itemView.findViewById(R.id.tv_sub_meta);
+
+                        tvTitle.setText(item.fileName != null ? item.fileName : "Subtitle");
+                        String metaText = "[" + (item.languageCode != null ? item.languageCode.toUpperCase() : "SUB") + "] • ★ "
+                                + (item.rating != null ? item.rating : "0.0")
+                                + " • " + item.downloadCount + " DOWNLOADS";
+                        tvMeta.setText(metaText);
+
+                        itemView.setOnClickListener(v -> {
+                            Toast.makeText(ExoVideoPlayerActivity.this, "Downloading subtitle...", Toast.LENGTH_SHORT).show();
+                            pbLoading.setVisibility(View.VISIBLE);
+                            OnlineSubtitleManager.downloadSubtitle(ExoVideoPlayerActivity.this, item, new OnlineSubtitleManager.SubtitleDownloadCallback() {
+                                @Override
+                                public void onDownloaded(File srtFile) {
+                                    pbLoading.setVisibility(View.GONE);
+                                    dialog.dismiss();
+                                    applyExternalSubtitle(srtFile);
+                                }
+
+                                @Override
+                                public void onError(String message) {
+                                    pbLoading.setVisibility(View.GONE);
+                                    Toast.makeText(ExoVideoPlayerActivity.this, "Download failed: " + message, Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        });
+
+                        layoutResults.addView(itemView);
+                    }
+                }
+
+                @Override
+                public void onError(String message) {
+                    pbLoading.setVisibility(View.GONE);
+                    tvStatus.setText("ERROR: " + message.toUpperCase());
+                    tvStatus.setVisibility(View.VISIBLE);
+                    scrollSubtitles.setVisibility(View.GONE);
+                }
+            });
+        };
+
+        btnSearch.setOnClickListener(v -> performSearch.run());
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+        if (!initialQuery.isEmpty()) {
+            performSearch.run();
+        }
     }
 
     private void setupGestures() {
@@ -3668,6 +3941,44 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         }
     }
 
+    private void checkNextEpisodeCountdown(long pos, long dur) {
+        if (hasCancelledNextEpisodeForCurrent) {
+            if (layoutNextEpisodeCard != null && layoutNextEpisodeCard.getVisibility() == View.VISIBLE) {
+                layoutNextEpisodeCard.setVisibility(View.GONE);
+            }
+            return;
+        }
+        if (playlistPaths != null && playlistIndex < playlistPaths.size() - 1 && dur > 30000) {
+            long remainingSec = (dur - pos) / 1000;
+            if (remainingSec <= 15 && remainingSec >= 0) {
+                if (layoutNextEpisodeCard != null) {
+                    layoutNextEpisodeCard.setVisibility(View.VISIBLE);
+                    if (tvNextEpisodeTag != null) {
+                        tvNextEpisodeTag.setText("● NEXT EPISODE IN " + Math.max(1, remainingSec) + "S");
+                    }
+                    if (tvNextEpisodeTitle != null) {
+                        String nextTitle = playlistTitles.size() > (playlistIndex + 1)
+                                ? playlistTitles.get(playlistIndex + 1)
+                                : new File(playlistPaths.get(playlistIndex + 1)).getName();
+                        tvNextEpisodeTitle.setText(nextTitle.toUpperCase());
+                    }
+                }
+                if (remainingSec <= 0) {
+                    if (layoutNextEpisodeCard != null) layoutNextEpisodeCard.setVisibility(View.GONE);
+                    playNextVideo();
+                }
+            } else {
+                if (layoutNextEpisodeCard != null && layoutNextEpisodeCard.getVisibility() == View.VISIBLE) {
+                    layoutNextEpisodeCard.setVisibility(View.GONE);
+                }
+            }
+        } else {
+            if (layoutNextEpisodeCard != null && layoutNextEpisodeCard.getVisibility() == View.VISIBLE) {
+                layoutNextEpisodeCard.setVisibility(View.GONE);
+            }
+        }
+    }
+
     private final Runnable progressRunnable = new Runnable() {
         @Override
         public void run() {
@@ -3679,6 +3990,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 }
                 videoSeekBar.setProgress((int) pos);
                 updateTimeDisplay(pos);
+                checkNextEpisodeCountdown(pos, totalDurationMs);
                 if (Math.abs(pos - lastSavedProgressMs) >= 2000) {
                     lastSavedProgressMs = pos;
                     saveCurrentPlaybackProgress(pos, totalDurationMs);
@@ -3692,6 +4004,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 }
                 videoSeekBar.setProgress((int) pos);
                 updateTimeDisplay(pos);
+                checkNextEpisodeCountdown(pos, totalDurationMs);
                 progressHandler.postDelayed(this, 500);
             }
         }
@@ -3833,6 +4146,9 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private void playVideoAtIndex(int index) {
         if (playlistPaths == null || index < 0 || index >= playlistPaths.size()) return;
         playlistIndex = index;
+        hasCancelledNextEpisodeForCurrent = false;
+        activeSubtitleUri = null;
+        if (layoutNextEpisodeCard != null) layoutNextEpisodeCard.setVisibility(View.GONE);
         showTransitionOverlay();
 
         videoPath = playlistPaths.get(index);

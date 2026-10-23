@@ -19,6 +19,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -83,6 +84,14 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     private RecyclerView recyclerHistory;
     private Button btnOpenHistorySheet;
     private HistoryAdapter historyAdapter;
+
+    // Smart Continue Series Views
+    private View sectionContinueSeries;
+    private TextView tvContinueSeriesName, tvContinueSeriesEpisode, tvContinueSeriesTimeLeft;
+    private ImageView ivContinueSeriesThumb;
+    private DotMatrixProgressBar pbContinueSeriesProgress;
+    private Button btnContinueSeriesResume;
+    private MediaItem continueSeriesItem = null;
 
     private List<MediaItem> allVideos = new ArrayList<>();
     private String currentSelectedFolder = null;
@@ -169,6 +178,15 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             btnOpenHistorySheet.setOnClickListener(v -> showHistoryBottomSheet());
         }
 
+        // Smart Continue Series Views
+        sectionContinueSeries = view.findViewById(R.id.section_continue_series);
+        tvContinueSeriesName = view.findViewById(R.id.tv_continue_series_name);
+        tvContinueSeriesEpisode = view.findViewById(R.id.tv_continue_series_episode);
+        tvContinueSeriesTimeLeft = view.findViewById(R.id.tv_continue_series_time_left);
+        ivContinueSeriesThumb = view.findViewById(R.id.iv_continue_series_thumb);
+        pbContinueSeriesProgress = view.findViewById(R.id.pb_continue_series_progress);
+        btnContinueSeriesResume = view.findViewById(R.id.btn_continue_series_resume);
+
         if (getContext() != null) {
             SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             currentViewMode = prefs.getInt(KEY_VIEW_MODE, VideoAdapter.VIEW_MODE_GRID_2);
@@ -240,21 +258,106 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     }
 
     private void updateHistorySection() {
-        if (getContext() == null || sectionHistory == null || historyAdapter == null) return;
+        if (getContext() == null) return;
         
-        // Show recently watched ONLY on the root home page (not inside any opened folder, series or active search)
         String query = etSearch != null ? etSearch.getText().toString().trim() : "";
         if (currentSelectedFolder != null || currentSelectedSeries != null || !query.isEmpty()) {
-            sectionHistory.setVisibility(View.GONE);
+            if (sectionHistory != null) sectionHistory.setVisibility(View.GONE);
+            if (sectionContinueSeries != null) sectionContinueSeries.setVisibility(View.GONE);
             return;
         }
 
+        // If in SERIES category, show smart Continue Series card
+        if (currentCategory == CATEGORY_SERIES) {
+            if (sectionHistory != null) sectionHistory.setVisibility(View.GONE);
+            updateContinueSeriesCard();
+            return;
+        } else {
+            if (sectionContinueSeries != null) sectionContinueSeries.setVisibility(View.GONE);
+        }
+
+        // Show recently watched on root FOLDERS page
+        if (sectionHistory == null || historyAdapter == null) return;
         List<PlaybackHistoryManager.HistoryItem> history = PlaybackHistoryManager.getHistoryList(getContext());
         if (history != null && !history.isEmpty()) {
             sectionHistory.setVisibility(View.VISIBLE);
             historyAdapter.setItems(history);
         } else {
             sectionHistory.setVisibility(View.GONE);
+        }
+    }
+
+    private void updateContinueSeriesCard() {
+        if (sectionContinueSeries == null || getContext() == null) return;
+
+        List<PlaybackHistoryManager.HistoryItem> history = PlaybackHistoryManager.getHistoryList(getContext());
+        if (history == null || history.isEmpty()) {
+            sectionContinueSeries.setVisibility(View.GONE);
+            return;
+        }
+
+        PlaybackHistoryManager.HistoryItem matchedHistory = null;
+        MediaItem matchedVideo = null;
+
+        for (PlaybackHistoryManager.HistoryItem h : history) {
+            for (MediaItem v : allVideos) {
+                String path = v.path != null ? v.path : v.contentUri;
+                if (h.pathOrUri != null && h.pathOrUri.equalsIgnoreCase(path) && "series".equalsIgnoreCase(v.mediaCategory)) {
+                    matchedHistory = h;
+                    matchedVideo = v;
+                    break;
+                }
+            }
+            if (matchedVideo != null) break;
+        }
+
+        if (matchedVideo == null || matchedHistory == null) {
+            sectionContinueSeries.setVisibility(View.GONE);
+            return;
+        }
+
+        continueSeriesItem = matchedVideo;
+        sectionContinueSeries.setVisibility(View.VISIBLE);
+
+        if (tvContinueSeriesName != null) {
+            tvContinueSeriesName.setText(matchedVideo.seriesName != null ? matchedVideo.seriesName : "Series");
+        }
+
+        if (tvContinueSeriesEpisode != null) {
+            String epText = matchedVideo.episodeNumber > 0 ? String.format(java.util.Locale.US, "EP %02d", matchedVideo.episodeNumber) : "";
+            if (matchedVideo.seasonNumber > 0) {
+                epText += " • S" + matchedVideo.seasonNumber;
+            }
+            if (matchedVideo.cleanTitle != null && !matchedVideo.cleanTitle.isEmpty()) {
+                epText += " • " + matchedVideo.cleanTitle;
+            }
+            tvContinueSeriesEpisode.setText(epText);
+        }
+
+        long remainingMs = Math.max(0, matchedHistory.durationMs - matchedHistory.positionMs);
+        if (tvContinueSeriesTimeLeft != null) {
+            int mins = (int) (remainingMs / (1000 * 60));
+            tvContinueSeriesTimeLeft.setText(mins > 0 ? (mins + " MIN LEFT") : "IN PROGRESS");
+        }
+
+        if (pbContinueSeriesProgress != null) {
+            pbContinueSeriesProgress.setProgress(matchedHistory.getProgressPercent());
+        }
+
+        if (ivContinueSeriesThumb != null) {
+            Object thumb = matchedVideo.posterUrl != null && !matchedVideo.posterUrl.isEmpty() ? matchedVideo.posterUrl : matchedVideo.path;
+            com.bumptech.glide.Glide.with(getContext())
+                    .load(thumb)
+                    .centerCrop()
+                    .into(ivContinueSeriesThumb);
+        }
+
+        View.OnClickListener resumeListener = v -> {
+            if (continueSeriesItem != null) onVideoClick(continueSeriesItem);
+        };
+        sectionContinueSeries.setOnClickListener(resumeListener);
+        if (btnContinueSeriesResume != null) {
+            btnContinueSeriesResume.setOnClickListener(resumeListener);
         }
     }
 

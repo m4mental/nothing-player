@@ -181,6 +181,19 @@
             android:fontFamily="@font/ndot" />
     </LinearLayout>
 
+    <!-- Match Media Info Button -->
+    <Button
+        android:id="@+id/btn_match_metadata"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:backgroundTint="#26FFFFFF"
+        android:text="MATCH SHOW / MOVIE INFO"
+        android:textColor="@color/nothing_white"
+        android:textSize="9.5sp"
+        android:fontFamily="@font/ndot"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
     <!-- Play Action Button -->
     <Button
         android:id="@+id/btn_play_from_info"

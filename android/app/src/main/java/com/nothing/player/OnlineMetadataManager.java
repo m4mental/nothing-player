@@ -191,6 +191,55 @@ public class OnlineMetadataManager {
         });
     }
 
+    /**
+     * Explicit user search to match a video with an online show or movie.
+     */
+    public static void searchAndApply(Context context, MediaItem item, String customQuery, String category, MetadataCallback callback) {
+        if (item == null || customQuery == null || customQuery.trim().isEmpty() || context == null) return;
+        initCache(context);
+
+        final String finalKey = customQuery.trim().toLowerCase();
+        EXECUTOR.execute(() -> {
+            MetadataInfo fetched = null;
+            try {
+                if ("series".equalsIgnoreCase(category)) {
+                    fetched = fetchSeriesFromTvMaze(finalKey);
+                    if (fetched == null) fetched = fetchMovieFromItunes(finalKey);
+                } else {
+                    fetched = fetchMovieFromItunes(finalKey);
+                    if (fetched == null) fetched = fetchSeriesFromTvMaze(finalKey);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed manual query for: " + finalKey, e);
+            }
+
+            if (fetched != null) {
+                fetched.queryKey = finalKey;
+                synchronized (MEMORY_CACHE) {
+                    MEMORY_CACHE.put(finalKey, fetched);
+                }
+                saveCacheToDisk(context.getApplicationContext());
+
+                final MetadataInfo finalFetched = fetched;
+                item.mediaCategory = category != null ? category.toLowerCase() : "movie";
+                if ("series".equalsIgnoreCase(item.mediaCategory)) {
+                    item.seriesName = finalFetched.title != null ? finalFetched.title : customQuery;
+                } else {
+                    item.cleanTitle = finalFetched.title != null ? finalFetched.title : customQuery;
+                }
+                applyMetadataToItem(item, finalFetched);
+
+                MAIN_HANDLER.post(() -> {
+                    if (callback != null) callback.onMetadataLoaded(finalFetched);
+                });
+            } else {
+                MAIN_HANDLER.post(() -> {
+                    if (callback != null) callback.onMetadataLoaded(null);
+                });
+            }
+        });
+    }
+
     private static void applyMetadataToItem(MediaItem item, MetadataInfo info) {
         if (item == null || info == null) return;
         if (info.posterUrl != null && !info.posterUrl.isEmpty()) {
