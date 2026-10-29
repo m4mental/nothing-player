@@ -93,6 +93,9 @@ dependencies {
     
     // LibVLC Native Engine (Universal EAC3, AC3, DTS, TrueHD, MKV, 10-bit Software Decoder)
     implementation 'org.videolan.android:libvlc-all:3.5.1'
+
+    // AndroidX Biometric (Fingerprint and Face Recognition)
+    implementation 'androidx.biometric:biometric:1.1.0'
 }
 
 apply from: 'capacitor.build.gradle'

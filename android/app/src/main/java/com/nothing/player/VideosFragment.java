@@ -264,11 +264,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             btnVaultSelected.setOnClickListener(v -> {
                 Set<Object> selected = adapter.getSelectedItems();
                 if (selected.isEmpty() || getContext() == null) return;
-                if (!VaultManager.isPinSet(getContext())) {
-                    showSetVaultPinDialog(() -> moveSelectedToVault(selected));
-                } else {
-                    showVerifyVaultPinDialog(() -> moveSelectedToVault(selected));
-                }
+                authenticateVaultAccess(() -> moveSelectedToVault(selected));
             });
         }
         if (btnTrashSelected != null) {
@@ -483,11 +479,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 Toast.makeText(getContext(), "Moved " + moved + " item(s) to Recycle Bin", Toast.LENGTH_SHORT).show();
             } else if (index == 1) {
                 // Move to Private Vault
-                if (!VaultManager.isPinSet(getContext())) {
-                    showSetVaultPinDialog(() -> moveSelectedToVault(selected));
-                } else {
-                    showVerifyVaultPinDialog(() -> moveSelectedToVault(selected));
-                }
+                authenticateVaultAccess(() -> moveSelectedToVault(selected));
             } else if (index == 2) {
                 // Permanent Delete
                 deleteSelectedItems(selected);
@@ -870,6 +862,87 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     private void openPrivateVault() {
         if (getContext() == null) return;
         startActivity(new Intent(getContext(), VaultActivity.class));
+    }
+
+    private void authenticateVaultAccess(Runnable onSuccess) {
+        if (getContext() == null) return;
+        if (!VaultManager.isSecurityConfigured(getContext())) {
+            Toast.makeText(getContext(), "Please configure Vault Security first", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(getContext(), VaultActivity.class));
+            return;
+        }
+
+        if (VaultManager.isBiometricEnabled(getContext()) && BiometricAuthHelper.isBiometricAvailable(getContext()) && getActivity() != null) {
+            String fallback = VaultManager.LOCK_TYPE_PATTERN.equals(VaultManager.getLockType(getContext())) ? "USE PATTERN" : "USE PIN";
+            BiometricAuthHelper.authenticate(
+                    getActivity(),
+                    "AUTHENTICATE VAULT ACCESS",
+                    "Touch fingerprint sensor or look at camera",
+                    fallback,
+                    new BiometricAuthHelper.BiometricCallback() {
+                        @Override
+                        public void onAuthenticationSucceeded() {
+                            if (onSuccess != null) onSuccess.run();
+                        }
+
+                        @Override
+                        public void onAuthenticationFailed() {
+                            Toast.makeText(getContext(), "Biometric recognition failed", Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onAuthenticationError(int errorCode, String errString) {
+                            showFallbackAuthDialog(onSuccess);
+                        }
+                    }
+            );
+        } else {
+            showFallbackAuthDialog(onSuccess);
+        }
+    }
+
+    private void showFallbackAuthDialog(Runnable onSuccess) {
+        if (VaultManager.LOCK_TYPE_PATTERN.equals(VaultManager.getLockType(getContext()))) {
+            showVerifyPatternDialog(onSuccess);
+        } else {
+            showVerifyVaultPinDialog(onSuccess);
+        }
+    }
+
+    private void showVerifyPatternDialog(Runnable onSuccess) {
+        if (getContext() == null) return;
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_vault_pattern, null);
+        DotMatrixPatternView patternView = dialogView.findViewById(R.id.pv_dialog_pattern);
+        TextView tvError = dialogView.findViewById(R.id.tv_dialog_pattern_error);
+        View btnCancel = dialogView.findViewById(R.id.btn_dialog_pattern_cancel);
+
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setView(dialogView)
+                .create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        patternView.setOnPatternListener(new DotMatrixPatternView.OnPatternListener() {
+            @Override
+            public void onPatternStart() {
+                tvError.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onPatternComplete(String pattern) {
+                if (VaultManager.verifyPattern(getContext(), pattern)) {
+                    dialog.dismiss();
+                    if (onSuccess != null) onSuccess.run();
+                } else {
+                    tvError.setVisibility(View.VISIBLE);
+                    patternView.showError();
+                }
+            }
+        });
+
+        dialog.show();
     }
 
     private void showSetVaultPinDialog(Runnable onSuccess) {

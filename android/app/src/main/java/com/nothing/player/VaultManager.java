@@ -20,7 +20,14 @@ import java.util.List;
 public class VaultManager {
     private static final String TAG = "VaultManager";
     private static final String PREFS_NAME = "nothing_vault_prefs";
+    public static final String LOCK_TYPE_PIN = "PIN";
+    public static final String LOCK_TYPE_PATTERN = "PATTERN";
+
+    private static final String KEY_LOCK_TYPE = "vault_lock_type";
     private static final String KEY_PIN_HASH = "vault_pin_hash";
+    private static final String KEY_PATTERN_HASH = "vault_pattern_hash";
+    private static final String KEY_BIOMETRIC_ENABLED = "vault_biometric_enabled";
+    private static final String KEY_AUTO_BIOMETRIC = "vault_auto_biometric";
     private static final String VAULT_DIR = ".vault";
     private static final String META_FILE = "vault_metadata.json";
 
@@ -34,6 +41,28 @@ public class VaultManager {
         public long duration;
     }
 
+    public static boolean isSecurityConfigured(Context context) {
+        if (context == null) return false;
+        String lockType = getLockType(context);
+        if (LOCK_TYPE_PATTERN.equals(lockType)) {
+            return isPatternSet(context);
+        } else {
+            return isPinSet(context);
+        }
+    }
+
+    public static String getLockType(Context context) {
+        if (context == null) return LOCK_TYPE_PIN;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(KEY_LOCK_TYPE, LOCK_TYPE_PIN);
+    }
+
+    public static void setLockType(Context context, String lockType) {
+        if (context == null) return;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(KEY_LOCK_TYPE, lockType).apply();
+    }
+
     public static boolean isPinSet(Context context) {
         if (context == null) return false;
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -44,19 +73,62 @@ public class VaultManager {
         if (context == null || inputPin == null) return false;
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String savedHash = prefs.getString(KEY_PIN_HASH, "");
-        return hashPin(inputPin).equals(savedHash);
+        return hashString(inputPin).equals(savedHash);
     }
 
     public static void setPin(Context context, String newPin) {
         if (context == null || newPin == null) return;
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        prefs.edit().putString(KEY_PIN_HASH, hashPin(newPin)).apply();
+        prefs.edit().putString(KEY_PIN_HASH, hashString(newPin)).apply();
     }
 
-    private static String hashPin(String pin) {
+    public static boolean isPatternSet(Context context) {
+        if (context == null) return false;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.contains(KEY_PATTERN_HASH);
+    }
+
+    public static boolean verifyPattern(Context context, String pattern) {
+        if (context == null || pattern == null) return false;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String savedHash = prefs.getString(KEY_PATTERN_HASH, "");
+        return hashString(pattern).equals(savedHash);
+    }
+
+    public static void setPattern(Context context, String pattern) {
+        if (context == null || pattern == null) return;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(KEY_PATTERN_HASH, hashString(pattern)).apply();
+    }
+
+    public static boolean isBiometricEnabled(Context context) {
+        if (context == null) return false;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false);
+    }
+
+    public static void setBiometricEnabled(Context context, boolean enabled) {
+        if (context == null) return;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putBoolean(KEY_BIOMETRIC_ENABLED, enabled).apply();
+    }
+
+    public static boolean isAutoBiometricPrompt(Context context) {
+        if (context == null) return true;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getBoolean(KEY_AUTO_BIOMETRIC, true);
+    }
+
+    public static void setAutoBiometricPrompt(Context context, boolean auto) {
+        if (context == null) return;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putBoolean(KEY_AUTO_BIOMETRIC, auto).apply();
+    }
+
+    public static String hashString(String str) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(pin.getBytes(StandardCharsets.UTF_8));
+            byte[] hash = digest.digest(str.getBytes(StandardCharsets.UTF_8));
             StringBuilder hexString = new StringBuilder();
             for (byte b : hash) {
                 String hex = Integer.toHexString(0xff & b);
@@ -65,8 +137,12 @@ public class VaultManager {
             }
             return hexString.toString();
         } catch (Exception e) {
-            return String.valueOf(pin.hashCode());
+            return String.valueOf(str.hashCode());
         }
+    }
+
+    private static String hashPin(String pin) {
+        return hashString(pin);
     }
 
     public static File getVaultDir(Context context) {

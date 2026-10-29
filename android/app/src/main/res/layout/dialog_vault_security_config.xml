@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="320dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_dialog_nothing"
+    android:padding="20dp">
+
+    <!-- Header Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="4dp">
+
+        <View
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:background="@drawable/led_red"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="VAULT SECURITY CONFIG"
+            android:textColor="@color/nothing_white"
+            android:textSize="12.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.04" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Configure pattern, PIN, fingerprint and face lock:"
+        android:textColor="@color/nothing_white_70"
+        android:textSize="8.5sp"
+        android:fontFamily="@font/ndot"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 1. Primary Lock Method Selection -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="PRIMARY LOCK METHOD"
+        android:textColor="@color/nothing_red"
+        android:textSize="8sp"
+        android:fontFamily="@font/ndot"
+        android:textStyle="bold"
+        android:letterSpacing="0.06"
+        android:layout_marginBottom="8dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:orientation="horizontal"
+        android:layout_marginBottom="18dp">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_config_select_pin"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@drawable/bg_button_red"
+            app:backgroundTint="@null"
+            android:text="PIN (4-DIGIT)"
+            android:textColor="#FFFFFF"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:layout_marginEnd="6dp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_config_select_pattern"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@drawable/bg_chip_unselected"
+            app:backgroundTint="@null"
+            android:text="PATTERN (3X3)"
+            android:textColor="@color/nothing_white_70"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#1AFFFFFF"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 2. Biometric (Fingerprint & Face) Toggle -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="14dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="FINGERPRINT &amp; FACE LOCK"
+                android:textColor="@color/nothing_white"
+                android:textSize="9.5sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_config_biometric_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="STATUS: READY (FINGERPRINT / FACE)"
+                android:textColor="@color/nothing_white_40"
+                android:textSize="7.5sp"
+                android:fontFamily="@font/ndot"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switch_config_biometric"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:thumbTint="@color/nothing_red"
+            app:trackTint="#40D71921" />
+    </LinearLayout>
+
+    <!-- 3. Auto-Prompt Biometrics on Open -->
+    <LinearLayout
+        android:id="@+id/layout_config_auto_bio"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="20dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AUTO-PROMPT ON OPEN"
+                android:textColor="@color/nothing_white"
+                android:textSize="9.5sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Instantly open biometric sensor"
+                android:textColor="@color/nothing_white_40"
+                android:textSize="7.5sp"
+                android:fontFamily="@font/ndot"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switch_config_auto_bio"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:thumbTint="@color/nothing_red"
+            app:trackTint="#40D71921" />
+    </LinearLayout>
+
+    <!-- Action Buttons Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end|center_vertical">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_config_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:background="@drawable/bg_chip_unselected"
+            app:backgroundTint="@null"
+            android:text="CANCEL"
+            android:textColor="@color/nothing_white_70"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:paddingHorizontal="14dp"
+            android:layout_marginEnd="8dp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_config_save"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:background="@drawable/bg_button_red"
+            app:backgroundTint="@null"
+            android:text="SAVE CONFIG"
+            android:textColor="#FFFFFF"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:paddingHorizontal="16dp" />
+    </LinearLayout>
+
+</LinearLayout>
+
