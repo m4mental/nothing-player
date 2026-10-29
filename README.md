@@ -165,6 +165,37 @@
 
 ---
 
+### 15. 🔒 Private Vault & Multi-Modal Biometric Security Hub (`VaultActivity`)
+- **Discrete Nothing OS 3x3 Dot-Matrix Pattern Lock (`DotMatrixPatternView`)**: Custom gesture engine rendering a 3x3 circular LED dot grid with Nothing Red connecting lines, active node illumination, and tactile haptic ticks.
+- **Hardware Biometric Integration (`BiometricAuthHelper`)**: Native AndroidX BiometricPrompt supporting in-display/capacitive fingerprint sensors and system face unlock with hardware keystore security.
+- **Dedicated Vault Security Hub (`dialog_vault_security_config.xml`)**: Seamless configuration to switch between 4-digit PIN and 3x3 Pattern, toggle biometric unlock with live sensor telemetry, and set auto-prompt behavior.
+- **Isolated Encrypted Storage (`.vault/`)**: Media items moved to the vault are decoupled from standard directories and shielded with `.nomedia` markers, fully hidden from gallery scanners and third-party applications.
+- **Full In-Vault Management**: Complete preview, in-player playback, instant restoration to original folders, and irreversible permanent deletion.
+
+---
+
+### 16. 🗑️ 30-Day Auto-Retention Recycle Bin (`RecycleBinActivity` & `TrashManager`)
+- **Accidental Deletion Shield**: Deleted videos are safely moved to a local trash repository rather than immediately destroyed.
+- **Dynamic 30-Day Expiry Countdown**: Displays live dot-matrix countdown badges (`● X DAYS LEFT`) per item with automatic cleanup upon expiration.
+- **One-Tap Safe Restore**: Restores quarantined videos directly to their original filesystem directories and triggers MediaStore indexing.
+- **Batch Permanent Disposal**: One-tap "EMPTY RECYCLE BIN" confirmation modal for instant storage recovery.
+
+---
+
+### 17. 🎛️ Floating Draggable Hardware Equalizer Window HUD
+- **Draggable AMOLED Black Card**: Compact floating equalizer HUD with discrete Nothing Red accents that floats over the active video playback window.
+- **Multi-Band DSP Control**: 5-band graphic faders (60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz), Bass Boost, 3D Surround Virtualizer, and Preamp gain sliders.
+- **Dual-Engine Synchronization (`AudioEffectManager`)**: Direct hardware AudioSession binding synchronized across both AndroidX ExoPlayer and LibVLC software decoders.
+- **Quick Preset Chips**: Instant selection between Flat, Rock, Pop, Jazz, Electronic, Vocal Boost, Classical, and Bass Max profiles.
+
+---
+
+### 18. 📻 IPTV / M3U Stream Playlist Parser & Background Downloader
+- **M3U / M3U8 Playlist Parsing (`M3uParser`)**: Parses local and remote live IPTV playlists with channel grouping, logo detection, and category filtering.
+- **Background Media Downloader (`StreamDownloadHelper`)**: Download live network streams directly to local storage asynchronously with progress notifications.
+
+---
+
 ## 🛠️ Tech Stack
 
 - **Android Native**: Java / Kotlin (Android SDK 34+ / Android 16 API 36)
@@ -175,6 +206,7 @@
   - `androidx.media3:media3-exoplayer:1.3.1`
   - `androidx.media3:media3-ui:1.3.1`
   - `org.videolan.android:libvlc-all:3.5.1`
+  - `androidx.biometric:biometric:1.1.0` (Fingerprint & Face Recognition)
 - **Background Media & DSP**:
   - `androidx.media:media:1.7.0` (`MediaSessionCompat`, `NotificationCompat.MediaStyle`)
   - Native `android.media.audiofx` (`Equalizer`, `BassBoost`, `Virtualizer`, `LoudnessEnhancer`)
