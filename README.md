@@ -51,7 +51,7 @@
 - **Dual Playback Architecture**: Combines **AndroidX Media3 (ExoPlayer)** for hardware-accelerated playback with the **LibVLC Native C++ Engine** for universal software decoding.
 - **Dolby Digital Plus & Surround Sound**: Automatically downmixes multi-channel audio (`E-AC-3 5.1`, `AC-3`, `DTS`, `TrueHD`, `FLAC`, `AAC`, `Opus`) to phone stereo speakers and headphones with crystal clarity — eliminating `MediaCodecAudioRenderer` errors.
 - **Intelligent Engine Auto-Selection**: Automatically routes Dolby 5.1 / multi-channel MKV files to the optimal native engine with **zero black screen** and **zero user intervention**.
-- **On-the-Fly Codec Switcher (`HW+` / `VLC`)**: Instant 1-tap switching between Hardware Acceleration and Universal VLC Software Engine directly from the player top bar.
+- **On-the-Fly Codec Switcher (`HW+` / `VLC`)**: Instant 1-tap switching between Hardware Acceleration and Universal VLC Software Engine directly from the player top bar with synchronized aspect ratio, orientation-aware display scaling, and persistent progress tracking.
 
 ---
 
