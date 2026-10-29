@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_card_nothing"
+    android:padding="10dp"
+    android:layout_marginBottom="8dp">
+
+    <!-- Thumbnail & Info Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Thumbnail Container -->
+        <FrameLayout
+            android:layout_width="96dp"
+            android:layout_height="64dp"
+            android:background="#1A1A1A">
+
+            <ImageView
+                android:id="@+id/iv_trash_thumb"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:contentDescription="Video Thumbnail" />
+
+            <!-- Duration Badge -->
+            <TextView
+                android:id="@+id/tv_trash_duration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="4dp"
+                android:background="#CC000000"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="1dp"
+                android:text="00:00"
+                android:textColor="#FFFFFF"
+                android:textSize="7.5sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </FrameLayout>
+
+        <!-- Video Info -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="12dp">
+
+            <TextView
+                android:id="@+id/tv_trash_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Video Title"
+                android:textColor="@color/nothing_white"
+                android:textSize="11sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/tv_trash_info"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="0 MB"
+                android:textColor="@color/nothing_white_70"
+                android:textSize="8sp"
+                android:fontFamily="@font/ndot" />
+
+            <!-- Days Remaining Badge -->
+            <TextView
+                android:id="@+id/tv_trash_days_left"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_chip_dark_inactive"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2dp"
+                android:text="30 DAYS LEFT"
+                android:textColor="@color/nothing_red"
+                android:textSize="7sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Action Buttons Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end|center_vertical"
+        android:layout_marginTop="8dp">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_trash_restore_item"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:background="@drawable/bg_chip_selected"
+            app:backgroundTint="@null"
+            android:text="RESTORE"
+            android:textColor="@color/nothing_black"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:paddingHorizontal="14dp"
+            android:layout_marginEnd="6dp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_trash_delete_item"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:background="@drawable/bg_chip_delete"
+            app:backgroundTint="@null"
+            android:text="DELETE"
+            android:textColor="#FFFFFF"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:paddingHorizontal="12dp" />
+    </LinearLayout>
+
+</LinearLayout>
+

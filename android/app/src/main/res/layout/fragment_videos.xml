@@ -5,7 +5,8 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/nothing_black"
-    android:paddingHorizontal="14dp">
+    android:paddingHorizontal="14dp"
+    android:paddingTop="6dp">
 
     <!-- Contextual Selection Action Bar -->
     <RelativeLayout
@@ -66,6 +67,34 @@
                 android:layout_marginEnd="8dp" />
 
             <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btn_vault_selected"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:background="@drawable/bg_chip_unselected"
+                app:backgroundTint="@null"
+                android:text="VAULT"
+                android:textColor="@color/nothing_white"
+                android:textSize="8.5sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold"
+                android:paddingHorizontal="10dp"
+                android:layout_marginEnd="6dp" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btn_trash_selected"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:background="@drawable/bg_chip_unselected"
+                app:backgroundTint="@null"
+                android:text="TRASH"
+                android:textColor="@color/nothing_white"
+                android:textSize="8.5sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold"
+                android:paddingHorizontal="10dp"
+                android:layout_marginEnd="6dp" />
+
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btn_delete_selected"
                 android:layout_width="wrap_content"
                 android:layout_height="30dp"
@@ -87,7 +116,8 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="10dp">
+        android:layout_marginTop="0dp"
+        android:layout_marginBottom="8dp">
 
         <EditText
             android:id="@+id/et_search_videos"

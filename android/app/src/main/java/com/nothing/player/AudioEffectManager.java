@@ -154,6 +154,50 @@ public class AudioEffectManager {
         }
     }
 
+    public synchronized void applyVlcEqualizer(org.videolan.libvlc.MediaPlayer vlcPlayer, Context context) {
+        if (vlcPlayer == null || context == null) return;
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            boolean isEnabled = prefs.getBoolean(KEY_ENABLED, true);
+            if (!isEnabled) {
+                vlcPlayer.setEqualizer(null);
+                return;
+            }
+            org.videolan.libvlc.MediaPlayer.Equalizer vlcEq = org.videolan.libvlc.MediaPlayer.Equalizer.create();
+            if (vlcEq != null) {
+                int preamp = prefs.getInt(KEY_PREAMP, 12);
+                vlcEq.setPreAmp((preamp - 12) * 1.5f);
+                for (int i = 0; i < 5; i++) {
+                    int level = prefs.getInt("eq_band_" + i, 15);
+                    float amp = (level - 15) * 1.33f;
+                    int bandA = i * 2;
+                    int bandB = Math.min(9, i * 2 + 1);
+                    vlcEq.setAmp(bandA, amp);
+                    vlcEq.setAmp(bandB, amp);
+                }
+                vlcPlayer.setEqualizer(vlcEq);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error applying VLC equalizer", e);
+        }
+    }
+
+    public synchronized void setVolumeBoostGain(int boostPercent) {
+        if (loudnessEnhancer != null) {
+            try {
+                if (boostPercent > 0) {
+                    loudnessEnhancer.setEnabled(true);
+                    int gainMb = Math.min(1800, boostPercent * 18);
+                    loudnessEnhancer.setTargetGain(gainMb);
+                } else {
+                    loudnessEnhancer.setTargetGain(0);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Error setting volume boost gain", e);
+            }
+        }
+    }
+
     public synchronized void release() {
         if (currentAudioSessionId > 0) {
             try {

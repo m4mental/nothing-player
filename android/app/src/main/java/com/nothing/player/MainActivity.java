@@ -45,7 +45,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView miniPlayerTitle, miniPlayerArtist;
     private ImageButton miniPlayerBtnPlay, miniPlayerBtnNext;
     private ProgressBar miniPlayerProgress;
-    private View redLed;
 
     private MusicPlaybackService musicService;
     private boolean isBound = false;
@@ -88,18 +87,10 @@ public class MainActivity extends AppCompatActivity {
         miniPlayerBtnPlay = findViewById(R.id.mini_player_btn_play);
         miniPlayerBtnNext = findViewById(R.id.mini_player_btn_next);
         miniPlayerProgress = findViewById(R.id.mini_player_progress);
-        redLed = findViewById(R.id.red_led);
 
         pagerAdapter = new MainPagerAdapter(this);
         viewPager.setAdapter(pagerAdapter);
         viewPager.setOffscreenPageLimit(2);
-
-        // Start Red LED pulse
-        AlphaAnimation pulse = new AlphaAnimation(0.3f, 1.0f);
-        pulse.setDuration(800);
-        pulse.setRepeatMode(Animation.REVERSE);
-        pulse.setRepeatCount(Animation.INFINITE);
-        redLed.startAnimation(pulse);
 
         final boolean[] isPageChanging = {false};
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
@@ -130,7 +121,22 @@ public class MainActivity extends AppCompatActivity {
         });
 
         miniPlayerContainer.setOnClickListener(v -> {
-            if (currentPlayingTrack != null && !isFinishing() && !getSupportFragmentManager().isStateSaved()) {
+            if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
+                Intent playerIntent = new Intent(this, ExoVideoPlayerActivity.class);
+                playerIntent.putExtra("resume_active_playback", true);
+                playerIntent.putExtra("is_vlc_active", BackgroundPlaybackManager.getInstance().isVlcActive());
+                playerIntent.putExtra("path", BackgroundPlaybackManager.getInstance().getCurrentPath());
+                playerIntent.putExtra("video_path", BackgroundPlaybackManager.getInstance().getCurrentPath());
+                playerIntent.putExtra("contentUri", BackgroundPlaybackManager.getInstance().getCurrentUriStr());
+                playerIntent.putExtra("video_uri", BackgroundPlaybackManager.getInstance().getCurrentUriStr());
+                playerIntent.putExtra("title", BackgroundPlaybackManager.getInstance().getCurrentTitle());
+                playerIntent.putExtra("video_title", BackgroundPlaybackManager.getInstance().getCurrentTitle());
+                playerIntent.putStringArrayListExtra("playlist_paths", BackgroundPlaybackManager.getInstance().getPlaylistPaths());
+                playerIntent.putStringArrayListExtra("playlist_titles", BackgroundPlaybackManager.getInstance().getPlaylistTitles());
+                playerIntent.putStringArrayListExtra("playlist_uris", BackgroundPlaybackManager.getInstance().getPlaylistUris());
+                playerIntent.putExtra("playlist_index", BackgroundPlaybackManager.getInstance().getPlaylistIndex());
+                startActivity(playerIntent);
+            } else if (currentPlayingTrack != null && !isFinishing() && !getSupportFragmentManager().isStateSaved()) {
                 if (activeNowPlayingSheet == null || !activeNowPlayingSheet.isAdded()) {
                     activeNowPlayingSheet = NowPlayingBottomSheet.newInstance(currentPlayingTrack);
                     activeNowPlayingSheet.show(getSupportFragmentManager(), "NowPlayingBottomSheet");
@@ -138,12 +144,43 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        miniPlayerBtnPlay.setOnClickListener(v -> togglePlayPause());
-        miniPlayerBtnNext.setOnClickListener(v -> playNext());
-
-        findViewById(R.id.btn_settings_top).setOnClickListener(v -> {
-            startActivity(new Intent(this, SettingsActivity.class));
+        miniPlayerContainer.setOnLongClickListener(v -> {
+            if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
+                BackgroundPlaybackManager.getInstance().stopAndRelease();
+                miniPlayerContainer.setVisibility(View.GONE);
+                Toast.makeText(this, "PLAYBACK STOPPED", Toast.LENGTH_SHORT).show();
+                return true;
+            } else if (isPlaying || musicService != null) {
+                if (musicService != null) {
+                    musicService.stop();
+                }
+                isPlaying = false;
+                miniPlayerContainer.setVisibility(View.GONE);
+                Toast.makeText(this, "MUSIC STOPPED", Toast.LENGTH_SHORT).show();
+                return true;
+            }
+            return false;
         });
+
+        miniPlayerBtnPlay.setOnClickListener(v -> {
+            if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
+                BackgroundPlaybackManager.getInstance().togglePlayPause();
+                boolean playing = BackgroundPlaybackManager.getInstance().isPlaying();
+                miniPlayerBtnPlay.setImageResource(playing ? R.drawable.ic_pause_dotmatrix : R.drawable.ic_play_dotmatrix);
+            } else {
+                togglePlayPause();
+            }
+        });
+
+        miniPlayerBtnNext.setOnClickListener(v -> {
+            if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
+                BackgroundPlaybackManager.getInstance().playNext(this);
+            } else {
+                playNext();
+            }
+        });
+
+
 
         checkAndRequestPermissions();
         bindMusicService();
@@ -243,6 +280,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void playAudioTrack(MediaItem track, List<MediaItem> playlist, int index) {
+        if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
+            BackgroundPlaybackManager.getInstance().stopAndRelease();
+        }
         if (playlist != null) {
             this.currentPlaylist = playlist;
             this.currentTrackIndex = index;
@@ -311,7 +351,14 @@ public class MainActivity extends AppCompatActivity {
         progressHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                if (isBound && musicService != null && isPlaying && currentPlayingTrack != null) {
+                if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
+                    long pos = BackgroundPlaybackManager.getInstance().getCurrentPosition();
+                    long dur = BackgroundPlaybackManager.getInstance().getDuration();
+                    if (dur > 0) {
+                        int progress = (int) ((pos * 100) / dur);
+                        miniPlayerProgress.setProgress(progress);
+                    }
+                } else if (isBound && musicService != null && isPlaying && currentPlayingTrack != null) {
                     long pos = musicService.getCurrentPosition();
                     long dur = currentPlayingTrack.duration > 0 ? currentPlayingTrack.duration : musicService.getDuration();
                     if (dur > 0) {
@@ -325,6 +372,70 @@ public class MainActivity extends AppCompatActivity {
                 progressHandler.postDelayed(this, 1000);
             }
         }, 1000);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        syncMiniPlayerState();
+    }
+
+    private void syncMiniPlayerState() {
+        if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
+            setupMiniPlayerForVideo();
+        } else if (isBound && musicService != null && isPlaying && currentPlayingTrack != null) {
+            miniPlayerContainer.setVisibility(View.VISIBLE);
+            miniPlayerTitle.setText(currentPlayingTrack.title);
+            miniPlayerArtist.setText(currentPlayingTrack.artist != null ? currentPlayingTrack.artist : "Unknown Artist");
+            miniPlayerBtnPlay.setImageResource(R.drawable.ic_pause_dotmatrix);
+        } else {
+            miniPlayerContainer.setVisibility(View.GONE);
+        }
+    }
+
+    private void setupMiniPlayerForVideo() {
+        miniPlayerContainer.setVisibility(View.VISIBLE);
+        String title = BackgroundPlaybackManager.getInstance().getCurrentTitle();
+        String path = BackgroundPlaybackManager.getInstance().getCurrentPath();
+        miniPlayerTitle.setText(title != null && !title.isEmpty() ? title : "Video Playback");
+        miniPlayerArtist.setText("VIDEO PLAYBACK");
+
+        boolean isPlaying = BackgroundPlaybackManager.getInstance().isPlaying();
+        miniPlayerBtnPlay.setImageResource(isPlaying ? R.drawable.ic_pause_dotmatrix : R.drawable.ic_play_dotmatrix);
+
+        Glide.with(this)
+                .load(path)
+                .placeholder(R.drawable.ic_play_dotmatrix)
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                .into(miniPlayerArt);
+
+        BackgroundPlaybackManager.getInstance().setCallback(new BackgroundPlaybackManager.Callback() {
+            @Override
+            public void onTrackChanged(String newTitle, String newPath, int index) {
+                runOnUiThread(() -> {
+                    miniPlayerTitle.setText(newTitle != null && !newTitle.isEmpty() ? newTitle : "Video Playback");
+                    Glide.with(MainActivity.this)
+                            .load(newPath)
+                            .placeholder(R.drawable.ic_play_dotmatrix)
+                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                            .into(miniPlayerArt);
+                });
+            }
+
+            @Override
+            public void onPlaybackStateChanged(boolean playing) {
+                runOnUiThread(() -> {
+                    miniPlayerBtnPlay.setImageResource(playing ? R.drawable.ic_pause_dotmatrix : R.drawable.ic_play_dotmatrix);
+                });
+            }
+
+            @Override
+            public void onPlaybackEnded() {
+                runOnUiThread(() -> {
+                    miniPlayerContainer.setVisibility(View.GONE);
+                });
+            }
+        });
     }
 
     @Override

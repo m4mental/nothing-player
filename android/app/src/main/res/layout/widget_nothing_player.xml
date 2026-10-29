@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bg_card_nothing"
+    android:padding="14dp">
+
+    <!-- Top Status Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="● "
+            android:textColor="#D71921"
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="NOTHING MEDIA"
+            android:textColor="#88FFFFFF"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:fontFamily="@font/ndot"
+            android:letterSpacing="0.08" />
+
+        <TextView
+            android:id="@+id/widget_tv_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="NOW PLAYING"
+            android:textColor="#D71921"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:fontFamily="@font/ndot" />
+    </LinearLayout>
+
+    <!-- Track Title & Subtitle -->
+    <TextView
+        android:id="@+id/widget_tv_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="NOTHING PLAYER"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:fontFamily="@font/ndot" />
+
+    <TextView
+        android:id="@+id/widget_tv_artist"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="READY TO PLAY"
+        android:textColor="#88FFFFFF"
+        android:textSize="11sp"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:fontFamily="@font/ndot" />
+
+    <!-- Playback Controls Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <ImageView
+            android:id="@+id/widget_btn_prev"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:padding="7dp"
+            android:src="@drawable/ic_prev_dotmatrix"
+            android:background="@drawable/bg_circle_dark"
+            android:contentDescription="Previous" />
+
+        <ImageView
+            android:id="@+id/widget_btn_play_pause"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:padding="9dp"
+            android:src="@drawable/ic_play_dotmatrix"
+            android:background="@drawable/bg_circle_red_active"
+            android:contentDescription="Play/Pause" />
+
+        <ImageView
+            android:id="@+id/widget_btn_next"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:padding="7dp"
+            android:src="@drawable/ic_next_dotmatrix"
+            android:background="@drawable/bg_circle_dark"
+            android:contentDescription="Next" />
+    </LinearLayout>
+</LinearLayout>

@@ -68,6 +68,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
 
     private int currentCategory = CATEGORY_FOLDERS;
     private int currentSortMode = SORT_DATE_DESC;
+    private final Set<String> pinnedFolders = new HashSet<>();
 
     private RecyclerView recyclerView;
     private VideoAdapter adapter;
@@ -79,7 +80,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     // Multi-select Views
     private View selectionActionBar, searchFilterBar;
     private TextView tvSelectionCount;
-    private Button btnSelectAll, btnDeleteSelected;
+    private Button btnSelectAll, btnVaultSelected, btnTrashSelected, btnDeleteSelected;
     private ImageButton btnCloseSelection;
 
     // Recently Watched Carousel & History Views
@@ -163,6 +164,8 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         searchFilterBar = view.findViewById(R.id.search_filter_bar);
         tvSelectionCount = view.findViewById(R.id.tv_selection_count);
         btnSelectAll = view.findViewById(R.id.btn_select_all);
+        btnVaultSelected = view.findViewById(R.id.btn_vault_selected);
+        btnTrashSelected = view.findViewById(R.id.btn_trash_selected);
         btnDeleteSelected = view.findViewById(R.id.btn_delete_selected);
         btnCloseSelection = view.findViewById(R.id.btn_close_selection);
 
@@ -194,6 +197,10 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             currentViewMode = prefs.getInt(KEY_VIEW_MODE, VideoAdapter.VIEW_MODE_GRID_2);
             currentSortMode = prefs.getInt(KEY_SORT_MODE, SORT_DATE_DESC);
+        Set<String> savedPinned = prefs.getStringSet("pinned_folders", null);
+        if (savedPinned != null) {
+            pinnedFolders.addAll(savedPinned);
+        }
         }
 
         adapter = new VideoAdapter(getContext(), this);
@@ -253,6 +260,45 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         // Setup Selection Action Bar Listeners
         btnCloseSelection.setOnClickListener(v -> adapter.clearSelection());
         btnSelectAll.setOnClickListener(v -> adapter.selectAll());
+        if (btnVaultSelected != null) {
+            btnVaultSelected.setOnClickListener(v -> {
+                Set<Object> selected = adapter.getSelectedItems();
+                if (selected.isEmpty() || getContext() == null) return;
+                if (!VaultManager.isPinSet(getContext())) {
+                    showSetVaultPinDialog(() -> moveSelectedToVault(selected));
+                } else {
+                    showVerifyVaultPinDialog(() -> moveSelectedToVault(selected));
+                }
+            });
+        }
+        if (btnTrashSelected != null) {
+            btnTrashSelected.setOnClickListener(v -> {
+                Set<Object> selected = adapter.getSelectedItems();
+                if (selected.isEmpty() || getContext() == null) return;
+                int count = selected.size();
+                NothingDialogHelper.showConfirmDialog(
+                        getContext(),
+                        "MOVE TO RECYCLE BIN",
+                        "Move " + count + " item" + (count > 1 ? "s" : "") + " to Recycle Bin?\n\n(Files are kept safe for 30 days)",
+                        "MOVE TO TRASH",
+                        () -> {
+                            int moved = 0;
+                            for (Object obj : selected) {
+                                if (obj instanceof MediaItem) {
+                                    if (TrashManager.moveToTrash(getContext(), (MediaItem) obj)) {
+                                        moved++;
+                                    }
+                                }
+                            }
+                            adapter.clearSelection();
+                            loadVideos(false);
+                            Toast.makeText(getContext(), "Moved " + moved + " item(s) to Recycle Bin", Toast.LENGTH_SHORT).show();
+                        },
+                        "CANCEL",
+                        null
+                );
+            });
+        }
         btnDeleteSelected.setOnClickListener(v -> confirmDeleteSelected());
 
         loadVideos();
@@ -366,6 +412,17 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
 
     private void onHistoryItemClick(PlaybackHistoryManager.HistoryItem item) {
         if (getContext() == null || item == null) return;
+        if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
+            String activePath = BackgroundPlaybackManager.getInstance().getCurrentPath();
+            if (activePath != null && activePath.equals(item.pathOrUri)) {
+                Intent intent = new Intent(getContext(), ExoVideoPlayerActivity.class);
+                intent.putExtra("resume_active_playback", true);
+                startActivity(intent);
+                return;
+            } else {
+                BackgroundPlaybackManager.getInstance().stopAndRelease();
+            }
+        }
         Intent intent = new Intent(getContext(), ExoVideoPlayerActivity.class);
         intent.setAction(Intent.ACTION_VIEW);
         intent.setData(Uri.parse(item.pathOrUri));
@@ -401,18 +458,56 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
 
     private void confirmDeleteSelected() {
         Set<Object> selected = adapter.getSelectedItems();
-        if (selected.isEmpty()) return;
+        if (selected.isEmpty() || getContext() == null) return;
 
         int count = selected.size();
-        NothingDialogHelper.showConfirmDialog(
-            getContext(),
-            "DELETE " + count + " ITEM" + (count > 1 ? "S" : "") + "?",
-            "These files will be permanently deleted from device storage.",
-            "DELETE",
-            () -> deleteSelectedItems(selected),
-            "CANCEL",
-            null
+        List<String> actions = Arrays.asList(
+                "MOVE TO RECYCLE BIN (30-DAY RECOVERY)",
+                "MOVE TO PRIVATE VAULT (PIN LOCKED)",
+                "PERMANENTLY DELETE FROM DEVICE"
         );
+
+        NothingDialogHelper.showSelectionDialog(getContext(), "MANAGE " + count + " SELECTED ITEM" + (count > 1 ? "S" : ""), actions, 0, (index, item) -> {
+            if (index == 0) {
+                // Move to Recycle Bin
+                int moved = 0;
+                for (Object obj : selected) {
+                    if (obj instanceof MediaItem) {
+                        if (TrashManager.moveToTrash(getContext(), (MediaItem) obj)) {
+                            moved++;
+                        }
+                    }
+                }
+                adapter.clearSelection();
+                loadVideos(false);
+                Toast.makeText(getContext(), "Moved " + moved + " item(s) to Recycle Bin", Toast.LENGTH_SHORT).show();
+            } else if (index == 1) {
+                // Move to Private Vault
+                if (!VaultManager.isPinSet(getContext())) {
+                    showSetVaultPinDialog(() -> moveSelectedToVault(selected));
+                } else {
+                    showVerifyVaultPinDialog(() -> moveSelectedToVault(selected));
+                }
+            } else if (index == 2) {
+                // Permanent Delete
+                deleteSelectedItems(selected);
+            }
+        });
+    }
+
+    private void moveSelectedToVault(Set<Object> selected) {
+        if (getContext() == null) return;
+        int moved = 0;
+        for (Object obj : selected) {
+            if (obj instanceof MediaItem) {
+                if (VaultManager.moveToVault(getContext(), (MediaItem) obj)) {
+                    moved++;
+                }
+            }
+        }
+        adapter.clearSelection();
+        loadVideos(false);
+        Toast.makeText(getContext(), "Moved " + moved + " item(s) to Private Vault", Toast.LENGTH_SHORT).show();
     }
 
     private void deleteSelectedItems(Set<Object> selected) {
@@ -518,6 +613,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     public void onResume() {
         super.onResume();
         updateHistorySection();
+        loadVideos(false);
         if (adapter != null) {
             filterAndDisplay();
         }
@@ -538,6 +634,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                     displayItems.add(new VideoAdapter.FolderItem("Recently", allVideos.size(), hasAnyNew, true));
                 }
 
+
                 Map<String, Integer> folderMap = new HashMap<>();
                 for (MediaItem v : allVideos) {
                     String folder = v.folder != null ? v.folder : "Storage";
@@ -549,15 +646,21 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                     String folderName = entry.getKey();
                     int count = entry.getValue();
                     boolean hasNew = MediaStateManager.folderHasNewVideos(getContext(), folderName, allVideos);
-                    folderItems.add(new VideoAdapter.FolderItem(folderName, count, hasNew, false, "storage", null, null));
+                    VideoAdapter.FolderItem fItem = new VideoAdapter.FolderItem(folderName, count, hasNew, false, "storage", null, null);
+                    fItem.isPinned = pinnedFolders.contains(folderName);
+                    folderItems.add(fItem);
                 }
 
-                // Sort folders
-                if (currentSortMode == SORT_NAME_DESC) {
-                    Collections.sort(folderItems, (a, b) -> b.name.compareToIgnoreCase(a.name));
-                } else {
-                    Collections.sort(folderItems, (a, b) -> a.name.compareToIgnoreCase(b.name));
-                }
+                // Sort folders: Pinned folders always on top
+                Collections.sort(folderItems, (a, b) -> {
+                    if (a.isPinned != b.isPinned) {
+                        return a.isPinned ? -1 : 1;
+                    }
+                    if (currentSortMode == SORT_NAME_DESC) {
+                        return b.name.compareToIgnoreCase(a.name);
+                    }
+                    return a.name.compareToIgnoreCase(b.name);
+                });
                 displayItems.addAll(folderItems);
 
                 adapter.setItems(displayItems, true, false);
@@ -764,9 +867,222 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         }
     }
 
+    private void openPrivateVault() {
+        if (getContext() == null) return;
+        startActivity(new Intent(getContext(), VaultActivity.class));
+    }
+
+    private void showSetVaultPinDialog(Runnable onSuccess) {
+        if (getContext() == null) return;
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_vault_pin, null);
+        TextView tvTitle = dialogView.findViewById(R.id.tv_dialog_pin_title);
+        TextView tvSubtitle = dialogView.findViewById(R.id.tv_dialog_pin_subtitle);
+        EditText etPin = dialogView.findViewById(R.id.et_dialog_pin);
+        View btnCancel = dialogView.findViewById(R.id.btn_dialog_pin_cancel);
+        Button btnConfirm = dialogView.findViewById(R.id.btn_dialog_pin_confirm);
+
+        tvTitle.setText("SET PRIVATE VAULT PIN");
+        tvSubtitle.setText("Create a 4-digit security PIN for your private video vault:");
+        btnConfirm.setText("SET PIN");
+
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setView(dialogView)
+                .create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnConfirm.setOnClickListener(v -> {
+            String pin = etPin.getText().toString().trim();
+            if (pin.length() >= 4) {
+                VaultManager.setPin(getContext(), pin);
+                Toast.makeText(getContext(), "Vault PIN Set Successfully", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+                if (onSuccess != null) onSuccess.run();
+            } else {
+                Toast.makeText(getContext(), "PIN must be at least 4 digits", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void showVerifyVaultPinDialog(Runnable onSuccess) {
+        if (getContext() == null) return;
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_vault_pin, null);
+        TextView tvTitle = dialogView.findViewById(R.id.tv_dialog_pin_title);
+        TextView tvSubtitle = dialogView.findViewById(R.id.tv_dialog_pin_subtitle);
+        EditText etPin = dialogView.findViewById(R.id.et_dialog_pin);
+        View btnCancel = dialogView.findViewById(R.id.btn_dialog_pin_cancel);
+        Button btnConfirm = dialogView.findViewById(R.id.btn_dialog_pin_confirm);
+
+        tvTitle.setText("UNLOCK PRIVATE VAULT");
+        tvSubtitle.setText("Enter your 4-digit PIN to move videos to vault:");
+        btnConfirm.setText("UNLOCK");
+
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setView(dialogView)
+                .create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnConfirm.setOnClickListener(v -> {
+            String pin = etPin.getText().toString().trim();
+            if (VaultManager.verifyPin(getContext(), pin)) {
+                dialog.dismiss();
+                if (onSuccess != null) onSuccess.run();
+            } else {
+                Toast.makeText(getContext(), "Incorrect PIN", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void showVaultContentDialog() {
+        if (getContext() == null) return;
+        List<VaultManager.VaultItem> items = VaultManager.getVaultItems(getContext());
+        if (items.isEmpty()) {
+            Toast.makeText(getContext(), "Private Vault is empty. Select videos and tap 'Move to Vault'", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        List<String> titles = new ArrayList<>();
+        for (VaultManager.VaultItem v : items) {
+            titles.add(v.title);
+        }
+
+        NothingDialogHelper.showSelectionDialog(getContext(), "PRIVATE VAULT (" + items.size() + ")", titles, 0, (index, item) -> {
+            VaultManager.VaultItem selected = items.get(index);
+            List<String> actions = Arrays.asList("PLAY IN PLAYER", "RESTORE TO STORAGE", "PERMANENT DELETE");
+            NothingDialogHelper.showSelectionDialog(getContext(), selected.title, actions, 0, (aIdx, aItem) -> {
+                if (aIdx == 0) {
+                    Intent intent = new Intent(getContext(), ExoVideoPlayerActivity.class);
+                    intent.putExtra("path", selected.vaultPath);
+                    intent.putExtra("video_path", selected.vaultPath);
+                    intent.putExtra("title", selected.title);
+                    intent.putExtra("video_title", selected.title);
+                    startActivity(intent);
+                } else if (aIdx == 1) {
+                    if (VaultManager.restoreItem(getContext(), selected)) {
+                        Toast.makeText(getContext(), "Restored to storage", Toast.LENGTH_SHORT).show();
+                        loadVideos(false);
+                    }
+                } else if (aIdx == 2) {
+                    VaultManager.deletePermanently(getContext(), selected);
+                    Toast.makeText(getContext(), "Deleted from vault", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+    }
+
+    private void openRecycleBin() {
+        if (getContext() == null) return;
+        startActivity(new Intent(getContext(), RecycleBinActivity.class));
+    }
+
+    private void showM3uPlaylistDialog() {
+        if (getContext() == null) return;
+        final EditText input = new EditText(getContext());
+        input.setHint("M3U URL or local file path");
+        input.setTextColor(Color.WHITE);
+        input.setHintTextColor(Color.GRAY);
+
+        new AlertDialog.Builder(getContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("IMPORT IPTV / M3U PLAYLIST")
+                .setMessage("Paste an IPTV M3U stream URL or local playlist path:")
+                .setView(input)
+                .setPositiveButton("LOAD CHANNELS", (dialog, which) -> {
+                    String url = input.getText().toString().trim();
+                    if (url.isEmpty()) return;
+                    Toast.makeText(getContext(), "Parsing M3U Playlist...", Toast.LENGTH_SHORT).show();
+                    M3uParser.loadM3u(url, new M3uParser.ParseCallback() {
+                        @Override
+                        public void onParsed(List<M3uParser.M3uChannel> channels) {
+                            if (channels.isEmpty()) {
+                                Toast.makeText(getContext(), "No stream channels found in M3U", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+                            List<String> names = new ArrayList<>();
+                            for (M3uParser.M3uChannel ch : channels) {
+                                names.add("[" + ch.group + "] " + ch.name);
+                            }
+                            NothingDialogHelper.showSelectionDialog(getContext(), "IPTV CHANNELS (" + channels.size() + ")", names, 0, (chIdx, chItem) -> {
+                                M3uParser.M3uChannel sel = channels.get(chIdx);
+                                Intent playerIntent = new Intent(getContext(), ExoVideoPlayerActivity.class);
+                                playerIntent.setAction(Intent.ACTION_VIEW);
+                                playerIntent.setData(Uri.parse(sel.streamUrl));
+                                playerIntent.putExtra("video_uri", sel.streamUrl);
+                                playerIntent.putExtra("title", sel.name);
+                                playerIntent.putExtra("video_title", sel.name);
+                                startActivity(playerIntent);
+                            });
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            Toast.makeText(getContext(), "Failed to load M3U: " + error, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                })
+                .setNegativeButton("CANCEL", null)
+                .show();
+    }
+
+    private void showBackgroundDownloaderDialog() {
+        if (getContext() == null) return;
+        final EditText input = new EditText(getContext());
+        input.setHint("https://example.com/video.mp4");
+        input.setTextColor(Color.WHITE);
+        input.setHintTextColor(Color.GRAY);
+        input.setTypeface(android.graphics.Typeface.create("monospace", android.graphics.Typeface.NORMAL));
+
+        new AlertDialog.Builder(getContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("DOWNLOAD ONLINE STREAM")
+                .setMessage("Enter direct video/stream URL to download in background:")
+                .setView(input)
+                .setPositiveButton("DOWNLOAD", (dialog, which) -> {
+                    String url = input.getText().toString().trim();
+                    if (!url.isEmpty()) {
+                        StreamDownloadHelper.downloadMedia(getContext(), url, "Stream_" + System.currentTimeMillis());
+                    } else {
+                        Toast.makeText(getContext(), "Please enter a valid URL", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("CANCEL", null)
+                .show();
+    }
+
     private void showVideosOptionsMenu() {
         if (getContext() == null) return;
         List<NothingDialogHelper.MenuItemOption> options = new ArrayList<>();
+
+        options.add(new NothingDialogHelper.MenuItemOption(
+                "🔒 PRIVATE VAULT",
+                "PIN-protected hidden video vault",
+                this::openPrivateVault
+        ));
+
+        options.add(new NothingDialogHelper.MenuItemOption(
+                "🗑️ RECYCLE BIN",
+                "30-day trash recovery (" + TrashManager.getTrashItems(getContext()).size() + " items)",
+                this::openRecycleBin
+        ));
+
+        options.add(new NothingDialogHelper.MenuItemOption(
+                "📡 IPTV / M3U STREAM",
+                "Load live channel playlists",
+                this::showM3uPlaylistDialog
+        ));
+
+        options.add(new NothingDialogHelper.MenuItemOption(
+                "⬇️ BACKGROUND DOWNLOADER",
+                "Download video/stream to storage",
+                this::showBackgroundDownloaderDialog
+        ));
 
         options.add(new NothingDialogHelper.MenuItemOption(
                 "VIEW MODE",
@@ -1004,6 +1320,15 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         }
 
         Intent intent = new Intent(getContext(), ExoVideoPlayerActivity.class);
+        if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
+            String activePath = BackgroundPlaybackManager.getInstance().getCurrentPath();
+            String clickedPath = video.path != null ? video.path : video.contentUri;
+            if (activePath != null && (activePath.equals(clickedPath) || (video.contentUri != null && activePath.equals(video.contentUri)))) {
+                intent.putExtra("resume_active_playback", true);
+            } else {
+                BackgroundPlaybackManager.getInstance().stopAndRelease();
+            }
+        }
         intent.putExtra("path", video.path);
         intent.putExtra("video_path", video.path);
         intent.putExtra("contentUri", video.contentUri);
@@ -1068,8 +1393,44 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     }
 
     @Override
+    public void onFolderLongClick(VideoAdapter.FolderItem folder) {
+        if (folder == null || getContext() == null) return;
+        boolean isPinned = pinnedFolders.contains(folder.name);
+        List<String> options = Arrays.asList(
+                isPinned ? "📌 UNPIN FOLDER FROM TOP" : "📌 PIN FOLDER TO TOP",
+                "OPEN FOLDER"
+        );
+        NothingDialogHelper.showSelectionDialog(getContext(), folder.name.toUpperCase(), options, 0, (index, item) -> {
+            if (index == 0) {
+                if (isPinned) {
+                    pinnedFolders.remove(folder.name);
+                    Toast.makeText(getContext(), "Unpinned " + folder.name, Toast.LENGTH_SHORT).show();
+                } else {
+                    pinnedFolders.add(folder.name);
+                    Toast.makeText(getContext(), "Pinned " + folder.name + " to top", Toast.LENGTH_SHORT).show();
+                }
+                if (getContext() != null) {
+                    getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                            .edit().putStringSet("pinned_folders", new HashSet<>(pinnedFolders)).apply();
+                }
+                filterAndDisplay();
+            } else {
+                onFolderClick(folder);
+            }
+        });
+    }
+
+    @Override
     public void onFolderClick(VideoAdapter.FolderItem folder) {
         if (folder == null) return;
+        if ("🔒 PRIVATE VAULT".equalsIgnoreCase(folder.name) || "Private Vault".equalsIgnoreCase(folder.name)) {
+            openPrivateVault();
+            return;
+        }
+        if ("🗑️ RECYCLE BIN".equalsIgnoreCase(folder.name) || "Recycle Bin".equalsIgnoreCase(folder.name)) {
+            openRecycleBin();
+            return;
+        }
         if ("series".equalsIgnoreCase(folder.folderType)) {
             currentSelectedSeries = folder.name;
         } else {

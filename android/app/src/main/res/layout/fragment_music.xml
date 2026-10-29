@@ -5,7 +5,8 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/nothing_black"
-    android:paddingHorizontal="14dp">
+    android:paddingHorizontal="14dp"
+    android:paddingTop="6dp">
 
     <!-- Contextual Selection Action Bar -->
     <RelativeLayout

@@ -162,6 +162,20 @@
             android:theme="@style/AppTheme"
             android:exported="false" />
 
+        <activity
+            android:name=".VaultActivity"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
+            android:theme="@style/AppTheme"
+            android:exported="false" />
+
+        <activity
+            android:name=".RecycleBinActivity"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout"
+            android:theme="@style/AppTheme"
+            android:exported="false" />
+
         <service
             android:name=".MusicPlaybackService"
             android:enabled="true"
@@ -177,6 +191,21 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+        <!-- Nothing OS Dot-Matrix Home-Screen Widget -->
+        <receiver
+            android:name=".NothingPlayerWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.nothing.player.WIDGET_PLAY_PAUSE" />
+                <action android:name="com.nothing.player.WIDGET_NEXT" />
+                <action android:name="com.nothing.player.WIDGET_PREV" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/nothing_player_widget_info" />
+        </receiver>
+
     </application>
 
 </manifest>

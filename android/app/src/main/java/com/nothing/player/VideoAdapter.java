@@ -46,6 +46,7 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     public interface OnItemClickListener {
         void onVideoClick(MediaItem video);
         void onFolderClick(FolderItem folder);
+        default void onFolderLongClick(FolderItem folder) {}
         void onMenuClick(MediaItem video);
         void onSelectionChanged(int selectedCount);
     }
@@ -63,6 +64,7 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         public int count;
         public boolean hasNew;
         public boolean isRecentFolder;
+        public boolean isPinned = false;
         public String folderType; // "storage", "recent", "series", "movies"
         public String posterUrl;
         public String subtitle;
@@ -168,7 +170,18 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         if (holder instanceof FolderViewHolder) {
             FolderItem folder = (FolderItem) item;
             FolderViewHolder fHolder = (FolderViewHolder) holder;
-            fHolder.folderName.setText(folder.name);
+            if (folder.isPinned) {
+                fHolder.folderName.setText("📌 " + folder.name);
+            } else {
+                fHolder.folderName.setText(folder.name);
+            }
+            fHolder.itemView.setOnLongClickListener(v -> {
+                if (listener != null) {
+                    listener.onFolderLongClick(folder);
+                    return true;
+                }
+                return false;
+            });
 
             if (folder.posterUrl != null && !folder.posterUrl.isEmpty()) {
                 if (fHolder.folderThumb != null) {
@@ -187,6 +200,12 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                     if ("series".equalsIgnoreCase(folder.folderType)) {
                         fHolder.folderIcon.setImageResource(R.drawable.ic_dotmatrix_playlist);
                         fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
+                    } else if ("vault".equalsIgnoreCase(folder.folderType)) {
+                        fHolder.folderIcon.setImageResource(R.drawable.ic_lock_closed);
+                        fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
+                    } else if ("trash".equalsIgnoreCase(folder.folderType)) {
+                        fHolder.folderIcon.setImageResource(android.R.drawable.ic_menu_delete);
+                        fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
                     } else if (folder.isRecentFolder) {
                         fHolder.folderIcon.setImageResource(R.drawable.ic_folder_recent);
                         fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
@@ -199,6 +218,10 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
             if (folder.subtitle != null && !folder.subtitle.isEmpty()) {
                 fHolder.folderCount.setText(folder.subtitle);
+            } else if ("vault".equalsIgnoreCase(folder.folderType)) {
+                fHolder.folderCount.setText(folder.count + (folder.count == 1 ? " Video" : " Videos") + " • PIN Locked");
+            } else if ("trash".equalsIgnoreCase(folder.folderType)) {
+                fHolder.folderCount.setText(folder.count + (folder.count == 1 ? " Item" : " Items") + " • 30-Day Safe Recovery");
             } else if ("series".equalsIgnoreCase(folder.folderType)) {
                 fHolder.folderCount.setText(folder.count + (folder.count == 1 ? " Episode" : " Episodes"));
             } else if (folder.isRecentFolder) {

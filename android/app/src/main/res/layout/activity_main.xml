@@ -5,67 +5,12 @@
     android:layout_height="match_parent"
     android:background="@color/nothing_black">
 
-    <!-- Top Nothing OS App Bar -->
-    <RelativeLayout
-        android:id="@+id/top_bar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="2dp"
-        android:paddingBottom="4dp"
-        android:paddingHorizontal="14dp"
-        android:background="@color/nothing_black"
-        android:layout_alignParentTop="true">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
-            android:layout_toStartOf="@id/btn_settings_top"
-            android:layout_centerVertical="true"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <!-- Pulsing Nothing Red LED -->
-            <View
-                android:id="@+id/red_led"
-                android:layout_width="10dp"
-                android:layout_height="10dp"
-                android:background="@drawable/led_red"
-                android:layout_marginEnd="10dp" />
-
-            <TextView
-                android:id="@+id/app_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="NOTHING PLAYER"
-                android:textColor="@color/nothing_white"
-                android:textSize="15sp"
-                android:fontFamily="@font/ndot"
-                android:textStyle="bold"
-                android:letterSpacing="0.04"
-                android:includeFontPadding="true"
-                android:singleLine="true" />
-        </LinearLayout>
-
-        <!-- Settings Top Button -->
-        <ImageButton
-            android:id="@+id/btn_settings_top"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:layout_alignParentEnd="true"
-            android:layout_centerVertical="true"
-            android:background="@drawable/bg_circle_button"
-            android:src="@drawable/ic_settings"
-            android:contentDescription="Settings"
-            app:tint="@color/nothing_white" />
-    </RelativeLayout>
-
-    <!-- ViewPager2 for Videos, Music, Settings -->
+    <!-- ViewPager2 for Videos, Music -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/view_pager"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/top_bar"
+        android:layout_alignParentTop="true"
         android:layout_above="@id/mini_player_container" />
 
     <!-- Persistent Bottom Mini Player -->
@@ -147,7 +92,7 @@
                 android:layout_width="38dp"
                 android:layout_height="38dp"
                 android:background="@drawable/bg_circle_button"
-                android:src="@android:drawable/ic_media_play"
+                android:src="@drawable/ic_play_dotmatrix"
                 android:contentDescription="Play/Pause"
                 app:tint="@color/nothing_white" />
 
@@ -157,7 +102,7 @@
                 android:layout_height="38dp"
                 android:layout_marginStart="6dp"
                 android:background="@drawable/bg_circle_button"
-                android:src="@android:drawable/ic_media_next"
+                android:src="@drawable/ic_next_dotmatrix"
                 android:contentDescription="Next"
                 app:tint="@color/nothing_white" />
         </LinearLayout>
