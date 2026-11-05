@@ -139,7 +139,7 @@ public class VaultActivity extends AppCompatActivity {
                 if (tvPinError.getVisibility() == View.VISIBLE) {
                     tvPinError.setVisibility(View.GONE);
                 }
-                if (len == 4 && !isSettingNewLock && VaultManager.isPinSet(VaultActivity.this)) {
+                if (len == 4 && !isSettingNewLock && VaultManager.canUnlockWithPin(VaultActivity.this)) {
                     verifyAndUnlockPin(s.toString());
                 }
             }
@@ -148,12 +148,13 @@ public class VaultActivity extends AppCompatActivity {
 
         btnSubmitVaultPin.setOnClickListener(v -> {
             String pin = etVaultPinInput.getText().toString().trim();
-            if (isSettingNewLock || !VaultManager.isPinSet(this)) {
+            if (isSettingNewLock || (!VaultManager.isPinSet(this) && !VaultManager.isDecoyPinSet(this))) {
                 if (pin.length() < 4) {
                     showError("PIN MUST BE 4 DIGITS");
                 } else {
                     VaultManager.setPin(this, pin);
                     VaultManager.setLockType(this, VaultManager.LOCK_TYPE_PIN);
+                    currentLockType = VaultManager.LOCK_TYPE_PIN;
                     Toast.makeText(this, "Vault PIN Configured Successfully", Toast.LENGTH_SHORT).show();
                     isSettingNewLock = false;
                     unlockVault();
@@ -199,12 +200,18 @@ public class VaultActivity extends AppCompatActivity {
 
         // Switch between PIN and Pattern
         tvSwitchAuthMode.setOnClickListener(v -> {
+            if (tvPinError != null) tvPinError.setVisibility(View.GONE);
             if (VaultManager.LOCK_TYPE_PIN.equals(currentLockType)) {
                 currentLockType = VaultManager.LOCK_TYPE_PATTERN;
             } else {
                 currentLockType = VaultManager.LOCK_TYPE_PIN;
             }
-            checkLockState(false);
+
+            if (isSettingNewLock || !VaultManager.isSecurityConfigured(this)) {
+                setupModeUI();
+            } else {
+                unlockModeUI(false);
+            }
         });
 
         // Security Configuration Button
@@ -212,7 +219,9 @@ public class VaultActivity extends AppCompatActivity {
     }
 
     private void checkLockState(boolean allowAutoBiometric) {
-        currentLockType = VaultManager.getLockType(this);
+        if (currentLockType == null) {
+            currentLockType = VaultManager.getLockType(this);
+        }
         boolean isConfigured = VaultManager.isSecurityConfigured(this);
 
         if (!isConfigured || isSettingNewLock) {
@@ -280,6 +289,8 @@ public class VaultActivity extends AppCompatActivity {
             tvPinSubheading.setText("Enter your 4-digit PIN to access private videos");
             btnSubmitVaultPin.setText("UNLOCK VAULT");
             tvSwitchAuthMode.setText("SWITCH TO PATTERN UNLOCK");
+            etVaultPinInput.setText("");
+            updatePinDots(0);
         }
     }
 
@@ -330,11 +341,14 @@ public class VaultActivity extends AppCompatActivity {
 
     private void verifyAndUnlockPin(String pin) {
         if (VaultManager.verifyPin(this, pin)) {
-            unlockVault();
+            unlockVault(false);
+        } else if (VaultManager.isDecoyPinSet(this) && VaultManager.verifyDecoyPin(this, pin)) {
+            unlockVault(true);
         } else {
             vibrateError();
             showError("INCORRECT PIN. TRY AGAIN");
             etVaultPinInput.setText("");
+            updatePinDots(0);
         }
     }
 
@@ -380,6 +394,10 @@ public class VaultActivity extends AppCompatActivity {
         TextView tvBioStatus = dialogView.findViewById(R.id.tv_config_biometric_status);
         Button btnCancel = dialogView.findViewById(R.id.btn_config_cancel);
         Button btnSave = dialogView.findViewById(R.id.btn_config_save);
+        EditText etDecoy = dialogView.findViewById(R.id.et_config_decoy_pin);
+        if (VaultManager.isDecoyPinSet(this) && etDecoy != null) {
+            etDecoy.setHint("DECOY PIN ACTIVE (CHANGE?)");
+        }
 
         // Read current values
         final String[] chosenLock = { VaultManager.getLockType(this) };
@@ -433,6 +451,14 @@ public class VaultActivity extends AppCompatActivity {
             VaultManager.setLockType(this, chosenLock[0]);
             VaultManager.setBiometricEnabled(this, switchBio.isChecked());
             VaultManager.setAutoBiometricPrompt(this, switchAutoBio.isChecked());
+            if (etDecoy != null) {
+                String dPin = etDecoy.getText().toString().trim();
+                if (dPin.length() == 4) {
+                    VaultManager.setDecoyPin(this, dPin);
+                } else if (dPin.length() > 0) {
+                    Toast.makeText(this, "Decoy PIN must be exactly 4 digits", Toast.LENGTH_SHORT).show();
+                }
+            }
             currentLockType = chosenLock[0];
 
             Toast.makeText(this, "Security Configuration Saved", Toast.LENGTH_SHORT).show();
@@ -455,12 +481,27 @@ public class VaultActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    private boolean isDecoyMode = false;
+
     private void unlockVault() {
+        unlockVault(false);
+    }
+
+    private void unlockVault(boolean isDecoy) {
         isUnlocked = true;
+        this.isDecoyMode = isDecoy;
         layoutVaultLock.setVisibility(View.GONE);
         layoutVaultContent.setVisibility(View.VISIBLE);
-        btnConfig.setVisibility(View.VISIBLE);
-        loadVaultVideos();
+        if (isDecoy) {
+            btnConfig.setVisibility(View.GONE);
+            vaultItemList.clear();
+            layoutVaultEmpty.setVisibility(View.VISIBLE);
+            rvVaultVideos.setVisibility(View.GONE);
+            tvHeaderSubtitle.setText("0 ENCRYPTED VIDEOS");
+        } else {
+            btnConfig.setVisibility(View.VISIBLE);
+            loadVaultVideos();
+        }
     }
 
     private void showError(String msg) {

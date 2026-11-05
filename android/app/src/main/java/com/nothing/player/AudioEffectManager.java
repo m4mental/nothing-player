@@ -7,6 +7,7 @@ import android.media.audiofx.AudioEffect;
 import android.media.audiofx.BassBoost;
 import android.media.audiofx.Equalizer;
 import android.media.audiofx.LoudnessEnhancer;
+import android.media.audiofx.DynamicsProcessing;
 import android.media.audiofx.Virtualizer;
 import android.os.Build;
 import android.util.Log;
@@ -25,6 +26,8 @@ public class AudioEffectManager {
     private BassBoost bassBoost;
     private Virtualizer virtualizer;
     private LoudnessEnhancer loudnessEnhancer;
+    private DynamicsProcessing dynamicsProcessing;
+    private boolean isNightModeCompressorEnabled = false;
     private int currentAudioSessionId = 0;
 
     public static synchronized AudioEffectManager getInstance() {
@@ -66,6 +69,21 @@ public class AudioEffectManager {
                     loudnessEnhancer = new LoudnessEnhancer(sessionId);
                 } catch (Exception e) {
                     Log.w(TAG, "LoudnessEnhancer not available", e);
+                }
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                try {
+                    DynamicsProcessing.Config.Builder dpBuilder = new DynamicsProcessing.Config.Builder(
+                        DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+                        2, true, 4, true, 4, true, 4, true
+                    );
+                    DynamicsProcessing.Limiter limiter = new DynamicsProcessing.Limiter(true, true, 0, 2.0f, 100.0f, 10.0f, -6.0f, 0.0f);
+                    dpBuilder.setLimiterAllChannelsTo(limiter);
+                    dynamicsProcessing = new DynamicsProcessing(1000, sessionId, dpBuilder.build());
+                    dynamicsProcessing.setEnabled(isNightModeCompressorEnabled);
+                } catch (Exception e) {
+                    Log.w(TAG, "DynamicsProcessing initialization skipped", e);
                 }
             }
 
@@ -152,6 +170,20 @@ public class AudioEffectManager {
                 Log.w(TAG, "Error applying preamp gain", e);
             }
         }
+
+        // Night Mode Compressor & Dialogue Normalizer
+        this.isNightModeCompressorEnabled = prefs.getBoolean("night_mode_compressor", false);
+        if (dynamicsProcessing != null) {
+            try {
+                dynamicsProcessing.setEnabled(this.isNightModeCompressorEnabled);
+            } catch (Exception ignored) {}
+        }
+        if (this.isNightModeCompressorEnabled && loudnessEnhancer != null) {
+            try {
+                loudnessEnhancer.setEnabled(true);
+                loudnessEnhancer.setTargetGain(600); // +6dB speech boost
+            } catch (Exception ignored) {}
+        }
     }
 
     public synchronized void applyVlcEqualizer(org.videolan.libvlc.MediaPlayer vlcPlayer, Context context) {
@@ -182,6 +214,49 @@ public class AudioEffectManager {
         }
     }
 
+    public synchronized void applyDialogueBoosterPreset(Context context) {
+        if (context == null) return;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit()
+            .putBoolean(KEY_ENABLED, true)
+            .putInt("eq_band_0", 11) // Cut deep sub-rumble for speech clarity
+            .putInt("eq_band_1", 13)
+            .putInt("eq_band_2", 23) // High boost on vocal fundamentals
+            .putInt("eq_band_3", 22) // High clarity on consonants and dialogue
+            .putInt("eq_band_4", 17)
+            .putInt(KEY_BASS, 10)
+            .putInt(KEY_VIRTUALIZER, 20)
+            .apply();
+        applySettings(context);
+    }
+
+    public synchronized void setNightModeCompressorEnabled(boolean enabled, Context context) {
+        this.isNightModeCompressorEnabled = enabled;
+        if (context != null) {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            prefs.edit().putBoolean("night_mode_compressor", enabled).apply();
+        }
+        if (dynamicsProcessing != null) {
+            try {
+                dynamicsProcessing.setEnabled(enabled);
+            } catch (Exception ignored) {}
+        }
+        if (loudnessEnhancer != null) {
+            try {
+                if (enabled) {
+                    loudnessEnhancer.setEnabled(true);
+                    loudnessEnhancer.setTargetGain(600); // +6dB dialogue boost
+                } else {
+                    loudnessEnhancer.setTargetGain(0);
+                }
+            } catch (Exception ignored) {}
+        }
+    }
+
+    public synchronized boolean isNightModeCompressorEnabled() {
+        return isNightModeCompressorEnabled;
+    }
+
     public synchronized void setVolumeBoostGain(int boostPercent) {
         if (loudnessEnhancer != null) {
             try {
@@ -199,12 +274,25 @@ public class AudioEffectManager {
     }
 
     public synchronized void release() {
+        release(null);
+    }
+
+    public synchronized void release(Context context) {
         if (currentAudioSessionId > 0) {
+            try {
+                if (context != null) {
+                    Intent intent = new Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
+                    intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, currentAudioSessionId);
+                    intent.putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.getPackageName());
+                    context.sendBroadcast(intent);
+                }
+            } catch (Exception ignored) {}
             try {
                 if (equalizer != null) { equalizer.release(); equalizer = null; }
                 if (bassBoost != null) { bassBoost.release(); bassBoost = null; }
                 if (virtualizer != null) { virtualizer.release(); virtualizer = null; }
                 if (loudnessEnhancer != null) { loudnessEnhancer.release(); loudnessEnhancer = null; }
+                if (dynamicsProcessing != null) { dynamicsProcessing.release(); dynamicsProcessing = null; }
             } catch (Exception ignored) {}
             currentAudioSessionId = 0;
         }

@@ -19,6 +19,10 @@ public class DotMatrixSeekBar extends AppCompatSeekBar {
     private final Paint paintChapter = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private final List<Float> chapterRatios = new ArrayList<>();
+    private long abStartMs = -1;
+    private long abEndMs = -1;
+    private long abDurationMs = -1;
+    private final Paint paintAbRepeat = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private int activeColor = Color.parseColor("#D71921"); // Nothing Red
     private int inactiveColor = Color.parseColor("#26FFFFFF"); // Faint LED dots
@@ -55,6 +59,9 @@ public class DotMatrixSeekBar extends AppCompatSeekBar {
         paintThumbInner.setStyle(Paint.Style.FILL);
         paintThumbInner.setColor(thumbDotColor);
 
+        paintAbRepeat.setStyle(Paint.Style.FILL);
+        paintAbRepeat.setColor(Color.parseColor("#D71921"));
+
         // Hide default track & thumb drawing to replace with custom LED dot matrix
         setThumb(null);
     }
@@ -74,6 +81,20 @@ public class DotMatrixSeekBar extends AppCompatSeekBar {
                 }
             }
         }
+        invalidate();
+    }
+
+    public void setAbRepeatRange(long startMs, long endMs, long durationMs) {
+        this.abStartMs = startMs;
+        this.abEndMs = endMs;
+        this.abDurationMs = durationMs;
+        invalidate();
+    }
+
+    public void clearAbRepeatRange() {
+        this.abStartMs = -1;
+        this.abEndMs = -1;
+        this.abDurationMs = -1;
         invalidate();
     }
 
@@ -124,6 +145,31 @@ public class DotMatrixSeekBar extends AppCompatSeekBar {
                 float chapX = paddingL + (r * availableWidth);
                 canvas.drawCircle(chapX, cy, 2.0f * density, paintChapter);
             }
+        }
+
+        // 3.5 Draw A-B Repeat Range & Discrete LED Marker Ticks
+        if (abStartMs >= 0 && abDurationMs > 0) {
+            float startRatio = Math.max(0f, Math.min(1f, (float) abStartMs / (float) abDurationMs));
+            float startX = paddingL + (startRatio * availableWidth);
+
+            if (abEndMs > abStartMs) {
+                float endRatio = Math.max(0f, Math.min(1f, (float) abEndMs / (float) abDurationMs));
+                float endX = paddingL + (endRatio * availableWidth);
+
+                // Highlight active A-B loop segment
+                paintAbRepeat.setColor(Color.parseColor("#D71921"));
+                paintAbRepeat.setAlpha(90);
+                canvas.drawRect(startX, cy - 3.0f * density, endX, cy + 3.0f * density, paintAbRepeat);
+                paintAbRepeat.setAlpha(255);
+
+                // Point B discrete LED tick
+                canvas.drawRect(endX - 1.5f * density, cy - 7f * density, endX + 1.5f * density, cy + 7f * density, paintAbRepeat);
+            }
+
+            // Point A discrete LED tick
+            paintAbRepeat.setColor(Color.parseColor("#D71921"));
+            paintAbRepeat.setAlpha(255);
+            canvas.drawRect(startX - 1.5f * density, cy - 7f * density, startX + 1.5f * density, cy + 7f * density, paintAbRepeat);
         }
 
         // 4. Draw Nothing OS Micro Scrubber Thumb (Clean concentric circular LED)

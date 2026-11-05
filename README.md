@@ -30,7 +30,7 @@
 - **High-Density Micro-LED `DotMatrixSeekBar`**: Upgraded timeline scrubber with tightly spaced micro-dots (`~5.2dp` pitch, `1.15dp` radius) delivering the authentic tactile Nothing OS Glyph / Dot Matrix feel instead of sparse dots.
 - **`DotMatrixIconView` (9x9 LED Grid Matrix)**: Custom vector LED engine dynamically rendering icons on a 9x9 discrete circular LED dot grid (Brightness Sun with radial rays, Speaker with soundwaves, Nothing Red Mute slash, and Turbo Boost lightning).
 - **`DotMatrixTextView` (5x7 Circular LED Digits & Symbols)**: Renders live percentages (`0%`–`200% BOOST`), timeline jumps (`+10s`, `-10s`), and digital clock playback durations (`MM:SS` / `HH:MM:SS`) with circular LED dot matrix typography.
-- **`DotMatrixProgressBar` (14-Segment LED Matrix Dots)**: Replaced continuous smooth progress bars with authentic Glyph-style circular LED dot matrix indicators.
+- **`DotMatrixProgressBar` (14-Segment LED Matrix Dots)**: Replaced continuous smooth progress bars with authentic Glyph-style circular LED dot matrix indicators across all screens, cards, and bottom sheets.
 - **Transparent Glassmorphic Gesture HUD**: Semi-transparent `#4D000000` glassmorphic backdrop with subtle `1dp` white border (`#2BFFFFFF`) and `20dp` pill corners so video playback remains visible during gestures and double-taps.
 - **App-Wide `@font/ndot` Typography**: Full dot-matrix styling applied natively across all folder names, file titles, resolutions (`1080P`, `4K`), audio codec tags (`DOLBY 5.1`), category chips, and app headers.
 
@@ -43,7 +43,9 @@
 - **5-Band Graphic Equalizer**: Precision sliders for `60Hz`, `230Hz`, `910Hz`, `3.6kHz`, and `14kHz` bands.
 - **Dynamic Bass Boost & 3D Spatial Virtualizer**: Studio-grade sub-bass punch and immersive 3D surround sound.
 - **Hardware Preamp Loudness Enhancer**: Native `LoudnessEnhancer` delivering millibel volume amplification without distortion.
-- **Dolby Cinema & Studio Presets**: Dedicated presets including `🎬 CINEMA (3D THEATER)` (+9dB sub-bass, +2dB dialogue, +8dB detail, 100% 3D spatial surround sound), `NOTHING PUNCH`, `BASS BOOST`, `EDM`, `ROCK`, `POP`, `VOCAL`, and `FLAT`.
+- **Smart Volume Normalizer (Night Mode Compressor)**: Native `android.media.audiofx.DynamicsProcessing` multi-band compressor and hard limiter (-6dB threshold, 10:1 ratio, 2ms attack) designed for late-night viewing to tame abrupt explosive blasts while boosting faint whispered dialogues.
+- **Earbud Mono Downmix (Single Earbud Listening)**: Integrated Media3 `ChannelMixingAudioProcessor` bit-perfect mono matrix downmixing (`[0.5f, 0.5f, 0.5f, 0.5f]`) directly into `DefaultAudioSink`, ensuring 100% dialogue and sound delivery when using only one earbud without stereo cut-offs.
+- **Dolby Cinema & Studio Presets**: Dedicated presets including `🎬 CINEMA (3D THEATER)` (+9dB sub-bass, +2dB dialogue, +8dB detail, 100% 3D spatial surround sound), `CLEAR DIALOGUE` (speech intelligibility boost across 1kHz-3.6kHz), `NOTHING PUNCH`, `BASS BOOST`, `EDM`, `ROCK`, `POP`, `VOCAL`, and `FLAT`.
 
 ---
 
@@ -61,6 +63,15 @@
   - **15-Second RAM Back-Buffer (`setBackBuffer(15000, true)`)**: Preserves the last 15 seconds of decoded frames in memory for instantaneous 0ms rewind without disk re-reading.
   - **Optimized LibVLC Caching**: Reduced `:file-caching` to 150ms for instantaneous scrubbing across local media.
   - **Synchronized Touch Scrubbing**: Background progress loops pause during swipe gestures, eliminating stutter and keeping the seekbar and time HUD synchronized in real time.
+- **Dot-Matrix Sleep Timer with Gradual Audio Fade-Out**:
+  - Precision sleep timers: `15 MIN`, `30 MIN`, `45 MIN`, `60 MIN`, `90 MIN`, and `END OF CURRENT VIDEO`.
+  - Linear audio volume fade-out over the final 60 seconds before expiration.
+  - Automatic display sleep: clears `FLAG_KEEP_SCREEN_ON`, dims display brightness to `0.01f`, and gracefully finishes the playback activity to prevent battery depletion overnight.
+- **Live Subtitle Time-Sync Shifter**:
+  - Unified real-time subtitle offset tuner (`-500ms`, `-100ms`, `RESET`, `+100ms`, `+500ms`) with immediate live preview across both ExoPlayer (internal/external SRT) and LibVLC engines.
+  - Operates seamlessly without requiring video reload or engine switching.
+- **A-B Repeat with High-Visibility Markers**:
+  - Set custom start (A) and end (B) loop points with dedicated dot-matrix loop highlight and discrete red LED tick indicators on the `DotMatrixSeekBar`.
 - **MKV / MP4 Chapter Markers & Chapter Dialog (`[CH]`)**:
   - Embedded chapters extracted directly from media metadata via LibVLC.
   - Distinct Nothing Red LED chapter divider ticks drawn directly onto the `DotMatrixSeekBar`.
@@ -68,9 +79,6 @@
 - **Skip Intro / Recap Pill (`SKIP INTRO +85S`)**:
   - Interactive discrete Nothing OS pill auto-appears during the first 5 to 90 seconds of any episode.
   - One-tap instant 85-second jump to bypass theme songs and intros with auto-dismissal.
-- **Precision Subtitle Delay Micro-Tuner (`SUBTITLE DELAY`)**:
-  - Dedicated live offset tuner dialog supporting ±0.1s fine tuning and ±0.5s coarse adjustments.
-  - Instant live audio/subtitle synchronization without stopping video playback.
 - **Floating Video Preview Pop-up Box**: Live multi-threaded `MediaMetadataRetriever` frame extractor showing real-time video thumbnail preview card and timestamp directly following the seekbar thumb during scrubbing.
 - **Watched Episode Storage Cleaner**:
   - Automatically prompts upon video completion to delete the watched episode and reclaim storage.
@@ -104,14 +112,14 @@
 ### 7. 🗂️ Multi-Selection Batch Deletion (Videos, Folders & Music)
 - **Contextual Action Bar**: Long-press any video card, folder, or audio track to enter batch selection mode.
 - **Select All & Selection Counter**: Instant select-all button and selected item counter in Dot-Matrix font.
-- **Permanent File & MediaStore Deletion**: Confirmation dialog with synchronized removal from both Android MediaStore, disk cache, and storage filesystem.
+- **Permanent File & MediaStore Deletion**: Confirmation dialog with synchronized removal from Android MediaStore, disk cache, and storage filesystem with collision-free UUID salting.
 
 ---
 
 ### 8. 🎵 Background Music Playback Service
 - **Android Foreground Service (`MusicPlaybackService`)**: Continuous background audio playback utilizing `MediaStyle` notification and `MediaSessionCompat`.
 - **Accurate Millisecond Seeking**: Seamless timeline scrubbing without premature track skipping.
-- **Lock Screen & Headset Controls**: Full Play/Pause, Next, Previous, and Track Seek directly from lock screen, notification shade, and Bluetooth earphones.
+- **Lock Screen, Headset & Noisy Event Controls**: Full Play/Pause, Next, Previous, and Track Seek directly from lock screen, notification shade, and Bluetooth earphones with automatic pause on headphone disconnection (`ACTION_AUDIO_BECOMING_NOISY`).
 
 ---
 
@@ -166,8 +174,9 @@
 ---
 
 ### 15. 🔒 Private Vault & Multi-Modal Biometric Security Hub (`VaultActivity`)
-- **Discrete Nothing OS 3x3 Dot-Matrix Pattern Lock (`DotMatrixPatternView`)**: Custom gesture engine rendering a 3x3 circular LED dot grid with Nothing Red connecting lines, active node illumination, and tactile haptic ticks.
+- **Discrete Nothing OS 3x3 Dot-Matrix Pattern Lock (`DotMatrixPatternView`)**: Custom gesture engine rendering a 3x3 circular LED dot grid with Nothing Red connecting lines, active node illumination, and pre-allocated zero-churn drag paths.
 - **Hardware Biometric Integration (`BiometricAuthHelper`)**: Native AndroidX BiometricPrompt supporting in-display/capacitive fingerprint sensors and system face unlock with hardware keystore security.
+- **Decoy PIN Camouflage Protection**: Alternate decoy PIN configuration providing camouflaged access without exposing confidential files.
 - **Dedicated Vault Security Hub (`dialog_vault_security_config.xml`)**: Seamless configuration to switch between 4-digit PIN and 3x3 Pattern, toggle biometric unlock with live sensor telemetry, and set auto-prompt behavior.
 - **Isolated Encrypted Storage (`.vault/`)**: Media items moved to the vault are decoupled from standard directories and shielded with `.nomedia` markers, fully hidden from gallery scanners and third-party applications.
 - **Full In-Vault Management**: Complete preview, in-player playback, instant restoration to original folders, and irreversible permanent deletion.
@@ -186,7 +195,7 @@
 - **Draggable AMOLED Black Card**: Compact floating equalizer HUD with discrete Nothing Red accents that floats over the active video playback window.
 - **Multi-Band DSP Control**: 5-band graphic faders (60Hz, 230Hz, 910Hz, 3.6kHz, 14kHz), Bass Boost, 3D Surround Virtualizer, and Preamp gain sliders.
 - **Dual-Engine Synchronization (`AudioEffectManager`)**: Direct hardware AudioSession binding synchronized across both AndroidX ExoPlayer and LibVLC software decoders.
-- **Quick Preset Chips**: Instant selection between Flat, Rock, Pop, Jazz, Electronic, Vocal Boost, Classical, and Bass Max profiles.
+- **Quick Preset Chips**: Instant selection between Flat, Rock, Pop, Jazz, Electronic, Vocal Boost, Classical, Clear Dialogue, and Bass Max profiles.
 
 ---
 
@@ -203,13 +212,13 @@
 - **Persistent Cache**: Disk JSON serialization (`cached_videos.json`, `cached_audios.json`)
 - **Frontend / Hybrid**: React 19, TypeScript, Vite, Vanilla CSS Design System, Capacitor 8
 - **Video & Audio Engines**:
-  - `androidx.media3:media3-exoplayer:1.3.1`
+  - `androidx.media3:media3-exoplayer:1.3.1` (with `ChannelMixingAudioProcessor`)
   - `androidx.media3:media3-ui:1.3.1`
   - `org.videolan.android:libvlc-all:3.5.1`
   - `androidx.biometric:biometric:1.1.0` (Fingerprint & Face Recognition)
 - **Background Media & DSP**:
   - `androidx.media:media:1.7.0` (`MediaSessionCompat`, `NotificationCompat.MediaStyle`)
-  - Native `android.media.audiofx` (`Equalizer`, `BassBoost`, `Virtualizer`, `LoudnessEnhancer`)
+  - Native `android.media.audiofx` (`Equalizer`, `BassBoost`, `Virtualizer`, `LoudnessEnhancer`, `DynamicsProcessing`)
 - **Image & Thumbnail Caching**: `com.github.bumptech.glide:glide:4.16.0`
 
 ---
@@ -226,5 +235,5 @@ cd android
 ./gradlew assembleDebug
 
 # 3. Install to Connected Nothing Phone (2a) via ADB
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
 ```

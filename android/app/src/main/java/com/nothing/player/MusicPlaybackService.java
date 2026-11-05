@@ -10,7 +10,11 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Binder;
@@ -45,6 +49,10 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
     private MediaPlayer mediaPlayer;
     private MediaSessionCompat mediaSession;
     private NotificationManager notificationManager;
+    private AudioManager audioManager;
+    private AudioFocusRequest audioFocusRequest;
+    private BroadcastReceiver noisyAudioReceiver;
+    private boolean isNoisyReceiverRegistered = false;
 
     private String currentTitle = "Nothing Player";
     private String currentArtist = "Unknown Artist";
@@ -97,6 +105,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         createNotificationChannel();
         initMediaSession();
         initMediaPlayer();
+        initAudioSystem();
     }
 
     private void initMediaPlayer() {
@@ -249,6 +258,8 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
                 startForegroundNotification();
                 mediaPlayer.setOnPreparedListener(mp -> {
                     try {
+                        requestAudioFocus();
+                        registerNoisyReceiver();
                         mp.start();
                         isPlaying = true;
                         AudioEffectManager.getInstance().attachAudioSession(mp.getAudioSessionId(), MusicPlaybackService.this);
@@ -276,6 +287,8 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
             this.isPlaying = false;
+            abandonAudioFocus();
+            unregisterNoisyReceiver();
             updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PAUSED);
             updateNotification();
             if (eventListener != null) {
@@ -289,6 +302,8 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
 
     public void resume() {
         if (mediaPlayer != null) {
+            requestAudioFocus();
+            registerNoisyReceiver();
             mediaPlayer.start();
             this.isPlaying = true;
             updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING);
@@ -318,6 +333,8 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
     }
 
     public void stop() {
+        abandonAudioFocus();
+        unregisterNoisyReceiver();
         if (mediaPlayer != null) {
             try {
                 mediaPlayer.stop();
@@ -362,6 +379,92 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             return (mediaPlayer != null) ? mediaPlayer.getDuration() : 0;
         } catch (Exception e) {
             return 0;
+        }
+    }
+
+    public String getCurrentTitle() {
+        return currentTitle;
+    }
+
+    public String getCurrentArtist() {
+        return currentArtist;
+    }
+
+    private void initAudioSystem() {
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        noisyAudioReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                    pause();
+                }
+            }
+        };
+    }
+
+    private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = focusChange -> {
+        switch (focusChange) {
+            case AudioManager.AUDIOFOCUS_LOSS:
+            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                pause();
+                break;
+            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                if (mediaPlayer != null) {
+                    try { mediaPlayer.setVolume(0.2f, 0.2f); } catch (Exception ignored) {}
+                }
+                break;
+            case AudioManager.AUDIOFOCUS_GAIN:
+                if (mediaPlayer != null) {
+                    try { mediaPlayer.setVolume(1.0f, 1.0f); } catch (Exception ignored) {}
+                }
+                break;
+        }
+    };
+
+    private boolean requestAudioFocus() {
+        if (audioManager == null) return true;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (audioFocusRequest == null) {
+                audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                        .setAudioAttributes(new AudioAttributes.Builder()
+                                .setUsage(AudioAttributes.USAGE_MEDIA)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                .build())
+                        .setOnAudioFocusChangeListener(audioFocusChangeListener)
+                        .build();
+            }
+            return audioManager.requestAudioFocus(audioFocusRequest) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+        } else {
+            return audioManager.requestAudioFocus(audioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+        }
+    }
+
+    private void abandonAudioFocus() {
+        if (audioManager == null) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (audioFocusRequest != null) {
+                audioManager.abandonAudioFocusRequest(audioFocusRequest);
+            }
+        } else {
+            audioManager.abandonAudioFocus(audioFocusChangeListener);
+        }
+    }
+
+    private synchronized void registerNoisyReceiver() {
+        if (!isNoisyReceiverRegistered && noisyAudioReceiver != null) {
+            try {
+                registerReceiver(noisyAudioReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+                isNoisyReceiverRegistered = true;
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private synchronized void unregisterNoisyReceiver() {
+        if (isNoisyReceiverRegistered && noisyAudioReceiver != null) {
+            try {
+                unregisterReceiver(noisyAudioReceiver);
+                isNoisyReceiverRegistered = false;
+            } catch (Exception ignored) {}
         }
     }
 
@@ -491,6 +594,8 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
 
     @Override
     public void onDestroy() {
+        abandonAudioFocus();
+        unregisterNoisyReceiver();
         instance = null;
         eventListener = null;
         callback = null;

@@ -30,16 +30,28 @@ public class NothingPlayerWidgetProvider extends AppWidgetProvider {
         if (ACTION_WIDGET_PLAY_PAUSE.equals(action)) {
             if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
                 BackgroundPlaybackManager.getInstance().togglePlayPause();
+            } else if (MusicPlaybackService.instance != null) {
+                if (MusicPlaybackService.instance.isPlaying()) {
+                    MusicPlaybackService.instance.pause();
+                } else {
+                    MusicPlaybackService.instance.resume();
+                }
             }
             updateAllWidgets(context);
         } else if (ACTION_WIDGET_NEXT.equals(action)) {
             if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
                 BackgroundPlaybackManager.getInstance().playNext(context);
+            } else {
+                Intent nextIntent = new Intent(context, MusicPlaybackService.class).setAction(MusicPlaybackService.ACTION_NEXT);
+                context.startService(nextIntent);
             }
             updateAllWidgets(context);
         } else if (ACTION_WIDGET_PREV.equals(action)) {
             if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
                 BackgroundPlaybackManager.getInstance().playPrevious(context);
+            } else {
+                Intent prevIntent = new Intent(context, MusicPlaybackService.class).setAction(MusicPlaybackService.ACTION_PREV);
+                context.startService(prevIntent);
             }
             updateAllWidgets(context);
         }
@@ -66,6 +78,16 @@ public class NothingPlayerWidgetProvider extends AppWidgetProvider {
             title = BackgroundPlaybackManager.getInstance().getCurrentTitle();
             artist = "VIDEO PLAYBACK";
             isPlaying = BackgroundPlaybackManager.getInstance().isPlaying();
+        } else if (MusicPlaybackService.instance != null) {
+            String mTitle = MusicPlaybackService.instance.getCurrentTitle();
+            String mArtist = MusicPlaybackService.instance.getCurrentArtist();
+            if (mTitle != null && !mTitle.isEmpty()) {
+                title = mTitle;
+            }
+            if (mArtist != null && !mArtist.isEmpty()) {
+                artist = mArtist;
+            }
+            isPlaying = MusicPlaybackService.instance.isPlaying();
         }
 
         views.setTextViewText(R.id.widget_tv_title, title != null && !title.isEmpty() ? title : "NOTHING PLAYER");

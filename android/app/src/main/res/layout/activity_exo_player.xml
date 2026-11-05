@@ -2462,6 +2462,90 @@
                     app:trackTint="#66D71921" />
             </RelativeLayout>
 
+            <!-- Night Volume Normalizer (DSP Dynamics Compressor) -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="NIGHT VOLUME NORMALIZER"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10.5sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Tame explosions, boost whisper dialogue"
+                        android:textColor="@color/nothing_white_40"
+                        android:textSize="7sp"
+                        android:fontFamily="@font/ndot"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_menu_night_compressor"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    app:thumbTint="#D71921"
+                    app:trackTint="#66D71921" />
+            </RelativeLayout>
+
+            <!-- Earbud Mono Downmix -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="EARBUD MONO DOWNMIX"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10.5sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Blend L+R channels for single earbud listening"
+                        android:textColor="@color/nothing_white_40"
+                        android:textSize="7sp"
+                        android:fontFamily="@font/ndot"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_menu_mono_downmix"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    app:thumbTint="#D71921"
+                    app:trackTint="#66D71921" />
+            </RelativeLayout>
+
             <!-- Row of 4: Edit, Color Filter, Share, Others -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -2895,6 +2979,18 @@
                 android:layout_width="match_parent"
                 android:layout_height="44dp"
                 android:text="30 MINUTES"
+                android:textColor="#FFFFFF"
+                android:textSize="10.5sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:background="@drawable/bg_chip_dark_inactive"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btn_timer_45"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="45 MINUTES"
                 android:textColor="#FFFFFF"
                 android:textSize="10.5sp"
                 android:textStyle="bold"

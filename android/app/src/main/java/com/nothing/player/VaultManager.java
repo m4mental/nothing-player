@@ -26,6 +26,8 @@ public class VaultManager {
     private static final String KEY_LOCK_TYPE = "vault_lock_type";
     private static final String KEY_PIN_HASH = "vault_pin_hash";
     private static final String KEY_PATTERN_HASH = "vault_pattern_hash";
+    private static final String KEY_DECOY_PIN_HASH = "vault_decoy_pin_hash";
+    private static final String KEY_DECOY_PATTERN_HASH = "vault_decoy_pattern_hash";
     private static final String KEY_BIOMETRIC_ENABLED = "vault_biometric_enabled";
     private static final String KEY_AUTO_BIOMETRIC = "vault_auto_biometric";
     private static final String VAULT_DIR = ".vault";
@@ -43,12 +45,17 @@ public class VaultManager {
 
     public static boolean isSecurityConfigured(Context context) {
         if (context == null) return false;
-        String lockType = getLockType(context);
-        if (LOCK_TYPE_PATTERN.equals(lockType)) {
-            return isPatternSet(context);
-        } else {
-            return isPinSet(context);
-        }
+        return isPinSet(context) || isPatternSet(context) || isDecoyPinSet(context);
+    }
+
+    public static boolean canUnlockWithPin(Context context) {
+        if (context == null) return false;
+        return isPinSet(context) || isDecoyPinSet(context);
+    }
+
+    public static boolean canUnlockWithPattern(Context context) {
+        if (context == null) return false;
+        return isPatternSet(context) || isDecoyPatternSet(context);
     }
 
     public static String getLockType(Context context) {
@@ -99,6 +106,52 @@ public class VaultManager {
         if (context == null || pattern == null) return;
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         prefs.edit().putString(KEY_PATTERN_HASH, hashString(pattern)).apply();
+    }
+
+    public static boolean isDecoyPinSet(Context context) {
+        if (context == null) return false;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.contains(KEY_DECOY_PIN_HASH);
+    }
+
+    public static boolean verifyDecoyPin(Context context, String inputPin) {
+        if (context == null || inputPin == null) return false;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String savedHash = prefs.getString(KEY_DECOY_PIN_HASH, "");
+        if (savedHash.isEmpty()) return false;
+        return hashString(inputPin).equals(savedHash);
+    }
+
+    public static void setDecoyPin(Context context, String newPin) {
+        if (context == null || newPin == null) return;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(KEY_DECOY_PIN_HASH, hashString(newPin)).apply();
+    }
+
+    public static void removeDecoyPin(Context context) {
+        if (context == null) return;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().remove(KEY_DECOY_PIN_HASH).remove(KEY_DECOY_PATTERN_HASH).apply();
+    }
+
+    public static boolean isDecoyPatternSet(Context context) {
+        if (context == null) return false;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.contains(KEY_DECOY_PATTERN_HASH);
+    }
+
+    public static boolean verifyDecoyPattern(Context context, String pattern) {
+        if (context == null || pattern == null) return false;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String savedHash = prefs.getString(KEY_DECOY_PATTERN_HASH, "");
+        if (savedHash.isEmpty()) return false;
+        return hashString(pattern).equals(savedHash);
+    }
+
+    public static void setDecoyPattern(Context context, String pattern) {
+        if (context == null || pattern == null) return;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(KEY_DECOY_PATTERN_HASH, hashString(pattern)).apply();
     }
 
     public static boolean isBiometricEnabled(Context context) {
@@ -169,7 +222,8 @@ public class VaultManager {
             if (dotIdx != -1) {
                 ext = sourceFile.getName().substring(dotIdx);
             }
-            String vaultFileName = "vault_" + System.currentTimeMillis() + ext;
+            String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
+            String vaultFileName = "vault_" + System.currentTimeMillis() + "_" + uniqueSuffix + ext;
             File destFile = new File(vaultDir, vaultFileName);
 
             boolean moved = sourceFile.renameTo(destFile);
@@ -181,7 +235,7 @@ public class VaultManager {
                 MediaScannerConnection.scanFile(context, new String[]{sourceFile.getAbsolutePath()}, null, null);
 
                 VaultItem vaultItem = new VaultItem();
-                vaultItem.id = String.valueOf(System.currentTimeMillis());
+                vaultItem.id = System.currentTimeMillis() + "_" + uniqueSuffix;
                 vaultItem.originalPath = sourceFile.getAbsolutePath();
                 vaultItem.vaultPath = destFile.getAbsolutePath();
                 vaultItem.title = item.title != null ? item.title : sourceFile.getName();

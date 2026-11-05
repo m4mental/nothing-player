@@ -61,7 +61,8 @@ public class TrashManager {
             if (dotIdx != -1) {
                 ext = sourceFile.getName().substring(dotIdx);
             }
-            String trashFileName = "trash_" + System.currentTimeMillis() + ext;
+            String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
+            String trashFileName = "trash_" + System.currentTimeMillis() + "_" + uniqueSuffix + ext;
             File destFile = new File(trashDir, trashFileName);
 
             boolean moved = sourceFile.renameTo(destFile);
@@ -74,7 +75,7 @@ public class TrashManager {
                 MediaScannerConnection.scanFile(context, new String[]{sourceFile.getAbsolutePath()}, null, null);
 
                 TrashItem trashItem = new TrashItem();
-                trashItem.id = String.valueOf(System.currentTimeMillis());
+                trashItem.id = System.currentTimeMillis() + "_" + uniqueSuffix;
                 trashItem.originalPath = sourceFile.getAbsolutePath();
                 trashItem.trashedPath = destFile.getAbsolutePath();
                 trashItem.title = item.title != null ? item.title : sourceFile.getName();
