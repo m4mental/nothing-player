@@ -25,7 +25,7 @@ public class EqualizerActivity extends AppCompatActivity {
     private Button btnReset;
     private TextView tvBassVal, tvVirtualizerVal, tvPreampVal;
     private SeekBar seekbarBass, seekbarVirtualizer, seekbarPreamp;
-    private TextView chipPunch, chipCinema, chipBass, chipEdm, chipRock, chipPop, chipVocal, chipFlat;
+    private TextView chipPunch, chipCinema, chipBass, chipEdm, chipRock, chipPop, chipVocal, chipDialogue, chipFlat;
 
     private SeekBar[] bandSeekbars = new SeekBar[5];
     private TextView[] bandValTexts = new TextView[5];
@@ -61,6 +61,7 @@ public class EqualizerActivity extends AppCompatActivity {
         chipRock = findViewById(R.id.preset_rock);
         chipPop = findViewById(R.id.preset_pop);
         chipVocal = findViewById(R.id.preset_vocal);
+        chipDialogue = findViewById(R.id.preset_dialogue);
         chipFlat = findViewById(R.id.preset_flat);
 
         bandSeekbars[0] = findViewById(R.id.seekbar_band_0);
@@ -210,6 +211,12 @@ public class EqualizerActivity extends AppCompatActivity {
             applyBassVirtualizerPreamp(30, 30, -1);
         });
 
+        chipDialogue.setOnClickListener(v -> {
+            selectPreset(chipDialogue);
+            applyPresetLevels(new int[]{11, 13, 23, 22, 17});
+            applyBassVirtualizerPreamp(10, 20, -1);
+        });
+
         chipFlat.setOnClickListener(v -> {
             selectPreset(chipFlat);
             applyPresetLevels(new int[]{15, 15, 15, 15, 15});
@@ -260,7 +267,7 @@ public class EqualizerActivity extends AppCompatActivity {
     }
 
     private void selectPreset(TextView selected) {
-        TextView[] chips = {chipPunch, chipCinema, chipBass, chipEdm, chipRock, chipPop, chipVocal, chipFlat};
+        TextView[] chips = {chipPunch, chipCinema, chipBass, chipEdm, chipRock, chipPop, chipVocal, chipDialogue, chipFlat};
         for (TextView c : chips) {
             if (c == selected) {
                 c.setBackgroundResource(R.drawable.bg_chip_selected);

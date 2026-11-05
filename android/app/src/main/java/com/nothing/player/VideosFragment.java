@@ -742,9 +742,17 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 }
 
                 if (currentSortMode == SORT_NAME_DESC) {
-                    Collections.sort(seriesItems, (a, b) -> b.name.compareToIgnoreCase(a.name));
+                    Collections.sort(seriesItems, (a, b) -> {
+                        String na = a != null && a.name != null ? a.name : "";
+                        String nb = b != null && b.name != null ? b.name : "";
+                        return nb.compareToIgnoreCase(na);
+                    });
                 } else {
-                    Collections.sort(seriesItems, (a, b) -> a.name.compareToIgnoreCase(b.name));
+                    Collections.sort(seriesItems, (a, b) -> {
+                        String na = a != null && a.name != null ? a.name : "";
+                        String nb = b != null && b.name != null ? b.name : "";
+                        return na.compareToIgnoreCase(nb);
+                    });
                 }
                 displayItems.addAll(seriesItems);
                 adapter.setItems(displayItems, true, false);

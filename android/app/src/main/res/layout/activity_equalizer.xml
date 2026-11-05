@@ -226,6 +226,20 @@
                 android:paddingHorizontal="12dp" />
 
             <TextView
+                android:id="@+id/preset_dialogue"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_chip_unselected"
+                android:text="CLEAR DIALOGUE"
+                android:textColor="@color/nothing_white_70"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:paddingHorizontal="12dp" />
+
+            <TextView
                 android:id="@+id/preset_flat"
                 android:layout_width="wrap_content"
                 android:layout_height="30dp"

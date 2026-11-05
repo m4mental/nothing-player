@@ -59,6 +59,7 @@ public class DotMatrixPatternView extends View {
     private OnPatternListener listener;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Vibrator vibrator;
+    private final Path sharedDragPath = new Path();
 
     private static class Node {
         final int id;
@@ -320,14 +321,14 @@ public class DotMatrixPatternView extends View {
 
         // 1. Draw Connecting Lines between Selected Nodes
         if (selectedNodes.size() > 1) {
-            Path path = new Path();
+            sharedDragPath.reset();
             Node first = nodes[selectedNodes.get(0)];
-            path.moveTo(first.x, first.y);
+            sharedDragPath.moveTo(first.x, first.y);
             for (int i = 1; i < selectedNodes.size(); i++) {
                 Node next = nodes[selectedNodes.get(i)];
-                path.lineTo(next.x, next.y);
+                sharedDragPath.lineTo(next.x, next.y);
             }
-            canvas.drawPath(path, curLinePaint);
+            canvas.drawPath(sharedDragPath, curLinePaint);
         }
 
         // 2. Draw live line to finger position while dragging

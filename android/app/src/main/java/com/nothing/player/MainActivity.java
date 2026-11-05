@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageView miniPlayerArt;
     private TextView miniPlayerTitle, miniPlayerArtist;
     private ImageButton miniPlayerBtnPlay, miniPlayerBtnNext;
-    private ProgressBar miniPlayerProgress;
+    private DotMatrixProgressBar miniPlayerProgress;
 
     private MusicPlaybackService musicService;
     private boolean isBound = false;

@@ -80,6 +80,11 @@ import androidx.media3.common.TrackSelectionOverride;
 import androidx.media3.common.Tracks;
 import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.media3.common.audio.AudioProcessor;
+import androidx.media3.common.audio.ChannelMixingAudioProcessor;
+import androidx.media3.common.audio.ChannelMixingMatrix;
+import androidx.media3.exoplayer.audio.AudioSink;
+import androidx.media3.exoplayer.audio.DefaultAudioSink;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.SeekParameters;
@@ -126,6 +131,24 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private static final String ACTION_PIP_FORWARD = "com.nothing.player.PIP_FORWARD";
     private static final String ACTION_PIP_PREV = "com.nothing.player.PIP_PREV";
     private static final String ACTION_PIP_NEXT = "com.nothing.player.PIP_NEXT";
+
+    private final BroadcastReceiver noisyAudioReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                if (isYouTubeActive && youtubeStreamView != null) {
+                    youtubeStreamView.evaluateJavascript("if (player && player.pauseVideo) player.pauseVideo();", null);
+                } else if (isVlcActive && vlcPlayer != null && vlcPlayer.isPlaying()) {
+                    vlcPlayer.pause();
+                    updatePlayPauseButtonState();
+                } else if (exoPlayer != null && exoPlayer.isPlaying()) {
+                    exoPlayer.pause();
+                    updatePlayPauseButtonState();
+                }
+            }
+        }
+    };
+    private boolean isNoisyReceiverRegistered = false;
 
     private final BroadcastReceiver pipReceiver = new BroadcastReceiver() {
         @Override
@@ -321,7 +344,12 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
 
     // Phase 2 Sleep Timer
     private TextView tvSleepTimerStatus;
-    private Button btnTimerOff, btnTimer15, btnTimer30, btnTimer60, btnTimer90, btnTimerEndOfVideo;
+    private Button btnTimerOff, btnTimer15, btnTimer30, btnTimer45, btnTimer60, btnTimer90, btnTimerEndOfVideo;
+    private ChannelMixingAudioProcessor channelMixingAudioProcessor;
+    private boolean isMonoDownmixEnabled = false;
+    private SwitchCompat switchMenuMonoDownmix;
+    private SwitchCompat switchMenuNightCompressor;
+    private long subtitleDelayMs = 0L;
     private final Handler sleepTimerHandler = new Handler(Looper.getMainLooper());
     private Runnable sleepTimerRunnable;
     private long sleepTimerEndTimeMs = 0;
@@ -1046,9 +1074,12 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         btnTimerOff = findViewById(R.id.btn_timer_off);
         btnTimer15 = findViewById(R.id.btn_timer_15);
         btnTimer30 = findViewById(R.id.btn_timer_30);
+        btnTimer45 = findViewById(R.id.btn_timer_45);
         btnTimer60 = findViewById(R.id.btn_timer_60);
         btnTimer90 = findViewById(R.id.btn_timer_90);
         btnTimerEndOfVideo = findViewById(R.id.btn_timer_end_of_video);
+        switchMenuNightCompressor = findViewById(R.id.switch_menu_night_compressor);
+        switchMenuMonoDownmix = findViewById(R.id.switch_menu_mono_downmix);
 
         layoutNextEpisodeCard = findViewById(R.id.layout_next_episode_card);
         tvNextEpisodeTag = findViewById(R.id.tv_next_episode_tag);
@@ -1111,6 +1142,20 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         }
         if (switchMenuScreenshotToggle != null) {
             switchMenuScreenshotToggle.setChecked(showScreenshot);
+        }
+        isMonoDownmixEnabled = prefs.getBoolean("earbud_mono_downmix", false);
+        if (switchMenuMonoDownmix != null) {
+            switchMenuMonoDownmix.setChecked(isMonoDownmixEnabled);
+            switchMenuMonoDownmix.setOnCheckedChangeListener((btn, isChecked) -> {
+                setMonoDownmix(isChecked);
+            });
+        }
+        if (switchMenuNightCompressor != null) {
+            switchMenuNightCompressor.setChecked(AudioEffectManager.getInstance().isNightModeCompressorEnabled());
+            switchMenuNightCompressor.setOnCheckedChangeListener((btn, isChecked) -> {
+                AudioEffectManager.getInstance().setNightModeCompressorEnabled(isChecked, this);
+                showGestureHud("🌙 NIGHT COMPRESSOR", DotMatrixIconView.TYPE_SEEK_FORWARD, isChecked ? "NORMALIZER ON" : "NORMALIZER OFF", 100);
+            });
         }
         if (tvLongPressSpeedTarget != null) {
             tvLongPressSpeedTarget.setText(String.format(java.util.Locale.US, "%.1fX >", longPressSpeedTarget));
@@ -1571,8 +1616,24 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             return;
         }
 
-        DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
-            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+        channelMixingAudioProcessor = new ChannelMixingAudioProcessor();
+        if (isMonoDownmixEnabled) {
+            channelMixingAudioProcessor.putChannelMixingMatrix(new ChannelMixingMatrix(2, 2, new float[]{0.5f, 0.5f, 0.5f, 0.5f}));
+        } else {
+            channelMixingAudioProcessor.putChannelMixingMatrix(new ChannelMixingMatrix(2, 2, new float[]{1.0f, 0.0f, 0.0f, 1.0f}));
+        }
+
+        DefaultAudioSink audioSink = new DefaultAudioSink.Builder(this)
+            .setAudioProcessors(new AudioProcessor[]{channelMixingAudioProcessor})
+            .build();
+
+        DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this) {
+            @Override
+            protected AudioSink buildAudioSink(Context context, boolean enableFloatOutput, boolean enableAudioTrackPlaybackParams) {
+                return audioSink;
+            }
+        };
+        renderersFactory.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
             .setEnableDecoderFallback(true);
 
         trackSelector = new DefaultTrackSelector(this);
@@ -2389,7 +2450,8 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     private void updateSecondarySubtitle(long pos) {
         if (tvSecondarySubtitle != null) {
             if (secondarySubtitleCues != null && !secondarySubtitleCues.isEmpty()) {
-                String cueText = SubtitleParser.getCueTextAt(secondarySubtitleCues, pos);
+                long shiftedPos = Math.max(0, pos - subtitleDelayMs);
+                String cueText = SubtitleParser.getCueTextAt(secondarySubtitleCues, shiftedPos);
                 if (cueText != null && !cueText.isEmpty()) {
                     tvSecondarySubtitle.setText(cueText);
                     tvSecondarySubtitle.setVisibility(View.VISIBLE);
@@ -2472,23 +2534,27 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         TextView tvAb = findViewById(R.id.tv_menu_ab_repeat_status);
         if (repeatPointA < 0) {
             repeatPointA = cur;
+            if (videoSeekBar != null) videoSeekBar.setAbRepeatRange(repeatPointA, -1, totalDurationMs);
             showGestureHud("● A-B REPEAT", DotMatrixIconView.TYPE_SEEK_FORWARD, "POINT A (" + formatTime(repeatPointA) + ")", 50);
             Toast.makeText(this, "A-B Repeat: Point A set to " + formatTime(repeatPointA), Toast.LENGTH_SHORT).show();
             if (tvAb != null) tvAb.setText("A: " + formatTime(repeatPointA));
         } else if (repeatPointB < 0) {
             if (cur > repeatPointA) {
                 repeatPointB = cur;
+                if (videoSeekBar != null) videoSeekBar.setAbRepeatRange(repeatPointA, repeatPointB, totalDurationMs);
                 showGestureHud("● A-B REPEAT", DotMatrixIconView.TYPE_SEEK_FORWARD, "LOOPING A-B", 100);
                 Toast.makeText(this, "A-B Repeat: Point B set (" + formatTime(repeatPointA) + " - " + formatTime(repeatPointB) + ")", Toast.LENGTH_SHORT).show();
                 if (tvAb != null) tvAb.setText(formatTime(repeatPointA) + "-" + formatTime(repeatPointB));
             } else {
                 repeatPointA = cur;
+                if (videoSeekBar != null) videoSeekBar.setAbRepeatRange(repeatPointA, -1, totalDurationMs);
                 Toast.makeText(this, "Point B must be after Point A. Point A reset.", Toast.LENGTH_SHORT).show();
                 if (tvAb != null) tvAb.setText("A: " + formatTime(repeatPointA));
             }
         } else {
             repeatPointA = -1;
             repeatPointB = -1;
+            if (videoSeekBar != null) videoSeekBar.clearAbRepeatRange();
             showGestureHud("● A-B REPEAT", DotMatrixIconView.TYPE_SEEK_FORWARD, "CLEARED / OFF", 0);
             Toast.makeText(this, "A-B Repeat Cleared", Toast.LENGTH_SHORT).show();
             if (tvAb != null) tvAb.setText("OFF");
@@ -3298,6 +3364,7 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (btnTimerOff != null) btnTimerOff.setOnClickListener(v -> cancelSleepTimer());
         if (btnTimer15 != null) btnTimer15.setOnClickListener(v -> startSleepTimer(15));
         if (btnTimer30 != null) btnTimer30.setOnClickListener(v -> startSleepTimer(30));
+        if (btnTimer45 != null) btnTimer45.setOnClickListener(v -> startSleepTimer(45));
         if (btnTimer60 != null) btnTimer60.setOnClickListener(v -> startSleepTimer(60));
         if (btnTimer90 != null) btnTimer90.setOnClickListener(v -> startSleepTimer(90));
         if (btnTimerEndOfVideo != null) btnTimerEndOfVideo.setOnClickListener(v -> setSleepTimerEndOfVideo());
@@ -3309,9 +3376,24 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         if (btnTimerOff != null) btnTimerOff.setBackgroundResource(!isEndVid && selectedMinutes == 0 ? act : inact);
         if (btnTimer15 != null) btnTimer15.setBackgroundResource(!isEndVid && selectedMinutes == 15 ? act : inact);
         if (btnTimer30 != null) btnTimer30.setBackgroundResource(!isEndVid && selectedMinutes == 30 ? act : inact);
+        if (btnTimer45 != null) btnTimer45.setBackgroundResource(!isEndVid && selectedMinutes == 45 ? act : inact);
         if (btnTimer60 != null) btnTimer60.setBackgroundResource(!isEndVid && selectedMinutes == 60 ? act : inact);
         if (btnTimer90 != null) btnTimer90.setBackgroundResource(!isEndVid && selectedMinutes == 90 ? act : inact);
         if (btnTimerEndOfVideo != null) btnTimerEndOfVideo.setBackgroundResource(isEndVid ? act : inact);
+    }
+
+        public void setMonoDownmix(boolean enabled) {
+        this.isMonoDownmixEnabled = enabled;
+        getSharedPreferences("nothing_player_prefs", MODE_PRIVATE)
+            .edit().putBoolean("earbud_mono_downmix", enabled).apply();
+        if (channelMixingAudioProcessor != null) {
+            if (enabled) {
+                channelMixingAudioProcessor.putChannelMixingMatrix(new ChannelMixingMatrix(2, 2, new float[]{0.5f, 0.5f, 0.5f, 0.5f}));
+            } else {
+                channelMixingAudioProcessor.putChannelMixingMatrix(new ChannelMixingMatrix(2, 2, new float[]{1.0f, 0.0f, 0.0f, 1.0f}));
+            }
+        }
+        showGestureHud("\u25cf EARBUD AUDIO", DotMatrixIconView.TYPE_SEEK_FORWARD, enabled ? "MONO DOWNMIX ON" : "STEREO OFF", 100);
     }
 
     private void cancelSleepTimer() {
@@ -3321,10 +3403,12 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             sleepTimerHandler.removeCallbacks(sleepTimerRunnable);
             sleepTimerRunnable = null;
         }
+        if (exoPlayer != null) exoPlayer.setVolume(1.0f);
+        if (vlcPlayer != null) vlcPlayer.setVolume(100);
         if (tvSleepTimerStatus != null) tvSleepTimerStatus.setText("STATUS: OFF");
         if (tvMenuTimerLabel != null) tvMenuTimerLabel.setText("TIMER");
         updateSleepTimerButtons(0, false);
-        showGestureHud("● SLEEP TIMER", DotMatrixIconView.TYPE_SEEK_FORWARD, "TIMER OFF", 0);
+        showGestureHud("\u25cf SLEEP TIMER", DotMatrixIconView.TYPE_SEEK_FORWARD, "TIMER OFF", 0);
     }
 
     private void startSleepTimer(int minutes) {
@@ -3339,11 +3423,31 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             @Override
             public void run() {
                 long remainingMs = sleepTimerEndTimeMs - System.currentTimeMillis();
+                // Gradual 60-second audio fade-out
+                if (remainingMs <= 60000 && remainingMs > 0) {
+                    float fade = Math.max(0.05f, (float) remainingMs / 60000.0f);
+                    if (exoPlayer != null) exoPlayer.setVolume(fade);
+                    if (vlcPlayer != null) vlcPlayer.setVolume((int) (fade * 100));
+                }
                 if (remainingMs <= 0) {
                     cancelSleepTimer();
-                    togglePlayPause();
-                    showGestureHud("● SLEEP TIMER", DotMatrixIconView.TYPE_SEEK_FORWARD, "PLAYBACK PAUSED", 100);
-                    Toast.makeText(ExoVideoPlayerActivity.this, "Sleep timer expired. Playback paused.", Toast.LENGTH_SHORT).show();
+                    if (exoPlayer != null && exoPlayer.isPlaying()) exoPlayer.pause();
+                    if (vlcPlayer != null && vlcPlayer.isPlaying()) vlcPlayer.pause();
+                    if (isYouTubeActive && youtubeStreamView != null) {
+                        youtubeStreamView.evaluateJavascript("if (player && player.pauseVideo) player.pauseVideo();", null);
+                    }
+                    updatePlayPauseButtonState();
+                    if (exoPlayer != null) exoPlayer.setVolume(1.0f);
+                    if (vlcPlayer != null) vlcPlayer.setVolume(100);
+                    showGestureHud("\u25cf SLEEP TIMER", DotMatrixIconView.TYPE_SEEK_FORWARD, "SLEEP TIMEOUT", 100);
+                    Toast.makeText(ExoVideoPlayerActivity.this, "Sleep timer expired. Screen sleeping.", Toast.LENGTH_SHORT).show();
+                    try {
+                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                        WindowManager.LayoutParams lp = getWindow().getAttributes();
+                        lp.screenBrightness = 0.01f;
+                        getWindow().setAttributes(lp);
+                    } catch (Exception ignored) {}
+                    finish();
                     return;
                 }
                 long sec = remainingMs / 1000;
@@ -3358,10 +3462,10 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             }
         };
         sleepTimerHandler.post(sleepTimerRunnable);
-        showGestureHud("● SLEEP TIMER", DotMatrixIconView.TYPE_SEEK_FORWARD, minutes + " MINUTES SET", 100);
+        showGestureHud("\u25cf SLEEP TIMER", DotMatrixIconView.TYPE_SEEK_FORWARD, minutes + " MINUTES SET", 100);
     }
 
-    private void setSleepTimerEndOfVideo() {
+private void setSleepTimerEndOfVideo() {
         if (sleepTimerRunnable != null) {
             sleepTimerHandler.removeCallbacks(sleepTimerRunnable);
             sleepTimerRunnable = null;
@@ -3500,18 +3604,15 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == 9002 && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri uri = data.getData();
-            try {
-                java.io.InputStream is = getContentResolver().openInputStream(uri);
+            try (java.io.InputStream is = getContentResolver().openInputStream(uri)) {
                 List<SubtitleParser.SubtitleCue> cues = SubtitleParser.parseSrt(is);
                 if (cues != null && !cues.isEmpty()) {
                     secondarySubtitleCues = cues;
                     String displayName = "Custom Subtitle";
-                    try {
-                        android.database.Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+                    try (android.database.Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
                         if (cursor != null && cursor.moveToFirst()) {
                             int nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
                             if (nameIndex >= 0) displayName = cursor.getString(nameIndex);
-                            cursor.close();
                         }
                     } catch (Exception ignored) {}
                     secondarySubtitleTitle = displayName;
@@ -4633,6 +4734,15 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
                 }
             }
 
+            if (sleepTimerEndOfVideo && totalDurationMs > 0 && currentPositionMs > 0) {
+                long rem = totalDurationMs - currentPositionMs;
+                if (rem > 0 && rem <= 60000) {
+                    float fade = Math.max(0.05f, (float) rem / 60000.0f);
+                    if (exoPlayer != null) exoPlayer.setVolume(fade);
+                    if (vlcPlayer != null) vlcPlayer.setVolume((int) (fade * 100));
+                }
+            }
+
             // Always reschedule loop while activity is active so it never freezes
             progressHandler.removeCallbacks(this);
             progressHandler.postDelayed(this, 500);
@@ -4987,11 +5097,18 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             } else if (exoPlayer != null) {
                 exoPlayer.pause();
             }
-            if (btnPlayPause != null) {
-                btnPlayPause.setImageResource(R.drawable.ic_play_dotmatrix);
-            }
-            showGestureHud("● SLEEP TIMER", DotMatrixIconView.TYPE_SEEK_FORWARD, "PLAYBACK STOPPED", 100);
-            Toast.makeText(this, "Sleep timer reached end of video. Playback stopped.", Toast.LENGTH_SHORT).show();
+            updatePlayPauseButtonState();
+            if (exoPlayer != null) exoPlayer.setVolume(1.0f);
+            if (vlcPlayer != null) vlcPlayer.setVolume(100);
+            showGestureHud("\u25cf SLEEP TIMER", DotMatrixIconView.TYPE_SEEK_FORWARD, "PLAYBACK STOPPED", 100);
+            Toast.makeText(this, "Sleep timer reached end of video. Screen sleeping.", Toast.LENGTH_SHORT).show();
+            try {
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                WindowManager.LayoutParams lp = getWindow().getAttributes();
+                lp.screenBrightness = 0.01f;
+                getWindow().setAttributes(lp);
+            } catch (Exception ignored) {}
+            finish();
             return;
         }
 
@@ -5336,24 +5453,43 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        long cur = isYouTubeActive ? youtubeCurrentPositionMs : (isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0));
+        if (isNoisyReceiverRegistered) {
+            try {
+                unregisterReceiver(noisyAudioReceiver);
+                isNoisyReceiverRegistered = false;
+            } catch (Exception ignored) {}
+        }
+        long cur = 0;
+        try {
+            cur = isYouTubeActive ? youtubeCurrentPositionMs : (isVlcActive ? (vlcPlayer != null && !vlcPlayer.isReleased() ? vlcPlayer.getTime() : currentPositionMs) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0));
+        } catch (Exception ignored) {
+            cur = currentPositionMs;
+        }
         long dur = isYouTubeActive ? youtubeDurationMs : totalDurationMs;
         saveCurrentPlaybackProgress(cur, dur);
 
         if (!isInPictureInPictureMode() && !isBackgroundPlayActive) {
-            if (isYouTubeActive && youtubeStreamView != null) {
-                youtubeStreamView.evaluateJavascript("if (player && player.pauseVideo) player.pauseVideo();", null);
-            } else if (isVlcActive && vlcPlayer != null && vlcPlayer.isPlaying()) {
-                vlcPlayer.pause();
-            } else if (exoPlayer != null && exoPlayer.isPlaying()) {
-                exoPlayer.pause();
-            }
+            try {
+                if (isYouTubeActive && youtubeStreamView != null) {
+                    youtubeStreamView.evaluateJavascript("if (player && player.pauseVideo) player.pauseVideo();", null);
+                } else if (isVlcActive && vlcPlayer != null && !vlcPlayer.isReleased() && vlcPlayer.isPlaying()) {
+                    vlcPlayer.pause();
+                } else if (exoPlayer != null && exoPlayer.isPlaying()) {
+                    exoPlayer.pause();
+                }
+            } catch (Exception ignored) {}
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        if (!isNoisyReceiverRegistered) {
+            try {
+                registerReceiver(noisyAudioReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+                isNoisyReceiverRegistered = true;
+            } catch (Exception ignored) {}
+        }
         updateBackgroundPlayUi();
         if (isBackgroundPlayActive) {
             startProgressTracker();
@@ -5377,13 +5513,15 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
             youtubeStreamView = null;
         }
         try {
-            if (previewRetriever != null) {
-                previewRetriever.release();
-                previewRetriever = null;
-            }
             previewExecutor.shutdownNow();
             titleExecutor.shutdownNow();
         } catch (Exception ignored) {}
+        synchronized (previewExecutor) {
+            if (previewRetriever != null) {
+                try { previewRetriever.release(); } catch (Exception ignored) {}
+                previewRetriever = null;
+            }
+        }
         if (!isBackgroundPlayActive) {
             releaseExoPlayer();
             releaseVlcPlayer();
@@ -5485,12 +5623,6 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
     }
 
     private void showSubtitleDelayDialog() {
-        if (!isVlcActive) {
-            Toast.makeText(this, "Switching to VLC for live subtitle sync...", Toast.LENGTH_SHORT).show();
-            long cur = exoPlayer != null ? exoPlayer.getCurrentPosition() : 0;
-            startVlcPlayer(cur);
-        }
-
         Dialog dialog = new Dialog(this);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog_subtitle_delay);
@@ -5508,43 +5640,44 @@ public class ExoVideoPlayerActivity extends AppCompatActivity {
         Button btnPlus500 = dialog.findViewById(R.id.btn_sub_delay_plus_500);
         Button btnDone = dialog.findViewById(R.id.btn_sub_delay_done);
 
-        long currentDelayUs = (vlcPlayer != null) ? vlcPlayer.getSpuDelay() : 0L;
-        final long[] delayUs = {currentDelayUs};
-
         Runnable updateDisplay = () -> {
-            double seconds = delayUs[0] / 1000000.0;
-            String text = String.format(java.util.Locale.US, "%+.1f S", seconds);
-            if (Math.abs(seconds) < 0.001) text = "0.0 S";
+            String text;
+            if (Math.abs(subtitleDelayMs) < 10) {
+                text = "0 MS";
+            } else {
+                text = String.format(java.util.Locale.US, "%+d MS", subtitleDelayMs);
+            }
             if (tvDisplay != null) tvDisplay.setText(text);
             if (vlcPlayer != null) {
-                vlcPlayer.setSpuDelay(delayUs[0]);
+                vlcPlayer.setSpuDelay(subtitleDelayMs * 1000L);
             }
+            long cur = isVlcActive ? (vlcPlayer != null ? vlcPlayer.getTime() : 0) : (exoPlayer != null ? exoPlayer.getCurrentPosition() : 0);
+            updateSecondarySubtitle(cur);
         };
         updateDisplay.run();
 
         if (btnMinus500 != null) btnMinus500.setOnClickListener(v -> {
-            delayUs[0] -= 500000L;
+            subtitleDelayMs -= 500L;
             updateDisplay.run();
         });
         if (btnMinus100 != null) btnMinus100.setOnClickListener(v -> {
-            delayUs[0] -= 100000L;
+            subtitleDelayMs -= 100L;
             updateDisplay.run();
         });
         if (btnReset != null) btnReset.setOnClickListener(v -> {
-            delayUs[0] = 0L;
+            subtitleDelayMs = 0L;
             updateDisplay.run();
         });
         if (btnPlus100 != null) btnPlus100.setOnClickListener(v -> {
-            delayUs[0] += 100000L;
+            subtitleDelayMs += 100L;
             updateDisplay.run();
         });
         if (btnPlus500 != null) btnPlus500.setOnClickListener(v -> {
-            delayUs[0] += 500000L;
+            subtitleDelayMs += 500L;
             updateDisplay.run();
         });
         if (btnDone != null) btnDone.setOnClickListener(v -> {
-            double finalSec = delayUs[0] / 1000000.0;
-            showGestureHud("● SUB DELAY", DotMatrixIconView.TYPE_SEEK_FORWARD, String.format(java.util.Locale.US, "%+.1fS", finalSec), 100);
+            showGestureHud("\u25cf SUB DELAY", DotMatrixIconView.TYPE_SEEK_FORWARD, String.format(java.util.Locale.US, "%+d MS", subtitleDelayMs), 100);
             dialog.dismiss();
         });
 

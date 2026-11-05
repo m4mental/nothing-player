@@ -96,8 +96,16 @@ public class SubtitleParser {
 
     public static String getCueTextAt(List<SubtitleCue> cues, long timeMs) {
         if (cues == null || cues.isEmpty()) return null;
-        for (SubtitleCue cue : cues) {
-            if (timeMs >= cue.startTimeMs && timeMs <= cue.endTimeMs) {
+        int low = 0;
+        int high = cues.size() - 1;
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            SubtitleCue cue = cues.get(mid);
+            if (timeMs < cue.startTimeMs) {
+                high = mid - 1;
+            } else if (timeMs > cue.endTimeMs) {
+                low = mid + 1;
+            } else {
                 return cue.text;
             }
         }
