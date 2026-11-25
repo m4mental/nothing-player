@@ -32,6 +32,7 @@ import androidx.activity.result.IntentSenderRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -39,12 +40,17 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import java.io.File;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -65,8 +71,10 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     public static final int CATEGORY_SERIES = 1;
     public static final int CATEGORY_MOVIES = 2;
     public static final int CATEGORY_ALL_VIDEOS = 3;
+    public static final int CATEGORY_PLAYLISTS = 4;
 
     private int currentCategory = CATEGORY_FOLDERS;
+    private String currentSelectedPlaylist = null;
     private int currentSortMode = SORT_DATE_DESC;
     private final Set<String> pinnedFolders = new HashSet<>();
 
@@ -74,7 +82,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     private VideoAdapter adapter;
     private SwipeRefreshLayout swipeRefresh;
     private EditText etSearch;
-    private TextView chipFolders, chipSeries, chipMovies, chipAllVideos, chipNetworkStream;
+    private TextView chipFolders, chipSeries, chipMovies, chipAllVideos, chipPlaylists, chipNetworkStream;
     private ImageButton btnOverflowMenu;
 
     // Multi-select Views
@@ -98,6 +106,8 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     private MediaItem continueSeriesItem = null;
 
     private List<MediaItem> allVideos = new ArrayList<>();
+    private final Set<String> attemptedSeriesMeta = new HashSet<>();
+    private final Set<String> attemptedMovieMeta = new HashSet<>();
     private String currentSelectedFolder = null;
     private String currentSelectedSeries = null;
     private ActivityResultLauncher<IntentSenderRequest> deleteLauncher;
@@ -105,6 +115,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     private final MediaAutoScanner.OnMediaChangeListener mediaChangeListener = () -> {
         if (getActivity() != null && isAdded()) {
             getActivity().runOnUiThread(() -> {
+                if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
                 Context ctx = getContext();
                 if (ctx != null) {
                     allVideos = MediaRepository.getCachedVideos(ctx.getApplicationContext());
@@ -132,12 +143,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         super.onCreate(savedInstanceState);
         deleteLauncher = registerForActivityResult(
             new ActivityResultContracts.StartIntentSenderForResult(),
-            result -> {
-                if (result.getResultCode() == Activity.RESULT_OK) {
-                    Toast.makeText(getContext(), "Items deleted successfully", Toast.LENGTH_SHORT).show();
-                    loadVideos(false);
-                }
-            }
+            result -> FileDeleteHelper.onActivityResult(getContext(), result.getResultCode() == Activity.RESULT_OK)
         );
     }
 
@@ -153,6 +159,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         chipSeries = view.findViewById(R.id.chip_series);
         chipMovies = view.findViewById(R.id.chip_movies);
         chipAllVideos = view.findViewById(R.id.chip_all_videos);
+        chipPlaylists = view.findViewById(R.id.chip_playlists);
         chipNetworkStream = view.findViewById(R.id.chip_network_stream);
         btnOverflowMenu = view.findViewById(R.id.btn_videos_overflow_menu);
 
@@ -211,6 +218,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             currentCategory = CATEGORY_FOLDERS;
             currentSelectedFolder = null;
             currentSelectedSeries = null;
+            currentSelectedPlaylist = null;
             updateChipsUI();
             filterAndDisplay();
         });
@@ -220,6 +228,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 currentCategory = CATEGORY_SERIES;
                 currentSelectedFolder = null;
                 currentSelectedSeries = null;
+                currentSelectedPlaylist = null;
                 updateChipsUI();
                 filterAndDisplay();
             });
@@ -230,6 +239,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 currentCategory = CATEGORY_MOVIES;
                 currentSelectedFolder = null;
                 currentSelectedSeries = null;
+                currentSelectedPlaylist = null;
                 updateChipsUI();
                 filterAndDisplay();
             });
@@ -239,9 +249,21 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             currentCategory = CATEGORY_ALL_VIDEOS;
             currentSelectedFolder = null;
             currentSelectedSeries = null;
+            currentSelectedPlaylist = null;
             updateChipsUI();
             filterAndDisplay();
         });
+
+        if (chipPlaylists != null) {
+            chipPlaylists.setOnClickListener(v -> {
+                currentCategory = CATEGORY_PLAYLISTS;
+                currentSelectedFolder = null;
+                currentSelectedSeries = null;
+                currentSelectedPlaylist = null;
+                updateChipsUI();
+                filterAndDisplay();
+            });
+        }
 
         if (chipNetworkStream != null) {
             chipNetworkStream.setOnClickListener(v -> showNetworkStreamDialog());
@@ -271,7 +293,12 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             btnTrashSelected.setOnClickListener(v -> {
                 Set<Object> selected = adapter.getSelectedItems();
                 if (selected.isEmpty() || getContext() == null) return;
-                int count = selected.size();
+                List<MediaItem> targetItems = expandSelectedMediaItems(selected);
+                if (targetItems.isEmpty()) {
+                    Toast.makeText(getContext(), "No movable videos in selection", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                int count = targetItems.size();
                 NothingDialogHelper.showConfirmDialog(
                         getContext(),
                         "MOVE TO RECYCLE BIN",
@@ -279,11 +306,9 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                         "MOVE TO TRASH",
                         () -> {
                             int moved = 0;
-                            for (Object obj : selected) {
-                                if (obj instanceof MediaItem) {
-                                    if (TrashManager.moveToTrash(getContext(), (MediaItem) obj)) {
-                                        moved++;
-                                    }
+                            for (MediaItem mi : targetItems) {
+                                if (TrashManager.moveToTrash(getContext(), mi)) {
+                                    moved++;
                                 }
                             }
                             adapter.clearSelection();
@@ -304,9 +329,9 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
 
     private void updateHistorySection() {
         if (getContext() == null) return;
-        
+
         String query = etSearch != null ? etSearch.getText().toString().trim() : "";
-        if (currentSelectedFolder != null || currentSelectedSeries != null || !query.isEmpty()) {
+        if (currentSelectedFolder != null || currentSelectedSeries != null || currentSelectedPlaylist != null || !query.isEmpty()) {
             if (sectionHistory != null) sectionHistory.setVisibility(View.GONE);
             if (sectionContinueSeries != null) sectionContinueSeries.setVisibility(View.GONE);
             return;
@@ -321,7 +346,12 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             if (sectionContinueSeries != null) sectionContinueSeries.setVisibility(View.GONE);
         }
 
-        // Show recently watched on root FOLDERS page
+        // Strictly show Recently Watched ONLY on the root FOLDERS Home Page (AGENTS.md §5)
+        if (currentCategory != CATEGORY_FOLDERS) {
+            if (sectionHistory != null) sectionHistory.setVisibility(View.GONE);
+            return;
+        }
+
         if (sectionHistory == null || historyAdapter == null) return;
         List<PlaybackHistoryManager.HistoryItem> history = PlaybackHistoryManager.getHistoryList(getContext());
         if (history != null && !history.isEmpty()) {
@@ -345,6 +375,9 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         MediaItem matchedVideo = null;
 
         for (PlaybackHistoryManager.HistoryItem h : history) {
+            if (h.isCompleted || (h.durationMs > 0 && h.getProgressPercent() >= 95)) {
+                continue;
+            }
             for (MediaItem v : allVideos) {
                 String path = v.path != null ? v.path : v.contentUri;
                 if (h.pathOrUri != null && h.pathOrUri.equalsIgnoreCase(path) && "series".equalsIgnoreCase(v.mediaCategory)) {
@@ -437,7 +470,9 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         HistoryBottomSheet sheet = HistoryBottomSheet.newInstance();
         sheet.setOnHistoryChangedListener(() -> {
             updateHistorySection();
-            if (adapter != null) adapter.notifyDataSetChanged();
+            if (adapter != null && adapter.getItemCount() > 0) {
+                adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+            }
         });
         sheet.show(getChildFragmentManager(), "HistoryBottomSheet");
     }
@@ -452,11 +487,62 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         }
     }
 
+    private List<MediaItem> expandSelectedMediaItems(Set<Object> selected) {
+        List<MediaItem> items = new ArrayList<>();
+        if (selected == null || allVideos == null) return items;
+        Set<String> seenKeys = new HashSet<>();
+
+        for (Object obj : selected) {
+            if (obj instanceof MediaItem) {
+                MediaItem mi = (MediaItem) obj;
+                String k = mi.path != null ? mi.path : mi.contentUri;
+                if (seenKeys.add(k != null ? k : String.valueOf(mi.hashCode()))) {
+                    items.add(mi);
+                }
+            } else if (obj instanceof VideoAdapter.FolderItem) {
+                VideoAdapter.FolderItem folder = (VideoAdapter.FolderItem) obj;
+                if (folder.isRecentFolder || "vault".equalsIgnoreCase(folder.folderType) || "trash".equalsIgnoreCase(folder.folderType)) {
+                    continue;
+                }
+                if ("series".equalsIgnoreCase(folder.folderType)) {
+                    for (MediaItem v : allVideos) {
+                        if (folder.name != null && folder.name.equalsIgnoreCase(v.seriesName)) {
+                            String k = v.path != null ? v.path : v.contentUri;
+                            if (seenKeys.add(k != null ? k : String.valueOf(v.hashCode()))) items.add(v);
+                        }
+                    }
+                } else if ("playlist".equalsIgnoreCase(folder.folderType) && getContext() != null) {
+                    String plName = folder.name != null ? folder.name.replace("★ ", "") : "";
+                    Set<String> plPaths = new HashSet<>(VirtualPlaylistManager.getPlaylistItems(getContext(), plName));
+                    for (MediaItem v : allVideos) {
+                        String k = v.path != null ? v.path : v.contentUri;
+                        if (plPaths.contains(k) || (v.path != null && plPaths.contains(v.path)) || (v.contentUri != null && plPaths.contains(v.contentUri))) {
+                            if (seenKeys.add(k != null ? k : String.valueOf(v.hashCode()))) items.add(v);
+                        }
+                    }
+                } else {
+                    for (MediaItem v : allVideos) {
+                        if (folder.name != null && folder.name.equalsIgnoreCase(v.folder)) {
+                            String k = v.path != null ? v.path : v.contentUri;
+                            if (seenKeys.add(k != null ? k : String.valueOf(v.hashCode()))) items.add(v);
+                        }
+                    }
+                }
+            }
+        }
+        return items;
+    }
+
     private void confirmDeleteSelected() {
         Set<Object> selected = adapter.getSelectedItems();
         if (selected.isEmpty() || getContext() == null) return;
+        List<MediaItem> targetItems = expandSelectedMediaItems(selected);
+        if (targetItems.isEmpty()) {
+            Toast.makeText(getContext(), "No videos in selection", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-        int count = selected.size();
+        int count = targetItems.size();
         List<String> actions = Arrays.asList(
                 "MOVE TO RECYCLE BIN (30-DAY RECOVERY)",
                 "MOVE TO PRIVATE VAULT (PIN LOCKED)",
@@ -465,79 +551,60 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
 
         NothingDialogHelper.showSelectionDialog(getContext(), "MANAGE " + count + " SELECTED ITEM" + (count > 1 ? "S" : ""), actions, 0, (index, item) -> {
             if (index == 0) {
-                // Move to Recycle Bin
                 int moved = 0;
-                for (Object obj : selected) {
-                    if (obj instanceof MediaItem) {
-                        if (TrashManager.moveToTrash(getContext(), (MediaItem) obj)) {
-                            moved++;
-                        }
+                for (MediaItem mi : targetItems) {
+                    if (TrashManager.moveToTrash(getContext(), mi)) {
+                        moved++;
                     }
                 }
                 adapter.clearSelection();
                 loadVideos(false);
                 Toast.makeText(getContext(), "Moved " + moved + " item(s) to Recycle Bin", Toast.LENGTH_SHORT).show();
             } else if (index == 1) {
-                // Move to Private Vault
                 authenticateVaultAccess(() -> moveSelectedToVault(selected));
             } else if (index == 2) {
-                // Permanent Delete
-                deleteSelectedItems(selected);
+                deleteSelectedItems(selected, null);
             }
         });
     }
 
     private void moveSelectedToVault(Set<Object> selected) {
-        if (getContext() == null) return;
+        if (!isAdded() || getContext() == null) return;
+        List<MediaItem> targetItems = expandSelectedMediaItems(selected);
         int moved = 0;
-        for (Object obj : selected) {
-            if (obj instanceof MediaItem) {
-                if (VaultManager.moveToVault(getContext(), (MediaItem) obj)) {
-                    moved++;
-                }
+        for (MediaItem mi : targetItems) {
+            if (VaultManager.moveToVault(getContext(), mi)) {
+                moved++;
             }
         }
-        adapter.clearSelection();
+        if (adapter != null) adapter.clearSelection();
         loadVideos(false);
         Toast.makeText(getContext(), "Moved " + moved + " item(s) to Private Vault", Toast.LENGTH_SHORT).show();
     }
 
-    private void deleteSelectedItems(Set<Object> selected) {
+    private void deleteSelectedItems(Set<Object> selected, @Nullable FileDeleteHelper.DeleteCallback postDeleteHook) {
         if (getActivity() == null) return;
-        List<MediaItem> itemsToDelete = new ArrayList<>();
-
-        for (Object item : selected) {
-            if (item instanceof MediaItem) {
-                itemsToDelete.add((MediaItem) item);
-            } else if (item instanceof VideoAdapter.FolderItem) {
-                VideoAdapter.FolderItem folder = (VideoAdapter.FolderItem) item;
-                if ("series".equalsIgnoreCase(folder.folderType)) {
-                    for (MediaItem v : allVideos) {
-                        if (folder.name.equalsIgnoreCase(v.seriesName)) {
-                            itemsToDelete.add(v);
-                        }
-                    }
-                } else {
-                    for (MediaItem v : allVideos) {
-                        if (folder.name.equalsIgnoreCase(v.folder)) {
-                            itemsToDelete.add(v);
-                        }
-                    }
-                }
-            }
+        List<MediaItem> itemsToDelete = expandSelectedMediaItems(selected);
+        if (itemsToDelete.isEmpty()) {
+            if (adapter != null) adapter.clearSelection();
+            return;
         }
 
         FileDeleteHelper.deleteMediaFiles(getActivity(), itemsToDelete, deleteLauncher, (deletedCount, deletedPaths) -> {
-            if (getContext() == null) return;
+            if (!isAdded() || getContext() == null) return;
             List<MediaItem> remaining = new ArrayList<>();
             for (MediaItem v : allVideos) {
-                if (!deletedPaths.contains(v.path)) remaining.add(v);
+                boolean matched = (v.path != null && deletedPaths.contains(v.path))
+                        || (v.contentUri != null && deletedPaths.contains(v.contentUri));
+                if (!matched) remaining.add(v);
             }
             allVideos = remaining;
-            adapter.clearSelection();
+            if (adapter != null) adapter.clearSelection();
             filterAndDisplay();
 
-            if (deletedCount > 0) {
+            if (postDeleteHook != null) {
+                postDeleteHook.onCompleted(deletedCount, deletedPaths);
+            } else if (deletedCount > 0) {
                 Toast.makeText(getContext(), "Deleted " + deletedCount + " item(s)", Toast.LENGTH_SHORT).show();
             }
             loadVideos(false);
@@ -588,22 +655,27 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         setChipState(chipSeries, currentCategory == CATEGORY_SERIES);
         setChipState(chipMovies, currentCategory == CATEGORY_MOVIES);
         setChipState(chipAllVideos, currentCategory == CATEGORY_ALL_VIDEOS);
+        setChipState(chipPlaylists, currentCategory == CATEGORY_PLAYLISTS);
     }
 
     private void setChipState(TextView chip, boolean isSelected) {
         if (chip == null || getContext() == null) return;
         if (isSelected) {
             chip.setBackgroundResource(R.drawable.bg_chip_selected);
-            chip.setTextColor(getResources().getColor(R.color.nothing_black));
+            chip.setTextColor(ContextCompat.getColor(getContext(), R.color.nothing_black));
         } else {
             chip.setBackgroundResource(R.drawable.bg_chip_unselected);
-            chip.setTextColor(getResources().getColor(R.color.nothing_white_70));
+            chip.setTextColor(ContextCompat.getColor(getContext(), R.color.nothing_white_70));
         }
     }
 
     @Override
     public void onResume() {
         super.onResume();
+        if (getContext() != null) {
+            SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            currentViewMode = prefs.getInt(KEY_VIEW_MODE, currentViewMode);
+        }
         updateHistorySection();
         loadVideos(false);
         if (adapter != null) {
@@ -615,7 +687,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         updateHistorySection();
         applyCurrentViewMode();
 
-        String query = etSearch != null ? etSearch.getText().toString().trim().toLowerCase() : "";
+        String query = etSearch != null ? etSearch.getText().toString().trim().toLowerCase(Locale.US) : "";
         List<Object> displayItems = new ArrayList<>();
 
         if (currentCategory == CATEGORY_FOLDERS) {
@@ -659,7 +731,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             } else if (currentSelectedFolder != null && currentSelectedFolder.equalsIgnoreCase("Recently")) {
                 List<MediaItem> sortedVideos = new ArrayList<>();
                 for (MediaItem v : allVideos) {
-                    if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase().contains(query))) {
+                    if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase(Locale.US).contains(query))) {
                         continue;
                     }
                     sortedVideos.add(v);
@@ -673,7 +745,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                     if (currentSelectedFolder != null && !currentSelectedFolder.equalsIgnoreCase(v.folder)) {
                         continue;
                     }
-                    if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase().contains(query))) {
+                    if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase(Locale.US).contains(query))) {
                         continue;
                     }
                     videoList.add(v);
@@ -702,7 +774,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                     String seriesName = entry.getKey();
                     List<MediaItem> epList = entry.getValue();
 
-                    if (!query.isEmpty() && !seriesName.toLowerCase().contains(query)) {
+                    if (!query.isEmpty() && !seriesName.toLowerCase(Locale.US).contains(query)) {
                         continue;
                     }
 
@@ -722,9 +794,12 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                         subtitle = meta.releaseYear + " • " + subtitle;
                     }
 
-                    if (posterUrl == null && getContext() != null) {
+                    String seriesMetaKey = seriesName.trim().toLowerCase(Locale.US);
+                    if ((posterUrl == null || posterUrl.isEmpty()) && getContext() != null && !attemptedSeriesMeta.contains(seriesMetaKey)) {
+                        attemptedSeriesMeta.add(seriesMetaKey);
                         OnlineMetadataManager.enrichSeries(getContext(), seriesName, info -> {
-                            if (isAdded() && currentCategory == CATEGORY_SERIES && currentSelectedSeries == null) {
+                            if (isAdded() && info != null && info.posterUrl != null && !info.posterUrl.isEmpty()
+                                    && currentCategory == CATEGORY_SERIES && currentSelectedSeries == null) {
                                 filterAndDisplay();
                             }
                         });
@@ -760,7 +835,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 List<MediaItem> episodes = new ArrayList<>();
                 for (MediaItem v : allVideos) {
                     if (currentSelectedSeries.equalsIgnoreCase(v.seriesName)) {
-                        if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase().contains(query))) {
+                        if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase(Locale.US).contains(query))) {
                             continue;
                         }
                         episodes.add(v);
@@ -770,19 +845,50 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 displayItems.addAll(episodes);
                 adapter.setItems(displayItems, false, false);
             }
+        } else if (currentCategory == CATEGORY_PLAYLISTS) {
+            if (currentSelectedPlaylist == null) {
+                List<String> names = VirtualPlaylistManager.getPlaylistNames(getContext());
+                for (String pName : names) {
+                    if (!query.isEmpty() && !pName.toLowerCase(Locale.US).contains(query)) {
+                        continue;
+                    }
+                    List<String> items = VirtualPlaylistManager.getPlaylistItems(getContext(), pName);
+                    displayItems.add(new VideoAdapter.FolderItem("★ " + pName, items.size(), false, false, "playlist", null, null));
+                }
+                adapter.setItems(displayItems, true, false);
+            } else {
+                List<String> pItems = VirtualPlaylistManager.getPlaylistItems(getContext(), currentSelectedPlaylist);
+                Set<String> itemSet = new HashSet<>(pItems);
+                List<MediaItem> pVideos = new ArrayList<>();
+                for (MediaItem v : allVideos) {
+                    String pKey = v.path != null ? v.path : v.contentUri;
+                    if (itemSet.contains(pKey) || (v.path != null && itemSet.contains(v.path)) || (v.contentUri != null && itemSet.contains(v.contentUri))) {
+                        if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase(Locale.US).contains(query))) {
+                            continue;
+                        }
+                        pVideos.add(v);
+                    }
+                }
+                sortVideoList(pVideos);
+                displayItems.addAll(pVideos);
+                adapter.setItems(displayItems, false, false);
+            }
         } else if (currentCategory == CATEGORY_MOVIES) {
             List<MediaItem> movieList = new ArrayList<>();
             for (MediaItem v : allVideos) {
                 if ("movie".equalsIgnoreCase(v.mediaCategory)) {
-                    if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase().contains(query))) {
+                    if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase(Locale.US).contains(query))) {
                         continue;
                     }
                     movieList.add(v);
 
-                    if (v.posterUrl == null || v.posterUrl.isEmpty()) {
+                    String movieMetaKey = (v.path != null ? v.path : (v.title != null ? v.title : "")).toLowerCase(Locale.US);
+                    if ((v.posterUrl == null || v.posterUrl.isEmpty()) && !attemptedMovieMeta.contains(movieMetaKey)) {
+                        attemptedMovieMeta.add(movieMetaKey);
                         OnlineMetadataManager.enrichItem(getContext(), v, info -> {
-                            if (isAdded() && currentCategory == CATEGORY_MOVIES) {
-                                adapter.notifyDataSetChanged();
+                            if (isAdded() && info != null && info.posterUrl != null && !info.posterUrl.isEmpty()
+                                    && currentCategory == CATEGORY_MOVIES && adapter != null && adapter.getItemCount() > 0) {
+                                adapter.notifyItemRangeChanged(0, adapter.getItemCount());
                             }
                         });
                     }
@@ -794,7 +900,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         } else { // CATEGORY_ALL_VIDEOS
             List<MediaItem> videoList = new ArrayList<>();
             for (MediaItem v : allVideos) {
-                if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase().contains(query))) {
+                if (!query.isEmpty() && (v.title == null || !v.title.toLowerCase(Locale.US).contains(query))) {
                     continue;
                 }
                 videoList.add(v);
@@ -822,7 +928,8 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         if (getContext() == null || recyclerView == null) return;
         String query = etSearch != null ? etSearch.getText().toString().trim() : "";
         boolean isFolderGrid = (currentCategory == CATEGORY_FOLDERS && currentSelectedFolder == null && query.isEmpty())
-                || (currentCategory == CATEGORY_SERIES && currentSelectedSeries == null && query.isEmpty());
+                || (currentCategory == CATEGORY_SERIES && currentSelectedSeries == null && query.isEmpty())
+                || (currentCategory == CATEGORY_PLAYLISTS && currentSelectedPlaylist == null);
 
         if (isFolderGrid) {
             recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 1));
@@ -895,11 +1002,13 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
 
                         @Override
                         public void onAuthenticationFailed() {
+                            if (!isAdded() || getContext() == null) return;
                             Toast.makeText(getContext(), "Biometric recognition failed", Toast.LENGTH_SHORT).show();
                         }
 
                         @Override
                         public void onAuthenticationError(int errorCode, String errString) {
+                            if (!isAdded() || getContext() == null) return;
                             showFallbackAuthDialog(onSuccess);
                         }
                     }
@@ -1067,22 +1176,20 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
 
     private void showM3uPlaylistDialog() {
         if (getContext() == null) return;
-        final EditText input = new EditText(getContext());
-        input.setHint("M3U URL or local file path");
-        input.setTextColor(Color.WHITE);
-        input.setHintTextColor(Color.GRAY);
-
-        new AlertDialog.Builder(getContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("IMPORT IPTV / M3U PLAYLIST")
-                .setMessage("Paste an IPTV M3U stream URL or local playlist path:")
-                .setView(input)
-                .setPositiveButton("LOAD CHANNELS", (dialog, which) -> {
-                    String url = input.getText().toString().trim();
-                    if (url.isEmpty()) return;
+        NothingDialogHelper.showInputDialog(
+                getContext(),
+                "IMPORT IPTV / M3U PLAYLIST",
+                "Paste an IPTV M3U stream URL or local playlist path:",
+                "M3U URL or local file path",
+                "LOAD CHANNELS",
+                android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI,
+                url -> {
+                    if (!isAdded() || getContext() == null || url.isEmpty()) return;
                     Toast.makeText(getContext(), "Parsing M3U Playlist...", Toast.LENGTH_SHORT).show();
                     M3uParser.loadM3u(url, new M3uParser.ParseCallback() {
                         @Override
                         public void onParsed(List<M3uParser.M3uChannel> channels) {
+                            if (!isAdded() || getContext() == null) return;
                             if (channels.isEmpty()) {
                                 Toast.makeText(getContext(), "No stream channels found in M3U", Toast.LENGTH_SHORT).show();
                                 return;
@@ -1092,6 +1199,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                                 names.add("[" + ch.group + "] " + ch.name);
                             }
                             NothingDialogHelper.showSelectionDialog(getContext(), "IPTV CHANNELS (" + channels.size() + ")", names, 0, (chIdx, chItem) -> {
+                                if (!isAdded() || getContext() == null) return;
                                 M3uParser.M3uChannel sel = channels.get(chIdx);
                                 Intent playerIntent = new Intent(getContext(), ExoVideoPlayerActivity.class);
                                 playerIntent.setAction(Intent.ACTION_VIEW);
@@ -1105,36 +1213,32 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
 
                         @Override
                         public void onError(String error) {
+                            if (!isAdded() || getContext() == null) return;
                             Toast.makeText(getContext(), "Failed to load M3U: " + error, Toast.LENGTH_SHORT).show();
                         }
                     });
-                })
-                .setNegativeButton("CANCEL", null)
-                .show();
+                }
+        );
     }
 
     private void showBackgroundDownloaderDialog() {
         if (getContext() == null) return;
-        final EditText input = new EditText(getContext());
-        input.setHint("https://example.com/video.mp4");
-        input.setTextColor(Color.WHITE);
-        input.setHintTextColor(Color.GRAY);
-        input.setTypeface(android.graphics.Typeface.create("monospace", android.graphics.Typeface.NORMAL));
-
-        new AlertDialog.Builder(getContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("DOWNLOAD ONLINE STREAM")
-                .setMessage("Enter direct video/stream URL to download in background:")
-                .setView(input)
-                .setPositiveButton("DOWNLOAD", (dialog, which) -> {
-                    String url = input.getText().toString().trim();
+        NothingDialogHelper.showInputDialog(
+                getContext(),
+                "DOWNLOAD ONLINE STREAM",
+                "Enter direct video/stream URL to download in background:",
+                "https://example.com/video.mp4",
+                "DOWNLOAD",
+                android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI,
+                url -> {
+                    if (!isAdded() || getContext() == null) return;
                     if (!url.isEmpty()) {
                         StreamDownloadHelper.downloadMedia(getContext(), url, "Stream_" + System.currentTimeMillis());
                     } else {
                         Toast.makeText(getContext(), "Please enter a valid URL", Toast.LENGTH_SHORT).show();
                     }
-                })
-                .setNegativeButton("CANCEL", null)
-                .show();
+                }
+        );
     }
 
     private void showVideosOptionsMenu() {
@@ -1229,7 +1333,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             }
 
             PlaybackHistoryManager.HistoryItem h = PlaybackHistoryManager.getProgress(getContext(), path);
-            if (h != null && h.getProgressPercent() >= 90) {
+            if (h != null && (h.isCompleted || h.getProgressPercent() >= 90)) {
                 watchedEpisodes.add(item);
                 totalBytes += item.size;
             }
@@ -1314,8 +1418,11 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         if (btnKeep != null) btnKeep.setOnClickListener(v -> dialog.dismiss());
         if (btnDelete != null) btnDelete.setOnClickListener(v -> {
             dialog.dismiss();
-            deleteSelectedItems(new HashSet<>(watchedEpisodes));
-            Toast.makeText(getContext(), "Reclaimed " + totalSizeStr + " of storage", Toast.LENGTH_SHORT).show();
+            deleteSelectedItems(new HashSet<>(watchedEpisodes), (deletedCount, deletedPaths) -> {
+                if (getContext() != null && deletedCount > 0) {
+                    Toast.makeText(getContext(), "Reclaimed " + totalSizeStr + " of storage", Toast.LENGTH_SHORT).show();
+                }
+            });
         });
 
         dialog.show();
@@ -1343,7 +1450,9 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                         .edit().putInt(KEY_VIEW_MODE, currentViewMode).apply();
             }
             applyCurrentViewMode();
-            if (adapter != null) adapter.notifyDataSetChanged();
+            if (adapter != null && adapter.getItemCount() > 0) {
+                adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+            }
         });
     }
 
@@ -1435,6 +1544,16 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 }
             }
             sortEpisodes(activeList);
+        } else if (currentSelectedPlaylist != null) {
+            List<String> pItems = VirtualPlaylistManager.getPlaylistItems(getContext(), currentSelectedPlaylist);
+            Set<String> itemSet = new HashSet<>(pItems);
+            for (MediaItem v : allVideos) {
+                String pKey = v.path != null ? v.path : v.contentUri;
+                if (itemSet.contains(pKey) || (v.path != null && itemSet.contains(v.path)) || (v.contentUri != null && itemSet.contains(v.contentUri))) {
+                    activeList.add(v);
+                }
+            }
+            sortVideoList(activeList);
         } else if (currentCategory == CATEGORY_MOVIES) {
             for (MediaItem v : allVideos) {
                 if ("movie".equalsIgnoreCase(v.mediaCategory)) {
@@ -1476,12 +1595,19 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     @Override
     public void onFolderLongClick(VideoAdapter.FolderItem folder) {
         if (folder == null || getContext() == null) return;
+        if (folder.isRecentFolder || "playlist".equalsIgnoreCase(folder.folderType)) {
+            if (adapter != null) adapter.startSelection(folder);
+            return;
+        }
         boolean isPinned = pinnedFolders.contains(folder.name);
         List<String> options = Arrays.asList(
-                isPinned ? "📌 UNPIN FOLDER FROM TOP" : "📌 PIN FOLDER TO TOP",
+                isPinned ? "UNPIN FOLDER FROM TOP" : "PIN FOLDER TO TOP",
+                "SELECT FOLDER ITEMS",
                 "OPEN FOLDER"
         );
-        NothingDialogHelper.showSelectionDialog(getContext(), folder.name.toUpperCase(), options, 0, (index, item) -> {
+        String title = folder.name != null ? folder.name.toUpperCase(Locale.US) : "FOLDER";
+        NothingDialogHelper.showSelectionDialog(getContext(), title, options, 0, (index, item) -> {
+            if (!isAdded() || getContext() == null) return;
             if (index == 0) {
                 if (isPinned) {
                     pinnedFolders.remove(folder.name);
@@ -1490,11 +1616,11 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                     pinnedFolders.add(folder.name);
                     Toast.makeText(getContext(), "Pinned " + folder.name + " to top", Toast.LENGTH_SHORT).show();
                 }
-                if (getContext() != null) {
-                    getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                            .edit().putStringSet("pinned_folders", new HashSet<>(pinnedFolders)).apply();
-                }
+                getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit().putStringSet("pinned_folders", new HashSet<>(pinnedFolders)).apply();
                 filterAndDisplay();
+            } else if (index == 1) {
+                if (adapter != null) adapter.startSelection(folder);
             } else {
                 onFolderClick(folder);
             }
@@ -1512,7 +1638,9 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
             openRecycleBin();
             return;
         }
-        if ("series".equalsIgnoreCase(folder.folderType)) {
+        if ("playlist".equalsIgnoreCase(folder.folderType)) {
+            currentSelectedPlaylist = folder.name != null ? folder.name.replace("★ ", "") : "";
+        } else if ("series".equalsIgnoreCase(folder.folderType)) {
             currentSelectedSeries = folder.name;
         } else {
             currentSelectedFolder = folder.name;
@@ -1524,12 +1652,21 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
     @Override
     public void onMenuClick(MediaItem video) {
         FileInfoBottomSheet sheet = FileInfoBottomSheet.newInstance(video);
+        sheet.setOnMetadataUpdatedListener(() -> {
+            if (isAdded()) loadVideos(false);
+        });
         sheet.show(getParentFragmentManager(), "FileInfoBottomSheet");
     }
 
     public boolean handleBackPress() {
-        if (adapter.isSelectionMode()) {
+        if (adapter != null && adapter.isSelectionMode()) {
             adapter.clearSelection();
+            return true;
+        }
+        if (currentSelectedPlaylist != null) {
+            currentSelectedPlaylist = null;
+            updateChipsUI();
+            filterAndDisplay();
             return true;
         }
         if (currentSelectedSeries != null) {
@@ -1562,12 +1699,19 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         Button btnPlayStream = dialogView.findViewById(R.id.btn_play_stream);
         Button btnPlayDirect = dialogView.findViewById(R.id.btn_play_direct);
         Button btnPasteUrl = dialogView.findViewById(R.id.btn_paste_url);
+        Button btnPcNasBrowser = dialogView.findViewById(R.id.btn_open_pc_nas_browser);
         Button btnCancelStream = dialogView.findViewById(R.id.btn_cancel_stream);
         ImageButton btnCloseDialog = dialogView.findViewById(R.id.btn_close_dialog);
         LinearLayout containerRecentStreams = dialogView.findViewById(R.id.container_recent_streams);
 
         if (btnCloseDialog != null) btnCloseDialog.setOnClickListener(v -> dialog.dismiss());
         if (btnCancelStream != null) btnCancelStream.setOnClickListener(v -> dialog.dismiss());
+        if (btnPcNasBrowser != null) {
+            btnPcNasBrowser.setOnClickListener(v -> {
+                dialog.dismiss();
+                showPcNasBrowserDialog();
+            });
+        }
 
         // Load recent streams
         if (containerRecentStreams != null && getContext() != null) {
@@ -1576,7 +1720,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 if (!s.trim().isEmpty()) {
                     TextView tv = new TextView(getContext());
                     tv.setText(s);
-                    tv.setTextColor(getResources().getColor(R.color.nothing_white_70));
+                    tv.setTextColor(ContextCompat.getColor(getContext(), R.color.nothing_white_70));
                     tv.setTextSize(11);
                     tv.setPadding(0, 10, 0, 10);
                     tv.setOnClickListener(v -> {
@@ -1651,5 +1795,159 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         if (btnPlayStream != null) btnPlayStream.setOnClickListener(v -> startStreamRunnable.run());
         if (btnPlayDirect != null) btnPlayDirect.setOnClickListener(v -> startStreamRunnable.run());
         dialog.show();
+    }
+
+    private void showPcNasBrowserDialog() {
+        if (getContext() == null) return;
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_pc_network_browser, null);
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setView(dialogView)
+                .create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        ImageButton btnClose = dialogView.findViewById(R.id.btn_close_network_dialog);
+        Button btnScanWifi = dialogView.findViewById(R.id.btn_scan_wifi_devices);
+        LinearLayout containerDevices = dialogView.findViewById(R.id.container_discovered_devices);
+        Button btnProtocol = dialogView.findViewById(R.id.btn_select_protocol);
+        EditText etHost = dialogView.findViewById(R.id.et_network_host);
+        EditText etPath = dialogView.findViewById(R.id.et_network_path);
+        EditText etUser = dialogView.findViewById(R.id.et_network_user);
+        EditText etPass = dialogView.findViewById(R.id.et_network_pass);
+        Button btnConnect = dialogView.findViewById(R.id.btn_connect_network_stream);
+
+        final String[] protocols = {"SMB", "WEBDAV", "FTP", "HTTP"};
+        final int[] protoIdx = {0};
+
+        if (btnClose != null) btnClose.setOnClickListener(v -> dialog.dismiss());
+        if (btnProtocol != null) {
+            btnProtocol.setOnClickListener(v -> {
+                protoIdx[0] = (protoIdx[0] + 1) % protocols.length;
+                btnProtocol.setText(protocols[protoIdx[0]]);
+            });
+        }
+
+        List<NetworkBrowserHelper.NetworkShareItem> saved = NetworkBrowserHelper.getSavedShares(getContext());
+        if (containerDevices != null && !saved.isEmpty()) {
+            containerDevices.setVisibility(View.VISIBLE);
+            for (NetworkBrowserHelper.NetworkShareItem item : saved) {
+                TextView row = new TextView(getContext());
+                row.setText("● " + item.protocol.toUpperCase(Locale.US) + "  " + item.host + (item.sharePath != null ? item.sharePath : ""));
+                row.setTextColor(Color.WHITE);
+                row.setTextSize(9.5f);
+                row.setPadding(8, 10, 8, 10);
+                row.setOnClickListener(v -> {
+                    for (int p = 0; p < protocols.length; p++) {
+                        if (protocols[p].equalsIgnoreCase(item.protocol)) {
+                            protoIdx[0] = p;
+                            if (btnProtocol != null) btnProtocol.setText(protocols[p]);
+                            break;
+                        }
+                    }
+                    if (etHost != null) etHost.setText(item.host);
+                    if (etPath != null) etPath.setText(item.sharePath);
+                    if (etUser != null) etUser.setText(item.username);
+                    if (etPass != null) etPass.setText(item.password);
+                });
+                containerDevices.addView(row);
+            }
+        }
+
+        if (btnScanWifi != null) {
+            btnScanWifi.setOnClickListener(v -> {
+                String localIp = getLocalIpv4Address();
+                if (localIp == null) {
+                    Toast.makeText(getContext(), "Connect to Wi-Fi / LAN to scan devices", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                btnScanWifi.setEnabled(false);
+                btnScanWifi.setText("SCANNING SUBNET (" + localIp + ")...");
+                if (containerDevices != null) {
+                    containerDevices.setVisibility(View.VISIBLE);
+                }
+                NetworkBrowserHelper.scanLocalSubnet(localIp, new NetworkBrowserHelper.ScanCallback() {
+                    @Override
+                    public void onDeviceFound(String ip, String detectedService) {
+                        if (!isAdded() || getContext() == null || !dialog.isShowing() || containerDevices == null) return;
+                        TextView tv = new TextView(getContext());
+                        tv.setText("● " + ip + "  (" + detectedService + ")");
+                        tv.setTextColor(ContextCompat.getColor(getContext(), R.color.nothing_red));
+                        tv.setTextSize(9.5f);
+                        tv.setPadding(8, 10, 8, 10);
+                        tv.setOnClickListener(c -> {
+                            if (etHost != null) etHost.setText(ip);
+                            if (btnProtocol != null) {
+                                if (detectedService.contains("FTP")) protoIdx[0] = 2;
+                                else if (detectedService.contains("WEBDAV")) protoIdx[0] = 1;
+                                else protoIdx[0] = 0;
+                                btnProtocol.setText(protocols[protoIdx[0]]);
+                            }
+                        });
+                        containerDevices.addView(tv);
+                    }
+
+                    @Override
+                    public void onScanComplete(List<String> activeHosts) {
+                        if (!isAdded() || !dialog.isShowing()) return;
+                        btnScanWifi.setEnabled(true);
+                        btnScanWifi.setText("● SCAN COMPLETE (" + activeHosts.size() + " FOUND)");
+                    }
+                });
+            });
+        }
+
+        if (btnConnect != null) {
+            btnConnect.setOnClickListener(v -> {
+                if (getContext() == null) return;
+                String host = etHost != null ? etHost.getText().toString().trim() : "";
+                if (host.isEmpty()) {
+                    Toast.makeText(getContext(), "Enter host or IP address", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                String proto = btnProtocol != null ? btnProtocol.getText().toString().trim() : protocols[protoIdx[0]];
+                String path = etPath != null ? etPath.getText().toString().trim() : "";
+                String user = etUser != null ? etUser.getText().toString().trim() : "";
+                String pass = etPass != null ? etPass.getText().toString().trim() : "";
+
+                NetworkBrowserHelper.NetworkShareItem share = new NetworkBrowserHelper.NetworkShareItem(
+                        proto + " " + host, proto, host, 0, user, pass, path);
+                String streamUrl = share.toStreamUrl();
+                NetworkBrowserHelper.saveShare(getContext(), share);
+                StreamUrlHelper.saveRecentStream(getContext(), streamUrl);
+                dialog.dismiss();
+
+                Intent intent = new Intent(getContext(), ExoVideoPlayerActivity.class);
+                intent.setAction(Intent.ACTION_VIEW);
+                intent.setData(Uri.parse(streamUrl));
+                intent.putExtra("video_uri", streamUrl);
+                intent.putExtra("contentUri", streamUrl);
+                intent.putExtra("path", streamUrl);
+                intent.putExtra("video_path", streamUrl);
+                intent.putExtra("title", share.title);
+                intent.putExtra("video_title", share.title);
+                startActivity(intent);
+            });
+        }
+
+        dialog.show();
+    }
+
+    private static String getLocalIpv4Address() {
+        try {
+            Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
+            while (ifaces != null && ifaces.hasMoreElements()) {
+                NetworkInterface iface = ifaces.nextElement();
+                if (!iface.isUp() || iface.isLoopback()) continue;
+                Enumeration<InetAddress> addrs = iface.getInetAddresses();
+                while (addrs.hasMoreElements()) {
+                    InetAddress addr = addrs.nextElement();
+                    if (!addr.isLoopbackAddress() && addr instanceof Inet4Address) {
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 }

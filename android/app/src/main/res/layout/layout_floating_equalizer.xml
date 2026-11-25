@@ -287,13 +287,13 @@
                         android:textColor="@color/nothing_white_70"
                         android:textSize="9sp"
                         android:fontFamily="@font/ndot" />
-                    <SeekBar
+                    <com.nothing.player.DotMatrixSeekBar
                         android:id="@+id/seekbar_float_band_0"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="22dp"
                         android:layout_weight="1"
-                        android:progressTint="@color/nothing_red"
-                        android:thumbTint="@color/nothing_white"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
                         android:max="30"
                         android:progress="15" />
                     <TextView
@@ -321,13 +321,13 @@
                         android:textColor="@color/nothing_white_70"
                         android:textSize="9sp"
                         android:fontFamily="@font/ndot" />
-                    <SeekBar
+                    <com.nothing.player.DotMatrixSeekBar
                         android:id="@+id/seekbar_float_band_1"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="22dp"
                         android:layout_weight="1"
-                        android:progressTint="@color/nothing_red"
-                        android:thumbTint="@color/nothing_white"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
                         android:max="30"
                         android:progress="15" />
                     <TextView
@@ -355,13 +355,13 @@
                         android:textColor="@color/nothing_white_70"
                         android:textSize="9sp"
                         android:fontFamily="@font/ndot" />
-                    <SeekBar
+                    <com.nothing.player.DotMatrixSeekBar
                         android:id="@+id/seekbar_float_band_2"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="22dp"
                         android:layout_weight="1"
-                        android:progressTint="@color/nothing_red"
-                        android:thumbTint="@color/nothing_white"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
                         android:max="30"
                         android:progress="15" />
                     <TextView
@@ -389,13 +389,13 @@
                         android:textColor="@color/nothing_white_70"
                         android:textSize="9sp"
                         android:fontFamily="@font/ndot" />
-                    <SeekBar
+                    <com.nothing.player.DotMatrixSeekBar
                         android:id="@+id/seekbar_float_band_3"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="22dp"
                         android:layout_weight="1"
-                        android:progressTint="@color/nothing_red"
-                        android:thumbTint="@color/nothing_white"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
                         android:max="30"
                         android:progress="15" />
                     <TextView
@@ -423,13 +423,13 @@
                         android:textColor="@color/nothing_white_70"
                         android:textSize="9sp"
                         android:fontFamily="@font/ndot" />
-                    <SeekBar
+                    <com.nothing.player.DotMatrixSeekBar
                         android:id="@+id/seekbar_float_band_4"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="22dp"
                         android:layout_weight="1"
-                        android:progressTint="@color/nothing_red"
-                        android:thumbTint="@color/nothing_white"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
                         android:max="30"
                         android:progress="15" />
                     <TextView
@@ -465,13 +465,13 @@
                         android:textColor="@color/nothing_white_70"
                         android:textSize="9sp"
                         android:fontFamily="@font/ndot" />
-                    <SeekBar
+                    <com.nothing.player.DotMatrixSeekBar
                         android:id="@+id/seekbar_float_bass"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="22dp"
                         android:layout_weight="1"
-                        android:progressTint="@color/nothing_red"
-                        android:thumbTint="@color/nothing_white"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
                         android:max="100"
                         android:progress="60" />
                     <TextView
@@ -499,13 +499,13 @@
                         android:textColor="@color/nothing_white_70"
                         android:textSize="9sp"
                         android:fontFamily="@font/ndot" />
-                    <SeekBar
+                    <com.nothing.player.DotMatrixSeekBar
                         android:id="@+id/seekbar_float_virtualizer"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="22dp"
                         android:layout_weight="1"
-                        android:progressTint="@color/nothing_red"
-                        android:thumbTint="@color/nothing_white"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
                         android:max="100"
                         android:progress="50" />
                     <TextView
@@ -533,13 +533,13 @@
                         android:textColor="@color/nothing_white_70"
                         android:textSize="9sp"
                         android:fontFamily="@font/ndot" />
-                    <SeekBar
+                    <com.nothing.player.DotMatrixSeekBar
                         android:id="@+id/seekbar_float_preamp"
                         android:layout_width="0dp"
-                        android:layout_height="wrap_content"
+                        android:layout_height="22dp"
                         android:layout_weight="1"
-                        android:progressTint="@color/nothing_red"
-                        android:thumbTint="@color/nothing_white"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="6dp"
                         android:max="24"
                         android:progress="12" />
                     <TextView

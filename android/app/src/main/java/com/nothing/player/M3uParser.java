@@ -1,5 +1,7 @@
 package com.nothing.player;
 
+import android.content.Context;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -13,6 +15,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,28 +42,64 @@ public class M3uParser {
         void onError(String error);
     }
 
+    private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool();
+    private static Handler mainHandler;
+
+    private static synchronized Handler getMainHandler() {
+        if (mainHandler == null) {
+            mainHandler = new Handler(Looper.getMainLooper());
+        }
+        return mainHandler;
+    }
+
     private static final Pattern GROUP_PATTERN = Pattern.compile("group-title=\"([^\"]*)\"", Pattern.CASE_INSENSITIVE);
     private static final Pattern LOGO_PATTERN = Pattern.compile("tvg-logo=\"([^\"]*)\"", Pattern.CASE_INSENSITIVE);
     private static final Pattern NAME_PATTERN = Pattern.compile(",(.*)$");
 
     public static void loadM3u(String pathOrUrl, ParseCallback callback) {
-        Executors.newSingleThreadExecutor().execute(() -> {
-            Handler mainHandler = new Handler(Looper.getMainLooper());
+        loadM3u(null, pathOrUrl, callback);
+    }
+
+    public static void loadM3u(Context context, String pathOrUrl, ParseCallback callback) {
+        if (callback == null) return;
+        if (pathOrUrl == null || pathOrUrl.trim().isEmpty()) {
+            getMainHandler().post(() -> callback.onError("Empty playlist path"));
+            return;
+        }
+        final Context appCtx = context != null ? context.getApplicationContext() : null;
+        final String target = pathOrUrl.trim();
+        EXECUTOR.execute(() -> {
+            HttpURLConnection conn = null;
+            InputStream is = null;
             try {
-                InputStream is;
-                if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
-                    HttpURLConnection conn = (HttpURLConnection) new URL(pathOrUrl).openConnection();
+                String lower = target.toLowerCase(Locale.US);
+                if (lower.startsWith("http://") || lower.startsWith("https://")) {
+                    conn = (HttpURLConnection) new URL(target).openConnection();
                     conn.setConnectTimeout(10000);
                     conn.setReadTimeout(15000);
+                    int code = conn.getResponseCode();
+                    if (code < 200 || code >= 300) {
+                        getMainHandler().post(() -> callback.onError("HTTP " + code));
+                        return;
+                    }
                     is = conn.getInputStream();
+                } else if (lower.startsWith("content://") && appCtx != null) {
+                    is = appCtx.getContentResolver().openInputStream(Uri.parse(target));
                 } else {
-                    is = new FileInputStream(new File(pathOrUrl));
+                    is = new FileInputStream(new File(target));
                 }
 
                 List<M3uChannel> channels = parseStream(is);
-                mainHandler.post(() -> callback.onParsed(channels));
+                getMainHandler().post(() -> callback.onParsed(channels));
             } catch (Exception e) {
-                mainHandler.post(() -> callback.onError(e.getMessage()));
+                getMainHandler().post(() -> callback.onError(e.getMessage()));
+            } finally {
+                if (is != null) {
+                    try { is.close(); } catch (Exception ignored) {}
+                }
+                if (conn != null) {
+                    conn.disconnect();
+                }
             }
         });
     }
@@ -100,7 +140,10 @@ public class M3uParser {
                         currentName = "Channel " + (channels.size() + 1);
                     }
                 } else if (!line.startsWith("#")) {
-                    if (line.startsWith("http://") || line.startsWith("https://") || line.startsWith("rtsp://") || line.startsWith("rtmp://")) {
+                    String lowerLine = line.toLowerCase(Locale.US);
+                    if (lowerLine.startsWith("http://") || lowerLine.startsWith("https://")
+                            || lowerLine.startsWith("rtsp://") || lowerLine.startsWith("rtmp://")
+                            || lowerLine.startsWith("mms://")) {
                         String name = currentName != null ? currentName : ("Channel " + (channels.size() + 1));
                         channels.add(new M3uChannel(name, line, currentGroup, currentLogo));
                     }

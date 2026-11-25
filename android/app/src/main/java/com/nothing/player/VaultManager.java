@@ -3,6 +3,8 @@ package com.nothing.player;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.media.MediaScannerConnection;
+import android.os.Build;
+import android.os.Environment;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -14,8 +16,10 @@ import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public class VaultManager {
     private static final String TAG = "VaultManager";
@@ -228,11 +232,15 @@ public class VaultManager {
 
             boolean moved = sourceFile.renameTo(destFile);
             if (!moved) {
-                moved = copyAndDelete(sourceFile, destFile);
+                moved = FileDeleteHelper.copyAndDeleteFile(context, sourceFile, destFile, item.contentUri);
             }
 
             if (moved) {
-                MediaScannerConnection.scanFile(context, new String[]{sourceFile.getAbsolutePath()}, null, null);
+                MediaScannerConnection.scanFile(context.getApplicationContext(), new String[]{sourceFile.getAbsolutePath()}, null, null);
+                Set<String> removed = new HashSet<>();
+                removed.add(sourceFile.getAbsolutePath());
+                if (item.contentUri != null && !item.contentUri.isEmpty()) removed.add(item.contentUri);
+                MediaRepository.removeItemsFromCache(context.getApplicationContext(), removed);
 
                 VaultItem vaultItem = new VaultItem();
                 vaultItem.id = System.currentTimeMillis() + "_" + uniqueSuffix;
@@ -261,7 +269,13 @@ public class VaultManager {
         }
 
         try {
-            File targetFile = new File(item.originalPath);
+            String restorePath = item.originalPath;
+            if (restorePath == null || restorePath.trim().isEmpty()) {
+                File moviesDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "NothingPlayer");
+                String fallbackName = item.title != null && !item.title.trim().isEmpty() ? item.title.trim() : vaultFile.getName();
+                restorePath = new File(moviesDir, fallbackName).getAbsolutePath();
+            }
+            File targetFile = new File(restorePath);
             File parent = targetFile.getParentFile();
             if (parent != null && !parent.exists()) {
                 parent.mkdirs();
@@ -269,11 +283,14 @@ public class VaultManager {
 
             boolean restored = vaultFile.renameTo(targetFile);
             if (!restored) {
-                restored = copyAndDelete(vaultFile, targetFile);
+                restored = FileDeleteHelper.copyAndDeleteFile(context, vaultFile, targetFile, null);
+            }
+            if (!restored && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                restored = FileDeleteHelper.restoreVideoViaMediaStore(context, vaultFile, targetFile.getName());
             }
 
             if (restored) {
-                MediaScannerConnection.scanFile(context, new String[]{targetFile.getAbsolutePath()}, null, null);
+                MediaScannerConnection.scanFile(context.getApplicationContext(), new String[]{targetFile.getAbsolutePath()}, null, null);
                 removeItemFromMeta(context, item.id);
                 return true;
             }
@@ -321,9 +338,11 @@ public class VaultManager {
                 item.size = obj.optLong("size");
                 item.duration = obj.optLong("duration");
 
-                File f = new File(item.vaultPath);
-                if (f.exists()) {
-                    items.add(item);
+                if (item.vaultPath != null && !item.vaultPath.isEmpty()) {
+                    File f = new File(item.vaultPath);
+                    if (f.exists()) {
+                        items.add(item);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -371,22 +390,6 @@ public class VaultManager {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error writing vault metadata", e);
-        }
-    }
-
-    private static boolean copyAndDelete(File src, File dst) {
-        try (FileInputStream in = new FileInputStream(src);
-             FileOutputStream out = new FileOutputStream(dst)) {
-            byte[] buf = new byte[8192];
-            int len;
-            while ((len = in.read(buf)) > 0) {
-                out.write(buf, 0, len);
-            }
-            out.flush();
-            src.delete();
-            return true;
-        } catch (Exception e) {
-            return false;
         }
     }
 }

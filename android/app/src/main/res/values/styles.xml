@@ -2,19 +2,21 @@
 <resources>
 
     <!-- Base Nothing OS Pure Pitch Black Theme -->
-    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Base.AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/nothing_black</item>
         <item name="colorPrimaryDark">@color/nothing_black</item>
+        <item name="colorSecondary">@color/nothing_red</item>
         <item name="colorAccent">@color/nothing_red</item>
         <item name="android:windowBackground">@color/nothing_black</item>
         <item name="android:colorBackground">@color/nothing_black</item>
         <item name="android:statusBarColor">@color/nothing_black</item>
         <item name="android:navigationBarColor">@color/nothing_black</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
         <item name="android:fontFamily">@font/ndot</item>
         <item name="fontFamily">@font/ndot</item>
     </style>
+
+    <style name="AppTheme" parent="Base.AppTheme" />
 
     <style name="AppTheme.NoActionBar" parent="AppTheme">
         <item name="windowActionBar">false</item>
@@ -34,6 +36,10 @@
     </style>
 
     <style name="PlayerTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/nothing_black</item>
+        <item name="colorPrimaryDark">@color/nothing_black</item>
+        <item name="colorSecondary">@color/nothing_red</item>
+        <item name="colorAccent">@color/nothing_red</item>
         <item name="android:windowBackground">@color/nothing_black</item>
         <item name="android:colorBackground">@color/nothing_black</item>
         <item name="android:windowFullscreen">true</item>

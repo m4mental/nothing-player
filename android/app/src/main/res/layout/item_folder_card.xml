@@ -22,7 +22,7 @@
             android:layout_height="match_parent"
             android:background="@drawable/bg_circle_button"
             android:padding="8dp"
-            android:src="@android:drawable/ic_menu_agenda"
+            android:src="@drawable/ic_folder_recent"
             app:tint="@color/nothing_red" />
 
         <ImageView

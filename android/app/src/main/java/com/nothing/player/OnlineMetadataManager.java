@@ -19,8 +19,12 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -39,6 +43,8 @@ public class OnlineMetadataManager {
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
     private static final Map<String, MetadataInfo> MEMORY_CACHE = new HashMap<>();
+    private static final Set<String> NEGATIVE_CACHE = Collections.synchronizedSet(new HashSet<>());
+    private static final Object DISK_LOCK = new Object();
     private static boolean cacheLoaded = false;
 
     public static class MetadataInfo {
@@ -67,12 +73,12 @@ public class OnlineMetadataManager {
         public static MetadataInfo fromJson(JSONObject obj) {
             if (obj == null) return null;
             MetadataInfo info = new MetadataInfo();
-            info.queryKey = obj.optString("queryKey");
-            info.title = obj.optString("title");
-            info.posterUrl = obj.optString("posterUrl");
-            info.releaseYear = obj.optString("releaseYear");
-            info.rating = obj.optString("rating");
-            info.synopsis = obj.optString("synopsis");
+            info.queryKey = optSafeString(obj, "queryKey");
+            info.title = optSafeString(obj, "title");
+            info.posterUrl = optSafeString(obj, "posterUrl");
+            info.releaseYear = optSafeString(obj, "releaseYear");
+            info.rating = optSafeString(obj, "rating");
+            info.synopsis = optSafeString(obj, "synopsis");
             return info;
         }
     }
@@ -81,15 +87,27 @@ public class OnlineMetadataManager {
         void onMetadataLoaded(MetadataInfo info);
     }
 
-    public static synchronized void initCache(Context context) {
-        if (cacheLoaded || context == null) return;
-        cacheLoaded = true;
-        EXECUTOR.execute(() -> loadCacheFromDisk(context.getApplicationContext()));
+    public static void initCache(Context context) {
+        if (context == null) return;
+        synchronized (DISK_LOCK) {
+            if (cacheLoaded) return;
+        }
+        Context appCtx = context.getApplicationContext();
+        EXECUTOR.execute(() -> ensureCacheLoadedSync(appCtx));
+    }
+
+    private static void ensureCacheLoadedSync(Context context) {
+        if (context == null) return;
+        synchronized (DISK_LOCK) {
+            if (cacheLoaded) return;
+            loadCacheFromDisk(context.getApplicationContext());
+            cacheLoaded = true;
+        }
     }
 
     public static MetadataInfo getCached(Context context, String queryKey) {
         if (queryKey == null || queryKey.trim().isEmpty()) return null;
-        String key = queryKey.trim().toLowerCase();
+        String key = queryKey.trim().toLowerCase(Locale.US);
         synchronized (MEMORY_CACHE) {
             return MEMORY_CACHE.get(key);
         }
@@ -100,7 +118,8 @@ public class OnlineMetadataManager {
      */
     public static void enrichItem(Context context, MediaItem item, MetadataCallback callback) {
         if (item == null || context == null) return;
-        initCache(context);
+        final Context appCtx = context.getApplicationContext();
+        initCache(appCtx);
 
         String query = ("series".equals(item.mediaCategory) && item.seriesName != null) ?
                 item.seriesName : item.cleanTitle;
@@ -110,17 +129,28 @@ public class OnlineMetadataManager {
         }
         if (query == null || query.trim().isEmpty()) return;
 
-        final String finalKey = query.trim().toLowerCase();
-        MetadataInfo cached = getCached(context, finalKey);
+        final String finalKey = query.trim().toLowerCase(Locale.US);
+        MetadataInfo cached = getCached(appCtx, finalKey);
         if (cached != null) {
             applyMetadataToItem(item, cached);
-            if (callback != null) {
+            if (cached.posterUrl != null && !cached.posterUrl.isEmpty() && callback != null) {
                 MAIN_HANDLER.post(() -> callback.onMetadataLoaded(cached));
             }
             return;
         }
+        if (NEGATIVE_CACHE.contains(finalKey)) return;
 
         EXECUTOR.execute(() -> {
+            ensureCacheLoadedSync(appCtx);
+            MetadataInfo diskCached = getCached(appCtx, finalKey);
+            if (diskCached != null) {
+                applyMetadataToItem(item, diskCached);
+                if (diskCached.posterUrl != null && !diskCached.posterUrl.isEmpty() && callback != null) {
+                    MAIN_HANDLER.post(() -> callback.onMetadataLoaded(diskCached));
+                }
+                return;
+            }
+
             MetadataInfo fetched = null;
             try {
                 if ("series".equals(item.mediaCategory)) {
@@ -128,7 +158,7 @@ public class OnlineMetadataManager {
                 } else if ("movie".equals(item.mediaCategory)) {
                     fetched = fetchMovieFromItunes(finalKey);
                     if (fetched == null) {
-                        fetched = fetchSeriesFromTvMaze(finalKey); // Fallback to TVMaze in case it's a TV special/show
+                        fetched = fetchSeriesFromTvMaze(finalKey);
                     }
                 }
             } catch (Exception e) {
@@ -140,14 +170,16 @@ public class OnlineMetadataManager {
                 synchronized (MEMORY_CACHE) {
                     MEMORY_CACHE.put(finalKey, fetched);
                 }
-                saveCacheToDisk(context.getApplicationContext());
+                saveCacheToDisk(appCtx);
 
                 final MetadataInfo finalFetched = fetched;
                 applyMetadataToItem(item, finalFetched);
 
-                if (callback != null) {
+                if (callback != null && finalFetched.posterUrl != null && !finalFetched.posterUrl.isEmpty()) {
                     MAIN_HANDLER.post(() -> callback.onMetadataLoaded(finalFetched));
                 }
+            } else {
+                NEGATIVE_CACHE.add(finalKey);
             }
         });
     }
@@ -157,18 +189,29 @@ public class OnlineMetadataManager {
      */
     public static void enrichSeries(Context context, String seriesName, MetadataCallback callback) {
         if (seriesName == null || seriesName.trim().isEmpty() || context == null) return;
-        initCache(context);
+        final Context appCtx = context.getApplicationContext();
+        initCache(appCtx);
 
-        final String finalKey = seriesName.trim().toLowerCase();
-        MetadataInfo cached = getCached(context, finalKey);
+        final String finalKey = seriesName.trim().toLowerCase(Locale.US);
+        MetadataInfo cached = getCached(appCtx, finalKey);
         if (cached != null) {
-            if (callback != null) {
+            if (cached.posterUrl != null && !cached.posterUrl.isEmpty() && callback != null) {
                 MAIN_HANDLER.post(() -> callback.onMetadataLoaded(cached));
             }
             return;
         }
+        if (NEGATIVE_CACHE.contains(finalKey)) return;
 
         EXECUTOR.execute(() -> {
+            ensureCacheLoadedSync(appCtx);
+            MetadataInfo diskCached = getCached(appCtx, finalKey);
+            if (diskCached != null) {
+                if (diskCached.posterUrl != null && !diskCached.posterUrl.isEmpty() && callback != null) {
+                    MAIN_HANDLER.post(() -> callback.onMetadataLoaded(diskCached));
+                }
+                return;
+            }
+
             MetadataInfo fetched = null;
             try {
                 fetched = fetchSeriesFromTvMaze(finalKey);
@@ -181,12 +224,14 @@ public class OnlineMetadataManager {
                 synchronized (MEMORY_CACHE) {
                     MEMORY_CACHE.put(finalKey, fetched);
                 }
-                saveCacheToDisk(context.getApplicationContext());
+                saveCacheToDisk(appCtx);
 
                 final MetadataInfo finalFetched = fetched;
-                if (callback != null) {
+                if (callback != null && finalFetched.posterUrl != null && !finalFetched.posterUrl.isEmpty()) {
                     MAIN_HANDLER.post(() -> callback.onMetadataLoaded(finalFetched));
                 }
+            } else {
+                NEGATIVE_CACHE.add(finalKey);
             }
         });
     }
@@ -196,10 +241,13 @@ public class OnlineMetadataManager {
      */
     public static void searchAndApply(Context context, MediaItem item, String customQuery, String category, MetadataCallback callback) {
         if (item == null || customQuery == null || customQuery.trim().isEmpty() || context == null) return;
-        initCache(context);
+        final Context appCtx = context.getApplicationContext();
+        initCache(appCtx);
 
-        final String finalKey = customQuery.trim().toLowerCase();
+        final String finalKey = customQuery.trim().toLowerCase(Locale.US);
+        NEGATIVE_CACHE.remove(finalKey);
         EXECUTOR.execute(() -> {
+            ensureCacheLoadedSync(appCtx);
             MetadataInfo fetched = null;
             try {
                 if ("series".equalsIgnoreCase(category)) {
@@ -218,10 +266,10 @@ public class OnlineMetadataManager {
                 synchronized (MEMORY_CACHE) {
                     MEMORY_CACHE.put(finalKey, fetched);
                 }
-                saveCacheToDisk(context.getApplicationContext());
+                saveCacheToDisk(appCtx);
 
                 final MetadataInfo finalFetched = fetched;
-                item.mediaCategory = category != null ? category.toLowerCase() : "movie";
+                item.mediaCategory = category != null ? category.toLowerCase(Locale.US) : "movie";
                 if ("series".equalsIgnoreCase(item.mediaCategory)) {
                     item.seriesName = finalFetched.title != null ? finalFetched.title : customQuery;
                 } else {
@@ -265,14 +313,15 @@ public class OnlineMetadataManager {
 
             JSONObject obj = new JSONObject(jsonStr);
             MetadataInfo info = new MetadataInfo();
-            info.title = obj.optString("name");
+            info.title = optSafeString(obj, "name");
 
             JSONObject imgObj = obj.optJSONObject("image");
             if (imgObj != null) {
-                info.posterUrl = imgObj.optString("original", imgObj.optString("medium"));
+                String orig = optSafeString(imgObj, "original");
+                info.posterUrl = orig != null ? orig : optSafeString(imgObj, "medium");
             }
 
-            String premiered = obj.optString("premiered");
+            String premiered = optSafeString(obj, "premiered");
             if (premiered != null && premiered.length() >= 4) {
                 info.releaseYear = premiered.substring(0, 4);
             }
@@ -282,7 +331,7 @@ public class OnlineMetadataManager {
                 info.rating = String.valueOf(ratingObj.optDouble("average"));
             }
 
-            String summary = obj.optString("summary");
+            String summary = optSafeString(obj, "summary");
             if (summary != null) {
                 // Strip HTML tags from TVMaze synopsis
                 info.synopsis = summary.replaceAll("<[^>]*>", "").trim();
@@ -307,20 +356,21 @@ public class OnlineMetadataManager {
 
             JSONObject first = results.getJSONObject(0);
             MetadataInfo info = new MetadataInfo();
-            info.title = first.optString("trackName");
+            info.title = optSafeString(first, "trackName");
 
-            String artwork = first.optString("artworkUrl100");
+            String artwork = optSafeString(first, "artworkUrl100");
             if (artwork != null && !artwork.isEmpty()) {
                 // Scale iTunes artwork from 100x100 to 600x600 for sharp OLED presentation
                 info.posterUrl = artwork.replace("100x100bb.jpg", "600x600bb.jpg");
             }
 
-            String releaseDate = first.optString("releaseDate");
+            String releaseDate = optSafeString(first, "releaseDate");
             if (releaseDate != null && releaseDate.length() >= 4) {
                 info.releaseYear = releaseDate.substring(0, 4);
             }
 
-            info.synopsis = first.optString("longDescription", first.optString("shortDescription"));
+            String longDesc = optSafeString(first, "longDescription");
+            info.synopsis = longDesc != null ? longDesc : optSafeString(first, "shortDescription");
             return info;
         } catch (Exception e) {
             return null;
@@ -386,25 +436,43 @@ public class OnlineMetadataManager {
         }
     }
 
-    private static void saveCacheToDisk(Context context) {
-        try {
-            File f = new File(context.getFilesDir(), CACHE_FILE);
-            JSONArray arr = new JSONArray();
-            synchronized (MEMORY_CACHE) {
-                for (MetadataInfo info : MEMORY_CACHE.values()) {
-                    arr.put(info.toJson());
-                }
-            }
-            JSONObject root = new JSONObject();
-            root.put("items", arr);
+    private static String optSafeString(JSONObject obj, String key) {
+        if (obj == null || obj.isNull(key)) return null;
+        String val = obj.optString(key, "");
+        return (val == null || val.isEmpty() || "null".equalsIgnoreCase(val)) ? null : val;
+    }
 
-            try (FileOutputStream fos = new FileOutputStream(f);
-                 OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8)) {
-                osw.write(root.toString());
-                osw.flush();
+    private static void saveCacheToDisk(Context context) {
+        if (context == null) return;
+        synchronized (DISK_LOCK) {
+            try {
+                File f = new File(context.getFilesDir(), CACHE_FILE);
+                File tmp = new File(context.getFilesDir(), CACHE_FILE + ".tmp");
+                JSONArray arr = new JSONArray();
+                synchronized (MEMORY_CACHE) {
+                    for (MetadataInfo info : MEMORY_CACHE.values()) {
+                        arr.put(info.toJson());
+                    }
+                }
+                JSONObject root = new JSONObject();
+                root.put("items", arr);
+
+                try (FileOutputStream fos = new FileOutputStream(tmp);
+                     OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8)) {
+                    osw.write(root.toString());
+                    osw.flush();
+                }
+                if (!tmp.renameTo(f)) {
+                    try (FileOutputStream fos = new FileOutputStream(f);
+                         OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8)) {
+                        osw.write(root.toString());
+                        osw.flush();
+                    }
+                    tmp.delete();
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed saving metadata cache", e);
             }
-        } catch (Exception e) {
-            Log.w(TAG, "Failed saving metadata cache", e);
         }
     }
 }

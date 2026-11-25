@@ -25,18 +25,25 @@ public class PlaybackHistoryManager {
         public long positionMs;
         public long durationMs;
         public long timestamp; // epoch millis
+        public boolean isCompleted;
 
         public HistoryItem() {}
 
         public HistoryItem(String pathOrUri, String title, long positionMs, long durationMs, long timestamp) {
+            this(pathOrUri, title, positionMs, durationMs, timestamp, false);
+        }
+
+        public HistoryItem(String pathOrUri, String title, long positionMs, long durationMs, long timestamp, boolean isCompleted) {
             this.pathOrUri = pathOrUri;
             this.title = title;
             this.positionMs = positionMs;
             this.durationMs = durationMs;
             this.timestamp = timestamp;
+            this.isCompleted = isCompleted;
         }
 
         public int getProgressPercent() {
+            if (isCompleted && positionMs <= 0 && durationMs > 0) return 100;
             if (durationMs <= 0 || positionMs <= 0) return 0;
             return (int) Math.min(100, Math.max(0, (positionMs * 100) / durationMs));
         }
@@ -90,10 +97,17 @@ public class PlaybackHistoryManager {
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         List<HistoryItem> items = getHistoryList(context);
 
-        // If completed or near end (last 3 seconds), reset position to 0 so next open starts over
+        // If completed or near end (last 3 seconds), reset resume position to 0 while preserving completion flag
+        boolean completed = false;
         long effectivePos = positionMs;
-        if (durationMs > 0 && positionMs >= durationMs - 3000) {
-            effectivePos = 0;
+        if (durationMs > 0) {
+            int pct = (int) Math.min(100, Math.max(0, (positionMs * 100) / durationMs));
+            if (positionMs >= durationMs - 3000) {
+                effectivePos = 0;
+                completed = true;
+            } else if (pct >= 90) {
+                completed = true;
+            }
         }
 
         // Remove existing entry with same path
@@ -107,7 +121,7 @@ public class PlaybackHistoryManager {
         }
 
         // Add new entry at top
-        HistoryItem newItem = new HistoryItem(pathOrUri, title, effectivePos, durationMs, System.currentTimeMillis());
+        HistoryItem newItem = new HistoryItem(pathOrUri, title, effectivePos, durationMs, System.currentTimeMillis(), completed);
         items.add(0, newItem);
 
         // Trim to max limit
@@ -157,6 +171,7 @@ public class PlaybackHistoryManager {
                 item.positionMs = obj.optLong("positionMs");
                 item.durationMs = obj.optLong("durationMs");
                 item.timestamp = obj.optLong("timestamp");
+                item.isCompleted = obj.optBoolean("isCompleted", false);
                 if (item.pathOrUri != null && !item.pathOrUri.isEmpty()) {
                     list.add(item);
                 }
@@ -209,6 +224,7 @@ public class PlaybackHistoryManager {
                 obj.put("positionMs", item.positionMs);
                 obj.put("durationMs", item.durationMs);
                 obj.put("timestamp", item.timestamp);
+                obj.put("isCompleted", item.isCompleted);
                 arr.put(obj);
             }
             prefs.edit().putString(KEY_HISTORY_ARRAY, arr.toString()).apply();

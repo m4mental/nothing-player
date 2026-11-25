@@ -86,7 +86,11 @@ public class RecycleBinActivity extends AppCompatActivity {
     }
 
     private void loadTrashVideos() {
+        int oldSize = trashItemList.size();
         trashItemList = TrashManager.getTrashItems(this);
+        if (oldSize > 0) trashAdapter.notifyItemRangeRemoved(0, oldSize);
+        if (!trashItemList.isEmpty()) trashAdapter.notifyItemRangeInserted(0, trashItemList.size());
+
         if (trashItemList.isEmpty()) {
             layoutTrashEmpty.setVisibility(View.VISIBLE);
             rvTrashVideos.setVisibility(View.GONE);
@@ -98,7 +102,6 @@ public class RecycleBinActivity extends AppCompatActivity {
             btnEmptyTrash.setVisibility(View.VISIBLE);
             int count = trashItemList.size();
             tvHeaderSubtitle.setText(count + " VIDEO" + (count > 1 ? "S" : "") + " • AUTO-PURGED AFTER 30 DAYS");
-            trashAdapter.notifyDataSetChanged();
         }
     }
 

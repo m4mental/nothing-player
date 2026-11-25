@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_card_nothing"
+    android:padding="20dp">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:text="LOCAL NETWORK &amp; PC SHARES"
+            android:textColor="@color/nothing_red"
+            android:textSize="12sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+
+        <ImageButton
+            android:id="@+id/btn_close_network_dialog"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_alignParentEnd="true"
+            android:background="@drawable/bg_circle_button"
+            android:src="@drawable/ic_close_dotmatrix"
+            app:tint="@color/nothing_white"
+            android:contentDescription="Close" />
+    </RelativeLayout>
+
+    <!-- Scan Subnet Button -->
+    <Button
+        android:id="@+id/btn_scan_wifi_devices"
+        android:layout_width="match_parent"
+        android:layout_height="42dp"
+        android:background="@drawable/bg_btn_nothing_outline"
+        app:backgroundTint="@null"
+        android:text="● AUTO-SCAN WI-FI (PC / ROUTER / NAS)"
+        android:textColor="@color/nothing_white"
+        android:textSize="9.5sp"
+        android:fontFamily="@font/ndot"
+        android:textStyle="bold"
+        android:layout_marginBottom="14dp" />
+
+    <!-- Discovered Devices Container -->
+    <LinearLayout
+        android:id="@+id/container_discovered_devices"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="12dp"
+        android:visibility="gone" />
+
+    <!-- Protocol & Host Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="10dp">
+
+        <Button
+            android:id="@+id/btn_select_protocol"
+            android:layout_width="100dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_circle_button"
+            app:backgroundTint="@null"
+            android:text="SMB"
+            android:textColor="@color/nothing_red"
+            android:textSize="11sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:layout_marginEnd="8dp" />
+
+        <EditText
+            android:id="@+id/et_network_host"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_input_box"
+            android:hint="Host / IP (e.g. 192.168.1.10)"
+            android:inputType="textUri"
+            android:textColor="@color/nothing_white"
+            android:textColorHint="@color/nothing_white_40"
+            android:textSize="11sp"
+            android:fontFamily="@font/ndot"
+            android:paddingHorizontal="12dp"
+            android:singleLine="true" />
+    </LinearLayout>
+
+    <!-- Path / Share Folder -->
+    <EditText
+        android:id="@+id/et_network_path"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:background="@drawable/bg_input_box"
+        android:hint="Folder / File Path (e.g. /Movies/Avatar.mkv)"
+        android:inputType="textUri"
+        android:textColor="@color/nothing_white"
+        android:textColorHint="@color/nothing_white_40"
+        android:textSize="11sp"
+        android:fontFamily="@font/ndot"
+        android:paddingHorizontal="12dp"
+        android:layout_marginBottom="10dp"
+        android:singleLine="true" />
+
+    <!-- Credentials Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+
+        <EditText
+            android:id="@+id/et_network_user"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_input_box"
+            android:hint="Username (optional)"
+            android:inputType="text"
+            android:textColor="@color/nothing_white"
+            android:textColorHint="@color/nothing_white_40"
+            android:textSize="10sp"
+            android:fontFamily="@font/ndot"
+            android:paddingHorizontal="12dp"
+            android:layout_marginEnd="6dp"
+            android:singleLine="true" />
+
+        <EditText
+            android:id="@+id/et_network_pass"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_input_box"
+            android:hint="Password (optional)"
+            android:textColor="@color/nothing_white"
+            android:textColorHint="@color/nothing_white_40"
+            android:textSize="10sp"
+            android:fontFamily="@font/ndot"
+            android:paddingHorizontal="12dp"
+            android:inputType="textPassword"
+            android:singleLine="true" />
+    </LinearLayout>
+
+    <!-- Connect & Stream Button -->
+    <Button
+        android:id="@+id/btn_connect_network_stream"
+        android:layout_width="match_parent"
+        android:layout_height="46dp"
+        android:background="@drawable/bg_circle_red"
+        app:backgroundTint="@null"
+        android:text="CONNECT &amp; STREAM"
+        android:textColor="@color/nothing_white"
+        android:textSize="11.5sp"
+        android:fontFamily="@font/ndot"
+        android:textStyle="bold"
+        android:letterSpacing="0.08" />
+
+</LinearLayout>
+

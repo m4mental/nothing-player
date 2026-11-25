@@ -15,17 +15,28 @@ import android.content.IntentFilter;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
+import android.content.SharedPreferences;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
+import androidx.media.VolumeProviderCompat;
 import androidx.media.app.NotificationCompat.MediaStyle;
 
 import java.io.File;
@@ -52,17 +63,46 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
     private AudioManager audioManager;
     private AudioFocusRequest audioFocusRequest;
     private BroadcastReceiver noisyAudioReceiver;
+    private BroadcastReceiver screenStateReceiver;
     private boolean isNoisyReceiverRegistered = false;
+    private boolean isScreenStateReceiverRegistered = false;
+    private boolean isScreenOff = false;
+    private boolean isPreparing = false;
+    private boolean pauseRequestedWhilePreparing = false;
+    private boolean pausedByTransientFocusLoss = false;
+    private final Handler crossfadeHandler = new Handler(Looper.getMainLooper());
 
     private String currentTitle = "Nothing Player";
     private String currentArtist = "Unknown Artist";
     private String currentUriStr = "";
     private String currentPath = "";
+    private Bitmap currentAlbumArt = null;
+    private final ExecutorService artExecutor = Executors.newSingleThreadExecutor();
     private boolean isPlaying = false;
 
     public interface PlaybackCallback {
         void onStateChanged(boolean playing);
         void onTrackEnded();
+        default void onNextRequested() {}
+        default void onPrevRequested() {}
+    }
+
+    private void notifyNextRequested() {
+        if (eventListener != null) {
+            eventListener.onNextRequested();
+        }
+        if (callback != null) {
+            callback.onNextRequested();
+        }
+    }
+
+    private void notifyPrevRequested() {
+        if (eventListener != null) {
+            eventListener.onPrevRequested();
+        }
+        if (callback != null) {
+            callback.onPrevRequested();
+        }
     }
 
     private PlaybackCallback callback;
@@ -112,12 +152,15 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         if (mediaPlayer == null) {
             mediaPlayer = new MediaPlayer();
             mediaPlayer.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
-            mediaPlayer.setAudioAttributes(
-                new AudioAttributes.Builder()
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .build()
-            );
+            SharedPreferences prefs = getSharedPreferences("nothing_player_prefs", Context.MODE_PRIVATE);
+            boolean dacPassthrough = prefs.getBoolean("pref_dac_passthrough", false);
+            AudioAttributes.Builder attrs = new AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .setUsage(AudioAttributes.USAGE_MEDIA);
+            if (dacPassthrough && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                attrs.setAllowedCapturePolicy(AudioAttributes.ALLOW_CAPTURE_BY_ALL);
+            }
+            mediaPlayer.setAudioAttributes(attrs.build());
             mediaPlayer.setOnCompletionListener(this);
             mediaPlayer.setOnErrorListener(this);
         }
@@ -139,21 +182,17 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
 
             @Override
             public void onSkipToNext() {
-                if (eventListener != null) {
-                    eventListener.onNextRequested();
-                }
+                notifyNextRequested();
             }
 
             @Override
             public void onSkipToPrevious() {
-                if (eventListener != null) {
-                    eventListener.onPrevRequested();
-                }
+                notifyPrevRequested();
             }
 
             @Override
             public void onSeekTo(long pos) {
-                seekTo((double) pos / 1000.0);
+                seekTo(pos);
             }
 
             @Override
@@ -161,6 +200,96 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
                 stop();
             }
         });
+        setupVolumeProvider();
+    }
+
+    private VolumeProviderCompat volumeProvider;
+
+    public void setupVolumeProvider() {
+        SharedPreferences prefs = getSharedPreferences("nothing_player_prefs", Context.MODE_PRIVATE);
+        boolean isSkipEnabled = prefs.getBoolean("screen_off_volume_skip", true);
+        if (mediaSession == null) return;
+
+        if (isSkipEnabled && isScreenOff) {
+            if (volumeProvider == null) {
+                AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                int maxVol = am != null ? am.getStreamMaxVolume(AudioManager.STREAM_MUSIC) : 15;
+                int curVol = am != null ? am.getStreamVolume(AudioManager.STREAM_MUSIC) : 7;
+                volumeProvider = new VolumeProviderCompat(VolumeProviderCompat.VOLUME_CONTROL_RELATIVE, maxVol, curVol) {
+                    private long lastAdjustTime = 0;
+                    private int consecutiveCount = 0;
+                    private int lastDirection = 0;
+                    private final Handler handler = new Handler(Looper.getMainLooper());
+                    private Runnable singleTapRunnable;
+
+                    @Override
+                    public void onAdjustVolume(int direction) {
+                        long now = System.currentTimeMillis();
+                        if (direction == lastDirection && (now - lastAdjustTime) < 320) {
+                            consecutiveCount++;
+                        } else {
+                            consecutiveCount = 1;
+                            lastDirection = direction;
+                        }
+                        lastAdjustTime = now;
+
+                        if (consecutiveCount >= 3) {
+                            if (singleTapRunnable != null) handler.removeCallbacks(singleTapRunnable);
+                            consecutiveCount = 0;
+                            triggerHapticPulse();
+                            if (direction > 0) {
+                                notifyNextRequested();
+                            } else {
+                                notifyPrevRequested();
+                            }
+                        } else {
+                            if (singleTapRunnable != null) handler.removeCallbacks(singleTapRunnable);
+                            singleTapRunnable = () -> {
+                                if (am != null) {
+                                    am.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction > 0 ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER, 0);
+                                    setCurrentVolume(am.getStreamVolume(AudioManager.STREAM_MUSIC));
+                                }
+                                consecutiveCount = 0;
+                            };
+                            handler.postDelayed(singleTapRunnable, 260);
+                        }
+                    }
+                };
+            }
+            if (audioManager != null) {
+                volumeProvider.setCurrentVolume(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC));
+            }
+            mediaSession.setPlaybackToRemote(volumeProvider);
+        } else {
+            mediaSession.setPlaybackToLocal(AudioManager.STREAM_MUSIC);
+        }
+    }
+
+    private void triggerHapticPulse() {
+        try {
+            Vibrator v = getVibratorCompat();
+            if (v != null && v.hasVibrator()) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    v.vibrate(VibrationEffect.createWaveform(new long[]{0, 35, 50, 35}, -1));
+                } else {
+                    vibrateLegacy(v, 50);
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @SuppressWarnings("deprecation")
+    private Vibrator getVibratorCompat() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            VibratorManager vm = (VibratorManager) getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+            return vm != null ? vm.getDefaultVibrator() : null;
+        }
+        return (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+    }
+
+    @SuppressWarnings("deprecation")
+    private void vibrateLegacy(Vibrator v, long ms) {
+        v.vibrate(ms);
     }
 
     private void createNotificationChannel() {
@@ -205,13 +334,15 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
                     }
                     break;
                 case ACTION_NEXT:
-                    if (eventListener != null) {
-                        eventListener.onNextRequested();
-                    }
+                    notifyNextRequested();
                     break;
                 case ACTION_PREV:
-                    if (eventListener != null) {
-                        eventListener.onPrevRequested();
+                    notifyPrevRequested();
+                    break;
+                case ACTION_SEEK:
+                    long seekPos = intent.getLongExtra("position", -1L);
+                    if (seekPos >= 0) {
+                        seekTo(seekPos);
                     }
                     break;
                 case ACTION_STOP:
@@ -233,6 +364,9 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             this.currentUriStr = uriStr;
             this.currentPath = path;
 
+            crossfadeHandler.removeCallbacksAndMessages(null);
+            pauseRequestedWhilePreparing = false;
+            pausedByTransientFocusLoss = false;
             initMediaPlayer();
             mediaPlayer.reset();
 
@@ -253,18 +387,37 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             }
 
             if (uri != null) {
+                clearAlbumArt();
+                loadAlbumArtAsync(uri, uriStr, path);
                 mediaPlayer.setDataSource(getApplicationContext(), uri);
-                isPlaying = true;
+                isPreparing = true;
+                isPlaying = false;
                 startForegroundNotification();
                 mediaPlayer.setOnPreparedListener(mp -> {
+                    isPreparing = false;
+                    if (pauseRequestedWhilePreparing) {
+                        pauseRequestedWhilePreparing = false;
+                        isPlaying = false;
+                        updateMediaSessionMetadata();
+                        updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PAUSED);
+                        updateNotification();
+                        return;
+                    }
                     try {
-                        requestAudioFocus();
+                        if (!requestAudioFocus()) {
+                            isPlaying = false;
+                            updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PAUSED);
+                            updateNotification();
+                            return;
+                        }
                         registerNoisyReceiver();
                         mp.start();
                         isPlaying = true;
+                        applyCrossfadeStart();
                         AudioEffectManager.getInstance().attachAudioSession(mp.getAudioSessionId(), MusicPlaybackService.this);
                         updateMediaSessionMetadata();
                         updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING);
+                        setupVolumeProvider();
                         updateNotification();
                         if (eventListener != null) {
                             eventListener.onPlayStateChanged(true);
@@ -279,11 +432,50 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
                 mediaPlayer.prepareAsync();
             }
         } catch (Exception e) {
+            isPreparing = false;
             e.printStackTrace();
         }
     }
 
+    private void applyCrossfadeStart() {
+        if (mediaPlayer == null) return;
+        crossfadeHandler.removeCallbacksAndMessages(null);
+        SharedPreferences p = getSharedPreferences("nothing_player_prefs", Context.MODE_PRIVATE);
+        String crossfadePref = p.getString("pref_crossfade_sec", "OFF (0S)");
+        int sec = 0;
+        if (crossfadePref.contains("2")) sec = 2;
+        else if (crossfadePref.contains("4")) sec = 4;
+        else if (crossfadePref.contains("6")) sec = 6;
+        if (sec <= 0) {
+            mediaPlayer.setVolume(1.0f, 1.0f);
+            return;
+        }
+        final int durationSec = sec;
+        final int steps = 20;
+        final long interval = (durationSec * 1000L) / steps;
+        mediaPlayer.setVolume(0.0f, 0.0f);
+        for (int i = 1; i <= steps; i++) {
+            final float vol = i / (float) steps;
+            crossfadeHandler.postDelayed(() -> {
+                try {
+                    if (mediaPlayer != null && isPlaying) {
+                        mediaPlayer.setVolume(vol, vol);
+                    }
+                } catch (Exception ignored) {}
+            }, i * interval);
+        }
+    }
+
     public void pause() {
+        crossfadeHandler.removeCallbacksAndMessages(null);
+        if (isPreparing) {
+            pauseRequestedWhilePreparing = true;
+            this.isPlaying = false;
+            if (eventListener != null) eventListener.onPlayStateChanged(false);
+            if (callback != null) callback.onStateChanged(false);
+            updateNotification();
+            return;
+        }
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
             this.isPlaying = false;
@@ -301,24 +493,26 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
     }
 
     public void resume() {
-        if (mediaPlayer != null) {
-            requestAudioFocus();
-            registerNoisyReceiver();
-            mediaPlayer.start();
-            this.isPlaying = true;
-            updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING);
-            startForegroundNotification();
-            if (eventListener != null) {
-                eventListener.onPlayStateChanged(true);
-            }
-            if (callback != null) {
-                callback.onStateChanged(true);
-            }
+        if (mediaPlayer == null) return;
+        pauseRequestedWhilePreparing = false;
+        if (isPreparing) return;
+        if (!requestAudioFocus()) return;
+        registerNoisyReceiver();
+        mediaPlayer.setVolume(1.0f, 1.0f);
+        mediaPlayer.start();
+        this.isPlaying = true;
+        updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING);
+        startForegroundNotification();
+        if (eventListener != null) {
+            eventListener.onPlayStateChanged(true);
+        }
+        if (callback != null) {
+            callback.onStateChanged(true);
         }
     }
 
     public void seekTo(long positionMs) {
-        if (mediaPlayer != null) {
+        if (mediaPlayer != null && !isPreparing) {
             try {
                 mediaPlayer.seekTo((int) positionMs);
                 updateMediaSessionPlaybackState(isPlaying ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED);
@@ -333,6 +527,10 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
     }
 
     public void stop() {
+        crossfadeHandler.removeCallbacksAndMessages(null);
+        isPreparing = false;
+        pauseRequestedWhilePreparing = false;
+        pausedByTransientFocusLoss = false;
         abandonAudioFocus();
         unregisterNoisyReceiver();
         if (mediaPlayer != null) {
@@ -343,11 +541,12 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             mediaPlayer = null;
         }
         this.isPlaying = false;
-        AudioEffectManager.getInstance().release();
+        clearAlbumArt();
+        AudioEffectManager.getInstance().release(this);
         if (mediaSession != null) {
             updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_STOPPED);
         }
-        stopForeground(true);
+        stopForeground(STOP_FOREGROUND_REMOVE);
         stopSelf();
         if (eventListener != null) {
             eventListener.onPlayStateChanged(false);
@@ -400,13 +599,39 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
                 }
             }
         };
+        screenStateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null || intent.getAction() == null) return;
+                if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                    isScreenOff = true;
+                    setupVolumeProvider();
+                } else if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
+                    isScreenOff = false;
+                    setupVolumeProvider();
+                }
+            }
+        };
+        try {
+            IntentFilter sf = new IntentFilter();
+            sf.addAction(Intent.ACTION_SCREEN_OFF);
+            sf.addAction(Intent.ACTION_SCREEN_ON);
+            ContextCompat.registerReceiver(this, screenStateReceiver, sf, ContextCompat.RECEIVER_EXPORTED);
+            isScreenStateReceiverRegistered = true;
+        } catch (Exception ignored) {}
     }
 
     private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = focusChange -> {
         switch (focusChange) {
             case AudioManager.AUDIOFOCUS_LOSS:
-            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                pausedByTransientFocusLoss = false;
                 pause();
+                break;
+            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                if (isPlaying()) {
+                    pausedByTransientFocusLoss = true;
+                    pause();
+                }
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
                 if (mediaPlayer != null) {
@@ -414,7 +639,10 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
                 }
                 break;
             case AudioManager.AUDIOFOCUS_GAIN:
-                if (mediaPlayer != null) {
+                if (pausedByTransientFocusLoss) {
+                    pausedByTransientFocusLoss = false;
+                    resume();
+                } else if (mediaPlayer != null) {
                     try { mediaPlayer.setVolume(1.0f, 1.0f); } catch (Exception ignored) {}
                 }
                 break;
@@ -435,8 +663,13 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             }
             return audioManager.requestAudioFocus(audioFocusRequest) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
         } else {
-            return audioManager.requestAudioFocus(audioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+            return requestAudioFocusLegacy();
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private boolean requestAudioFocusLegacy() {
+        return audioManager.requestAudioFocus(audioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
     }
 
     private void abandonAudioFocus() {
@@ -446,14 +679,19 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
                 audioManager.abandonAudioFocusRequest(audioFocusRequest);
             }
         } else {
-            audioManager.abandonAudioFocus(audioFocusChangeListener);
+            abandonAudioFocusLegacy();
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void abandonAudioFocusLegacy() {
+        audioManager.abandonAudioFocus(audioFocusChangeListener);
     }
 
     private synchronized void registerNoisyReceiver() {
         if (!isNoisyReceiverRegistered && noisyAudioReceiver != null) {
             try {
-                registerReceiver(noisyAudioReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+                ContextCompat.registerReceiver(this, noisyAudioReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY), ContextCompat.RECEIVER_EXPORTED);
                 isNoisyReceiverRegistered = true;
             } catch (Exception ignored) {}
         }
@@ -475,7 +713,60 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, currentArtist)
             .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, "Nothing Music")
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, getDuration());
+        if (currentAlbumArt != null && !currentAlbumArt.isRecycled()) {
+            builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, currentAlbumArt);
+        }
         mediaSession.setMetadata(builder.build());
+    }
+
+    private void clearAlbumArt() {
+        if (currentAlbumArt != null) {
+            if (!currentAlbumArt.isRecycled()) {
+                currentAlbumArt.recycle();
+            }
+            currentAlbumArt = null;
+        }
+    }
+
+    private void loadAlbumArtAsync(Uri targetUri, String uriSnapshot, String pathSnapshot) {
+        if (targetUri == null || artExecutor.isShutdown()) return;
+        artExecutor.execute(() -> {
+            Bitmap decoded = null;
+            MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+            try {
+                mmr.setDataSource(getApplicationContext(), targetUri);
+                byte[] artBytes = mmr.getEmbeddedPicture();
+                if (artBytes != null && artBytes.length > 0) {
+                    BitmapFactory.Options opts = new BitmapFactory.Options();
+                    opts.inJustDecodeBounds = true;
+                    BitmapFactory.decodeByteArray(artBytes, 0, artBytes.length, opts);
+                    int sample = 1;
+                    while (opts.outWidth / sample > 512 || opts.outHeight / sample > 512) {
+                        sample *= 2;
+                    }
+                    opts.inJustDecodeBounds = false;
+                    opts.inSampleSize = sample;
+                    decoded = BitmapFactory.decodeByteArray(artBytes, 0, artBytes.length, opts);
+                }
+            } catch (Exception ignored) {
+            } finally {
+                try { mmr.release(); } catch (Exception ignored) {}
+            }
+            if (decoded == null) return;
+            final Bitmap finalArt = decoded;
+            crossfadeHandler.post(() -> {
+                boolean sameTrack = java.util.Objects.equals(uriSnapshot, currentUriStr)
+                        && java.util.Objects.equals(pathSnapshot, currentPath);
+                if (sameTrack && mediaPlayer != null) {
+                    clearAlbumArt();
+                    currentAlbumArt = finalArt;
+                    updateMediaSessionMetadata();
+                    updateNotification();
+                } else if (!finalArt.isRecycled()) {
+                    finalArt.recycle();
+                }
+            });
+        });
     }
 
     private void updateMediaSessionPlaybackState(int state) {
@@ -485,9 +776,10 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS | PlaybackStateCompat.ACTION_SEEK_TO |
                        PlaybackStateCompat.ACTION_STOP;
 
+        float speed = (state == PlaybackStateCompat.STATE_PLAYING) ? 1.0f : 0.0f;
         PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder()
             .setActions(actions)
-            .setState(state, getCurrentPosition(), 1.0f);
+            .setState(state, getCurrentPosition(), speed);
         mediaSession.setPlaybackState(stateBuilder.build());
     }
 
@@ -532,7 +824,8 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             .setContentTitle(currentTitle)
             .setContentText(currentArtist)
             .setSubText("NOTHING PLAYER")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_audio_track)
+            .setLargeIcon(currentAlbumArt != null && !currentAlbumArt.isRecycled() ? currentAlbumArt : null)
             .setContentIntent(contentPendingIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(isPlaying)
@@ -567,6 +860,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
 
     @Override
     public void onCompletion(MediaPlayer mp) {
+        crossfadeHandler.removeCallbacksAndMessages(null);
         this.isPlaying = false;
         updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PAUSED);
         updateNotification();
@@ -580,6 +874,9 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
 
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
+        crossfadeHandler.removeCallbacksAndMessages(null);
+        isPreparing = false;
+        pauseRequestedWhilePreparing = false;
         this.isPlaying = false;
         updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PAUSED);
         updateNotification();
@@ -594,8 +891,16 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
 
     @Override
     public void onDestroy() {
+        crossfadeHandler.removeCallbacksAndMessages(null);
         abandonAudioFocus();
         unregisterNoisyReceiver();
+        if (isScreenStateReceiverRegistered && screenStateReceiver != null) {
+            try {
+                unregisterReceiver(screenStateReceiver);
+                isScreenStateReceiverRegistered = false;
+            } catch (Exception ignored) {}
+        }
+        AudioEffectManager.getInstance().release(this);
         instance = null;
         eventListener = null;
         callback = null;
@@ -609,6 +914,8 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             mediaSession.release();
             mediaSession = null;
         }
+        try { artExecutor.shutdownNow(); } catch (Exception ignored) {}
+        clearAlbumArt();
         super.onDestroy();
     }
 }

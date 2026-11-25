@@ -10,6 +10,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -35,8 +36,9 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     private int viewMode = VIEW_MODE_GRID_2;
 
     public void setViewMode(int mode) {
+        if (this.viewMode == mode) return;
         this.viewMode = mode;
-        notifyDataSetChanged();
+        if (!items.isEmpty()) notifyItemRangeChanged(0, items.size());
     }
 
     public int getViewMode() {
@@ -98,11 +100,15 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     }
 
     public void setItems(List<Object> items, boolean isFolderView, boolean isRecentlyMode) {
-        this.items = items;
+        int oldSize = this.items.size();
+        this.items = items != null ? items : new ArrayList<>();
         this.isFolderView = isFolderView;
         this.isRecentlyMode = isRecentlyMode;
-        clearSelection();
-        notifyDataSetChanged();
+        selectedItems.clear();
+        isSelectionMode = false;
+        if (listener != null) listener.onSelectionChanged(0);
+        if (oldSize > 0) notifyItemRangeRemoved(0, oldSize);
+        if (!this.items.isEmpty()) notifyItemRangeInserted(0, this.items.size());
     }
 
     public boolean isSelectionMode() {
@@ -113,29 +119,46 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         return selectedItems;
     }
 
+    public void startSelection(Object item) {
+        if (item == null) return;
+        if (!selectedItems.contains(item)) {
+            toggleSelection(item);
+        }
+    }
+
     public void clearSelection() {
         selectedItems.clear();
         isSelectionMode = false;
-        notifyDataSetChanged();
+        if (!items.isEmpty()) notifyItemRangeChanged(0, items.size());
         if (listener != null) listener.onSelectionChanged(0);
     }
 
     public void selectAll() {
         selectedItems.clear();
         selectedItems.addAll(items);
-        isSelectionMode = true;
-        notifyDataSetChanged();
+        isSelectionMode = !items.isEmpty();
+        if (!items.isEmpty()) notifyItemRangeChanged(0, items.size());
         if (listener != null) listener.onSelectionChanged(selectedItems.size());
     }
 
     private void toggleSelection(Object item) {
+        boolean wasSelectionMode = isSelectionMode;
         if (selectedItems.contains(item)) {
             selectedItems.remove(item);
         } else {
             selectedItems.add(item);
         }
         isSelectionMode = !selectedItems.isEmpty();
-        notifyDataSetChanged();
+        if (wasSelectionMode != isSelectionMode) {
+            if (!items.isEmpty()) notifyItemRangeChanged(0, items.size());
+        } else {
+            int idx = items.indexOf(item);
+            if (idx >= 0) {
+                notifyItemChanged(idx);
+            } else if (!items.isEmpty()) {
+                notifyItemRangeChanged(0, items.size());
+            }
+        }
         if (listener != null) listener.onSelectionChanged(selectedItems.size());
     }
 
@@ -175,13 +198,6 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             } else {
                 fHolder.folderName.setText(folder.name);
             }
-            fHolder.itemView.setOnLongClickListener(v -> {
-                if (listener != null) {
-                    listener.onFolderLongClick(folder);
-                    return true;
-                }
-                return false;
-            });
 
             if (folder.posterUrl != null && !folder.posterUrl.isEmpty()) {
                 if (fHolder.folderThumb != null) {
@@ -195,23 +211,24 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 }
             } else {
                 if (fHolder.folderThumb != null) fHolder.folderThumb.setVisibility(View.GONE);
-                if (fHolder.folderIcon != null) {
+            if (fHolder.folderIcon != null) {
                     fHolder.folderIcon.setVisibility(View.VISIBLE);
+                    int redTint = ContextCompat.getColor(context, R.color.nothing_red);
                     if ("series".equalsIgnoreCase(folder.folderType)) {
                         fHolder.folderIcon.setImageResource(R.drawable.ic_dotmatrix_playlist);
-                        fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
+                        fHolder.folderIcon.setColorFilter(redTint);
                     } else if ("vault".equalsIgnoreCase(folder.folderType)) {
                         fHolder.folderIcon.setImageResource(R.drawable.ic_lock_closed);
-                        fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
+                        fHolder.folderIcon.setColorFilter(redTint);
                     } else if ("trash".equalsIgnoreCase(folder.folderType)) {
-                        fHolder.folderIcon.setImageResource(android.R.drawable.ic_menu_delete);
-                        fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
+                        fHolder.folderIcon.setImageResource(R.drawable.ic_delete);
+                        fHolder.folderIcon.setColorFilter(redTint);
                     } else if (folder.isRecentFolder) {
                         fHolder.folderIcon.setImageResource(R.drawable.ic_folder_recent);
-                        fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
+                        fHolder.folderIcon.setColorFilter(redTint);
                     } else {
-                        fHolder.folderIcon.setImageResource(android.R.drawable.ic_menu_agenda);
-                        fHolder.folderIcon.setColorFilter(context.getResources().getColor(R.color.nothing_red));
+                        fHolder.folderIcon.setImageResource(R.drawable.ic_folder_recent);
+                        fHolder.folderIcon.setColorFilter(redTint);
                     }
                 }
             }
@@ -250,6 +267,14 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             });
 
             fHolder.itemView.setOnLongClickListener(v -> {
+                if (isSelectionMode) {
+                    toggleSelection(folder);
+                    return true;
+                }
+                if (listener != null) {
+                    listener.onFolderLongClick(folder);
+                    return true;
+                }
                 toggleSelection(folder);
                 return true;
             });
@@ -386,7 +411,7 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         if (diff < 24 * 60 * 60 * 1000) return (diff / (60 * 60 * 1000)) + "h ago";
         if (diff < 48 * 60 * 60 * 1000) return "Yesterday";
         if (diff < 7 * 24 * 60 * 60 * 1000) return (diff / (24 * 60 * 60 * 1000)) + "d ago";
-        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
+        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, hh:mm a", Locale.US);
         return sdf.format(new Date(time));
     }
 
@@ -396,17 +421,17 @@ public class VideoAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         long m = (seconds % 3600) / 60;
         long s = seconds % 60;
         if (h > 0) {
-            return String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s);
+            return String.format(Locale.US, "%02d:%02d:%02d", h, m, s);
         }
-        return String.format(Locale.getDefault(), "%02d:%02d", m, s);
+        return String.format(Locale.US, "%02d:%02d", m, s);
     }
 
     private String formatSize(long bytes) {
         if (bytes <= 0) return "0 MB";
         double mb = bytes / (1024.0 * 1024.0);
         if (mb >= 1024.0) {
-            return String.format(Locale.getDefault(), "%.1f GB", mb / 1024.0);
+            return String.format(Locale.US, "%.1f GB", mb / 1024.0);
         }
-        return String.format(Locale.getDefault(), "%.1f MB", mb);
+        return String.format(Locale.US, "%.1f MB", mb);
     }
 }

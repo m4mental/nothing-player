@@ -5,8 +5,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.OpenableColumns;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -58,9 +61,9 @@ public class StreamUrlHelper {
         // 1. Direct Intent Data (e.g. ACTION_VIEW with Uri)
         if (intent.getData() != null) {
             String dataStr = intent.getDataString();
-            String extracted = extractUrl(dataStr);
-            if (extracted != null) return extracted;
-            return dataStr;
+            if (dataStr != null && !dataStr.trim().isEmpty()) {
+                return dataStr.trim();
+            }
         }
 
         // 2. EXTRA_TEXT (Shared link / text via ACTION_SEND)
@@ -93,7 +96,9 @@ public class StreamUrlHelper {
         // 4. EXTRA_STREAM (Shared media file URI via ACTION_SEND)
         if (intent.hasExtra(Intent.EXTRA_STREAM)) {
             try {
-                Uri streamUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+                Uri streamUri = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                        ? intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri.class)
+                        : getLegacyStreamExtra(intent);
                 if (streamUri != null) return streamUri.toString();
             } catch (Exception ignored) {}
         }
@@ -168,16 +173,36 @@ public class StreamUrlHelper {
         return "Online Stream";
     }
 
+    @SuppressWarnings("deprecation")
+    private static Uri getLegacyStreamExtra(Intent intent) {
+        return intent.getParcelableExtra(Intent.EXTRA_STREAM);
+    }
+
     /**
      * Automatically saves played stream to Recent Streams so it's readily accessible in Library.
      */
     public static void saveRecentStream(Context context, String url) {
         if (context == null || url == null || !isOnlineStream(url)) return;
         try {
+            String trimmedUrl = url.trim();
             SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
             String recent = prefs.getString(KEY_RECENT, "");
-            String updated = url + "\n" + recent.replace(url + "\n", "");
-            prefs.edit().putString(KEY_RECENT, updated).apply();
+            List<String> entries = new ArrayList<>();
+            entries.add(trimmedUrl);
+            if (!recent.isEmpty()) {
+                for (String line : recent.split("\n")) {
+                    String t = line.trim();
+                    if (!t.isEmpty() && !t.equals(trimmedUrl)) {
+                        entries.add(t);
+                        if (entries.size() >= 50) break;
+                    }
+                }
+            }
+            StringBuilder sb = new StringBuilder();
+            for (String entry : entries) {
+                sb.append(entry).append('\n');
+            }
+            prefs.edit().putString(KEY_RECENT, sb.toString()).apply();
         } catch (Exception ignored) {}
     }
 

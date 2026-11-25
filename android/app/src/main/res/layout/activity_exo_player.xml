@@ -83,6 +83,22 @@
         android:layout_height="match_parent"
         android:visibility="gone" />
 
+    <!-- AMOLED Pure-Black Filter Overlay -->
+    <View
+        android:id="@+id/amoled_pure_black_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#14000000"
+        android:visibility="gone" />
+
+    <!-- Warm Eye Comfort Shield Overlay -->
+    <View
+        android:id="@+id/eye_comfort_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#26E65100"
+        android:visibility="gone" />
+
     <!-- Authentic Nothing OS Gesture HUD Box -->
     <LinearLayout
         android:id="@+id/gesture_hud_container"
@@ -1040,7 +1056,139 @@
                     android:background="@drawable/bg_chip_dark_inactive" />
             </GridLayout>
 
-            <!-- Section 4: TOGGLES -->
+            <!-- Section 4: VERTICAL PAN & SUBTITLE GUARD -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="● VERTICAL PAN &amp; SUBTITLES"
+                android:textColor="#D71921"
+                android:textSize="9.5sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Quick Pan Presets -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_pan_subtitles"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="3dp"
+                    android:text="▼ SUBTITLES (UP)"
+                    android:textColor="#FFFFFF"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_pan_center"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="3dp"
+                    android:text="● CENTER (RESET)"
+                    android:textColor="#FFFFFF"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+            </LinearLayout>
+
+            <!-- Micro-Adjustment Controls -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="12dp">
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_pan_step_up"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="3dp"
+                    android:text="▲ PAN UP"
+                    android:textColor="#FFFFFF"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+
+                <TextView
+                    android:id="@+id/tv_pan_offset_label"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="PAN: 0%"
+                    android:textColor="#FFFFFF"
+                    android:textSize="9.5sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_pan_step_down"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="3dp"
+                    android:text="▼ PAN DOWN"
+                    android:textColor="#FFFFFF"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/ndot"
+                    android:background="@drawable/bg_chip_dark_inactive" />
+            </LinearLayout>
+
+            <!-- Subtitle Guard Auto-Toggle -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="AUTO SUBTITLE GUARD"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10.5sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="AUTO-LIFT VIDEO IN ZOOM / CROP"
+                        android:textColor="#88FFFFFF"
+                        android:textSize="8sp"
+                        android:fontFamily="@font/ndot" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_subtitle_guard"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    app:thumbTint="#D71921"
+                    app:trackTint="#66D71921" />
+            </RelativeLayout>
+
+            <!-- Section 5: TOGGLES -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
@@ -2546,6 +2694,50 @@
                     app:trackTint="#66D71921" />
             </RelativeLayout>
 
+            <!-- Podcast Audio-Only Mode Toggle (AMOLED Ultra Battery Saver) -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                
+                android:padding="12dp"
+                android:layout_marginBottom="8dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_toStartOf="@+id/switch_menu_podcast_mode"
+                    android:layout_centerVertical="true"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="PODCAST AUDIO MODE"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10.5sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="AMOLED BLACK DISPLAY ● DETACH SURFACE &amp; SAVE BATTERY"
+                        android:textColor="@color/nothing_white_40"
+                        android:textSize="7sp"
+                        android:fontFamily="@font/ndot"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_menu_podcast_mode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    app:thumbTint="#D71921"
+                    app:trackTint="#66D71921" />
+            </RelativeLayout>
+
             <!-- Row of 4: Edit, Color Filter, Share, Others -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -2673,6 +2865,69 @@
                         android:layout_marginTop="4dp" />
                 </LinearLayout>
             </LinearLayout>
+
+            <!-- Studio Settings Entry Card -->
+            <RelativeLayout
+                android:id="@+id/btn_menu_open_settings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_card_nothing"
+                android:padding="12dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="14dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageView
+                    android:id="@+id/iv_menu_settings_icon"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:src="@drawable/ic_settings"
+                    android:background="@drawable/bg_circle_dark"
+                    android:padding="7dp"
+                    app:tint="#D71921" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_toEndOf="@id/iv_menu_settings_icon"
+                    android:layout_toStartOf="@+id/tv_menu_settings_arrow"
+                    android:layout_centerVertical="true"
+                    android:layout_marginStart="10dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="PLAYER &amp; ENGINE SETTINGS"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10.5sp"
+                        android:textStyle="bold"
+                        android:fontFamily="@font/ndot" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="DSP BALANCER ● DECODER ROUTING ● GESTURES"
+                        android:textColor="@color/nothing_white_40"
+                        android:textSize="7sp"
+                        android:fontFamily="@font/ndot"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_menu_settings_arrow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="›"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/ndot" />
+            </RelativeLayout>
 
         </LinearLayout>
     </ScrollView>
@@ -3334,5 +3589,76 @@
 
     <!-- Floating Equalizer Window (Draggable HUD Overlay) -->
     <include layout="@layout/layout_floating_equalizer" />
+
+    <!-- Screen-Off / Podcast Mode AMOLED HUD Overlay -->
+    <FrameLayout
+        android:id="@+id/layout_audio_only_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:visibility="gone"
+        android:elevation="40dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <ImageView
+                android:id="@+id/iv_podcast_glyph_icon"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:src="@drawable/ic_audio_track"
+                app:tint="#D71921"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PODCAST AUDIO MODE ACTIVE"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/tv_podcast_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PLAYING AUDIO"
+                android:textColor="#80FFFFFF"
+                android:textSize="11sp"
+                android:fontFamily="@font/ndot"
+                android:gravity="center"
+                android:layout_marginTop="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="● DOUBLE-TAP ANYWHERE TO RESTORE VIDEO ●"
+                android:textColor="#D71921"
+                android:textSize="9.5sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/ndot"
+                android:gravity="center"
+                android:layout_marginTop="32dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="POCKET MODE: HOLD VOL+ (NEXT) / VOL- (PREV)"
+                android:textColor="#55FFFFFF"
+                android:textSize="8.5sp"
+                android:fontFamily="@font/ndot"
+                android:gravity="center"
+                android:layout_marginTop="10dp" />
+        </LinearLayout>
+    </FrameLayout>
 
 </FrameLayout>

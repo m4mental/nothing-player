@@ -202,7 +202,7 @@ public class MediaOrganizerEngine {
             File f = new File(path);
             File parent = f.getParentFile();
             if (parent != null) {
-                String pName = parent.getName().toLowerCase();
+                String pName = parent.getName().toLowerCase(Locale.US);
                 if (pName.contains("season")) {
                     Matcher m = Pattern.compile("season\\s*(\\d+)").matcher(pName);
                     if (m.find()) return Integer.parseInt(m.group(1));
@@ -246,7 +246,7 @@ public class MediaOrganizerEngine {
             if (sb.length() > 0) sb.append(" ");
             sb.append(Character.toUpperCase(w.charAt(0)));
             if (w.length() > 1) {
-                sb.append(w.substring(1).toLowerCase());
+                sb.append(w.substring(1).toLowerCase(Locale.US));
             }
         }
         return sb.toString();

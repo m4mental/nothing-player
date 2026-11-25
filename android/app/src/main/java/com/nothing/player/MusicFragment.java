@@ -23,6 +23,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.IntentSenderRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import android.app.Activity;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -34,6 +35,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClickListener {
@@ -47,7 +49,12 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
     public static final int SORT_ARTIST_ASC = 4;
     public static final int SORT_DURATION_DESC = 5;
 
+    private static final int TAB_TRACKS = 0;
+    private static final int TAB_ARTISTS = 1;
+    private static final int TAB_FAVORITES = 2;
+
     private int currentSortMode = SORT_DATE_DESC;
+    private int currentTab = TAB_TRACKS;
 
     private RecyclerView recyclerView;
     private MusicAdapter adapter;
@@ -68,6 +75,7 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
     private final MediaAutoScanner.OnMediaChangeListener mediaChangeListener = () -> {
         if (getActivity() != null && isAdded()) {
             getActivity().runOnUiThread(() -> {
+                if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
                 Context ctx = getContext();
                 if (ctx != null) {
                     allTracks = MediaRepository.getCachedAudios(ctx.getApplicationContext());
@@ -94,12 +102,7 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
         super.onCreate(savedInstanceState);
         deleteLauncher = registerForActivityResult(
             new ActivityResultContracts.StartIntentSenderForResult(),
-            result -> {
-                if (result.getResultCode() == Activity.RESULT_OK) {
-                    Toast.makeText(getContext(), "Tracks deleted successfully", Toast.LENGTH_SHORT).show();
-                    loadTracks(false);
-                }
-            }
+            result -> FileDeleteHelper.onActivityResult(getContext(), result.getResultCode() == Activity.RESULT_OK)
         );
     }
 
@@ -119,6 +122,29 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
         if (btnOverflowMenu != null) {
             btnOverflowMenu.setOnClickListener(v -> showMusicOptionsMenu());
         }
+
+        if (chipTracks != null) {
+            chipTracks.setOnClickListener(v -> {
+                currentTab = TAB_TRACKS;
+                updateMusicChipsUI();
+                filterTracks();
+            });
+        }
+        if (chipArtists != null) {
+            chipArtists.setOnClickListener(v -> {
+                currentTab = TAB_ARTISTS;
+                updateMusicChipsUI();
+                filterTracks();
+            });
+        }
+        if (chipFavorites != null) {
+            chipFavorites.setOnClickListener(v -> {
+                currentTab = TAB_FAVORITES;
+                updateMusicChipsUI();
+                filterTracks();
+            });
+        }
+        updateMusicChipsUI();
 
         if (getContext() != null) {
             SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -186,13 +212,15 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
         if (getActivity() == null || selected == null || selected.isEmpty()) return;
 
         FileDeleteHelper.deleteMediaFiles(getActivity(), selected, deleteLauncher, (deletedCount, deletedPaths) -> {
-            if (getContext() == null) return;
+            if (!isAdded() || getContext() == null) return;
             List<MediaItem> remaining = new ArrayList<>();
             for (MediaItem m : allTracks) {
-                if (!deletedPaths.contains(m.path)) remaining.add(m);
+                boolean matched = (m.path != null && deletedPaths.contains(m.path))
+                        || (m.contentUri != null && deletedPaths.contains(m.contentUri));
+                if (!matched) remaining.add(m);
             }
             allTracks = remaining;
-            adapter.clearSelection();
+            if (adapter != null) adapter.clearSelection();
             filterTracks();
 
             if (deletedCount > 0) {
@@ -239,18 +267,53 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
         });
     }
 
+    private void updateMusicChipsUI() {
+        setMusicChipState(chipTracks, currentTab == TAB_TRACKS);
+        setMusicChipState(chipArtists, currentTab == TAB_ARTISTS);
+        setMusicChipState(chipFavorites, currentTab == TAB_FAVORITES);
+    }
+
+    private void setMusicChipState(TextView chip, boolean isSelected) {
+        if (chip == null || getContext() == null) return;
+        chip.setBackgroundResource(isSelected ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
+        chip.setTextColor(ContextCompat.getColor(getContext(), isSelected ? R.color.nothing_black : R.color.nothing_white_70));
+    }
+
     private void filterTracks() {
-        String query = etSearch != null ? etSearch.getText().toString().trim().toLowerCase() : "";
+        String query = etSearch != null ? etSearch.getText().toString().trim().toLowerCase(Locale.US) : "";
+        Set<String> favPaths = new HashSet<>();
+        if (currentTab == TAB_FAVORITES && getContext() != null) {
+            favPaths.addAll(VirtualPlaylistManager.getPlaylistItems(getContext(), "FAVORITES"));
+        }
+
         List<MediaItem> filtered = new ArrayList<>();
         for (MediaItem item : allTracks) {
-            String title = item.title != null ? item.title.toLowerCase() : "";
-            String artist = item.artist != null ? item.artist.toLowerCase() : "";
+            if (currentTab == TAB_FAVORITES) {
+                boolean isFav = item.isFavorite
+                        || (item.path != null && favPaths.contains(item.path))
+                        || (item.contentUri != null && favPaths.contains(item.contentUri));
+                if (!isFav) continue;
+            }
+            String title = item.title != null ? item.title.toLowerCase(Locale.US) : "";
+            String artist = item.artist != null ? item.artist.toLowerCase(Locale.US) : "";
             if (query.isEmpty() || title.contains(query) || artist.contains(query)) {
                 filtered.add(item);
             }
         }
-        sortTracks(filtered);
-        adapter.setTracks(filtered);
+        if (currentTab == TAB_ARTISTS) {
+            Collections.sort(filtered, (a, b) -> {
+                String aa = a.artist != null ? a.artist : "";
+                String ab = b.artist != null ? b.artist : "";
+                int cmp = aa.compareToIgnoreCase(ab);
+                if (cmp != 0) return cmp;
+                String ta = a.title != null ? a.title : "";
+                String tb = b.title != null ? b.title : "";
+                return ta.compareToIgnoreCase(tb);
+            });
+        } else {
+            sortTracks(filtered);
+        }
+        if (adapter != null) adapter.setTracks(filtered);
     }
 
     private void sortTracks(List<MediaItem> list) {
@@ -371,7 +434,10 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
     @Override
     public void onTrackClick(MediaItem track, int position) {
         if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).playAudioTrack(track, allTracks, position);
+            List<MediaItem> queue = adapter != null ? adapter.getTracks() : allTracks;
+            int idx = queue.indexOf(track);
+            if (idx < 0) idx = Math.max(0, Math.min(position, queue.size() - 1));
+            ((MainActivity) getActivity()).playAudioTrack(track, queue, idx);
         }
     }
 
@@ -388,7 +454,7 @@ public class MusicFragment extends Fragment implements MusicAdapter.OnMusicClick
     }
 
     public boolean handleBackPress() {
-        if (adapter.isSelectionMode()) {
+        if (adapter != null && adapter.isSelectionMode()) {
             adapter.clearSelection();
             return true;
         }

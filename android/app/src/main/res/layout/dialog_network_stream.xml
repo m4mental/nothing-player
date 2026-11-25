@@ -30,7 +30,7 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:src="@drawable/ic_close_dotmatrix"
             app:tint="@color/nothing_white"
             android:contentDescription="Close" />
     </LinearLayout>
@@ -43,7 +43,7 @@
         android:text="Paste YouTube, HLS (.m3u8), DASH, RTSP, RTMP or direct video link"
         android:textColor="@color/nothing_white_40"
         android:textSize="11sp"
-        android:fontFamily="sans-serif" />
+        android:fontFamily="@font/ndot" />
 
     <!-- Input Bar with Inline PASTE and PLAY -->
     <LinearLayout
@@ -110,6 +110,21 @@
         android:text="▶ START STREAMING NOW"
         android:textColor="@color/nothing_white"
         android:textSize="11sp"
+        android:fontFamily="@font/ndot"
+        android:textStyle="bold"
+        android:letterSpacing="0.05" />
+
+    <!-- Open PC / NAS Network Browser Button -->
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btn_open_pc_nas_browser"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_btn_nothing_outline"
+        app:backgroundTint="@null"
+        android:text="🌐 CONNECT TO PC / NAS / SMB SHARE"
+        android:textColor="@color/nothing_white"
+        android:textSize="10.5sp"
         android:fontFamily="@font/ndot"
         android:textStyle="bold"
         android:letterSpacing="0.05" />

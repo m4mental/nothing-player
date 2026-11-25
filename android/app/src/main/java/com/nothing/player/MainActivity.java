@@ -150,11 +150,13 @@ public class MainActivity extends AppCompatActivity {
                 miniPlayerContainer.setVisibility(View.GONE);
                 Toast.makeText(this, "PLAYBACK STOPPED", Toast.LENGTH_SHORT).show();
                 return true;
-            } else if (isPlaying || musicService != null) {
+            } else if (isPlaying || currentPlayingTrack != null || musicService != null) {
                 if (musicService != null) {
                     musicService.stop();
                 }
                 isPlaying = false;
+                currentPlayingTrack = null;
+                currentTrackIndex = -1;
                 miniPlayerContainer.setVisibility(View.GONE);
                 Toast.makeText(this, "MUSIC STOPPED", Toast.LENGTH_SHORT).show();
                 return true;
@@ -265,7 +267,7 @@ public class MainActivity extends AppCompatActivity {
             public void onStateChanged(boolean playing) {
                 isPlaying = playing;
                 runOnUiThread(() -> {
-                    miniPlayerBtnPlay.setImageResource(playing ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
+                    miniPlayerBtnPlay.setImageResource(playing ? R.drawable.ic_pause_dotmatrix : R.drawable.ic_play_dotmatrix);
                     if (activeNowPlayingSheet != null && currentPlayingTrack != null) {
                         activeNowPlayingSheet.updateTrack(currentPlayingTrack, playing);
                     }
@@ -274,12 +276,32 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onTrackEnded() {
+                runOnUiThread(() -> {
+                    int repeatMode = getSharedPreferences("nothing_player_prefs", Context.MODE_PRIVATE)
+                            .getInt("music_repeat_mode", 1);
+                    if (repeatMode == 2 && currentPlayingTrack != null) {
+                        playAudioTrack(currentPlayingTrack, currentPlaylist, currentTrackIndex);
+                    } else {
+                        playNext(true);
+                    }
+                });
+            }
+        });
+
+        MusicPlaybackService.setEventListener(new MusicPlaybackService.PlaybackEventListener() {
+            @Override public void onTrackEnded() {}
+            @Override public void onPlayStateChanged(boolean playing) {}
+            @Override public void onNextRequested() {
                 runOnUiThread(() -> playNext());
+            }
+            @Override public void onPrevRequested() {
+                runOnUiThread(() -> playPrevious());
             }
         });
     }
 
     public void playAudioTrack(MediaItem track, List<MediaItem> playlist, int index) {
+        if (track == null) return;
         if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
             BackgroundPlaybackManager.getInstance().stopAndRelease();
         }
@@ -293,13 +315,15 @@ public class MainActivity extends AppCompatActivity {
         miniPlayerContainer.setVisibility(View.VISIBLE);
         miniPlayerTitle.setText(track.title);
         miniPlayerArtist.setText(track.artist != null ? track.artist : "Unknown Artist");
-        miniPlayerBtnPlay.setImageResource(android.R.drawable.ic_media_pause);
+        miniPlayerBtnPlay.setImageResource(R.drawable.ic_pause_dotmatrix);
 
-        Glide.with(this)
-                .load(track.path != null ? track.path : track.contentUri)
-                .placeholder(android.R.drawable.ic_lock_silent_mode_off)
-                .diskCacheStrategy(DiskCacheStrategy.ALL)
-                .into(miniPlayerArt);
+        if (!isFinishing() && !isDestroyed()) {
+            Glide.with(this)
+                    .load(track.path != null ? track.path : track.contentUri)
+                    .placeholder(R.drawable.ic_headphones)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .into(miniPlayerArt);
+        }
 
         if (pagerAdapter.getMusicFragment() != null) {
             pagerAdapter.getMusicFragment().notifyCurrentTrackChanged(track.id);
@@ -315,11 +339,11 @@ public class MainActivity extends AppCompatActivity {
             if (isPlaying) {
                 musicService.pause();
                 isPlaying = false;
-                miniPlayerBtnPlay.setImageResource(android.R.drawable.ic_media_play);
+                miniPlayerBtnPlay.setImageResource(R.drawable.ic_play_dotmatrix);
             } else {
                 musicService.resume();
                 isPlaying = true;
-                miniPlayerBtnPlay.setImageResource(android.R.drawable.ic_media_pause);
+                miniPlayerBtnPlay.setImageResource(R.drawable.ic_pause_dotmatrix);
             }
             if (activeNowPlayingSheet != null && currentPlayingTrack != null) {
                 activeNowPlayingSheet.updateTrack(currentPlayingTrack, isPlaying);
@@ -328,15 +352,43 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void playNext() {
-        if (!currentPlaylist.isEmpty() && currentTrackIndex + 1 < currentPlaylist.size()) {
+        playNext(false);
+    }
+
+    private void playNext(boolean autoAdvance) {
+        if (currentPlaylist == null || currentPlaylist.isEmpty()) return;
+        android.content.SharedPreferences prefs = getSharedPreferences("nothing_player_prefs", Context.MODE_PRIVATE);
+        boolean isShuffle = prefs.getBoolean("music_shuffle", false);
+        int repeatMode = prefs.getInt("music_repeat_mode", 1); // 0=Off, 1=All, 2=One
+
+        if (isShuffle && currentPlaylist.size() > 1) {
+            java.util.Random rnd = new java.util.Random();
+            int nextIdx = currentTrackIndex;
+            int attempts = 0;
+            while (nextIdx == currentTrackIndex && attempts < 10) {
+                nextIdx = rnd.nextInt(currentPlaylist.size());
+                attempts++;
+            }
+            currentTrackIndex = nextIdx;
+            playAudioTrack(currentPlaylist.get(currentTrackIndex), currentPlaylist, currentTrackIndex);
+        } else if (currentTrackIndex + 1 < currentPlaylist.size()) {
             currentTrackIndex++;
+            playAudioTrack(currentPlaylist.get(currentTrackIndex), currentPlaylist, currentTrackIndex);
+        } else if (repeatMode == 1 || !autoAdvance) {
+            currentTrackIndex = 0;
             playAudioTrack(currentPlaylist.get(currentTrackIndex), currentPlaylist, currentTrackIndex);
         }
     }
 
     public void playPrevious() {
-        if (!currentPlaylist.isEmpty() && currentTrackIndex - 1 >= 0) {
+        if (currentPlaylist == null || currentPlaylist.isEmpty()) return;
+        int repeatMode = getSharedPreferences("nothing_player_prefs", Context.MODE_PRIVATE)
+                .getInt("music_repeat_mode", 1);
+        if (currentTrackIndex - 1 >= 0) {
             currentTrackIndex--;
+            playAudioTrack(currentPlaylist.get(currentTrackIndex), currentPlaylist, currentTrackIndex);
+        } else if (repeatMode == 1) {
+            currentTrackIndex = currentPlaylist.size() - 1;
             playAudioTrack(currentPlaylist.get(currentTrackIndex), currentPlaylist, currentTrackIndex);
         }
     }
@@ -383,11 +435,11 @@ public class MainActivity extends AppCompatActivity {
     private void syncMiniPlayerState() {
         if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
             setupMiniPlayerForVideo();
-        } else if (isBound && musicService != null && isPlaying && currentPlayingTrack != null) {
+        } else if (isBound && musicService != null && currentPlayingTrack != null) {
             miniPlayerContainer.setVisibility(View.VISIBLE);
             miniPlayerTitle.setText(currentPlayingTrack.title);
             miniPlayerArtist.setText(currentPlayingTrack.artist != null ? currentPlayingTrack.artist : "Unknown Artist");
-            miniPlayerBtnPlay.setImageResource(R.drawable.ic_pause_dotmatrix);
+            miniPlayerBtnPlay.setImageResource(isPlaying ? R.drawable.ic_pause_dotmatrix : R.drawable.ic_play_dotmatrix);
         } else {
             miniPlayerContainer.setVisibility(View.GONE);
         }
@@ -403,16 +455,19 @@ public class MainActivity extends AppCompatActivity {
         boolean isPlaying = BackgroundPlaybackManager.getInstance().isPlaying();
         miniPlayerBtnPlay.setImageResource(isPlaying ? R.drawable.ic_pause_dotmatrix : R.drawable.ic_play_dotmatrix);
 
-        Glide.with(this)
-                .load(path)
-                .placeholder(R.drawable.ic_play_dotmatrix)
-                .diskCacheStrategy(DiskCacheStrategy.ALL)
-                .into(miniPlayerArt);
+        if (!isFinishing() && !isDestroyed()) {
+            Glide.with(this)
+                    .load(path)
+                    .placeholder(R.drawable.ic_play_dotmatrix)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .into(miniPlayerArt);
+        }
 
         BackgroundPlaybackManager.getInstance().setCallback(new BackgroundPlaybackManager.Callback() {
             @Override
             public void onTrackChanged(String newTitle, String newPath, int index) {
                 runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
                     miniPlayerTitle.setText(newTitle != null && !newTitle.isEmpty() ? newTitle : "Video Playback");
                     Glide.with(MainActivity.this)
                             .load(newPath)
@@ -425,6 +480,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPlaybackStateChanged(boolean playing) {
                 runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
                     miniPlayerBtnPlay.setImageResource(playing ? R.drawable.ic_pause_dotmatrix : R.drawable.ic_play_dotmatrix);
                 });
             }
@@ -432,6 +488,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPlaybackEnded() {
                 runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
                     miniPlayerContainer.setVisibility(View.GONE);
                 });
             }
@@ -440,13 +497,18 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (viewPager.getCurrentItem() == 0 && pagerAdapter.getVideosFragment() != null) {
+        int currentItem = viewPager.getCurrentItem();
+        if (currentItem == 0 && pagerAdapter.getVideosFragment() != null) {
             if (pagerAdapter.getVideosFragment().handleBackPress()) {
+                return;
+            }
+        } else if (currentItem == 1 && pagerAdapter.getMusicFragment() != null) {
+            if (pagerAdapter.getMusicFragment().handleBackPress()) {
                 return;
             }
         }
 
-        if (viewPager.getCurrentItem() != 0) {
+        if (currentItem != 0) {
             viewPager.setCurrentItem(0, true);
             return;
         }
@@ -463,6 +525,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        BackgroundPlaybackManager.getInstance().setCallback(null);
+        MusicPlaybackService.setEventListener(null);
         MediaAutoScanner.getInstance().stopWatching();
         progressHandler.removeCallbacksAndMessages(null);
         if (isBound) {

@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_card_nothing"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:layout_margin="16dp"
+    android:minWidth="340dp">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <View
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:background="@drawable/led_red"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SUBTITLE DICTIONARY &amp; TRANSLATOR"
+                android:textColor="#D71921"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btn_dict_close"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_close_dotmatrix"
+            app:tint="#FFFFFF"
+            android:contentDescription="Close Dictionary" />
+    </RelativeLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#22FFFFFF"
+        android:layout_marginBottom="14dp" />
+
+    <!-- Word + Phonetics Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="10dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_dict_word"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SERENDIPITY"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_dict_phonetic"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="/ˌser.ənˈdɪp.ə.ti/ • NOUN"
+                android:textColor="#D71921"
+                android:textSize="9.5sp"
+                android:fontFamily="@font/ndot"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btn_dict_speak"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_circle_red"
+            android:src="@drawable/ic_volume_high"
+            app:tint="#FFFFFF"
+            android:contentDescription="Pronounce Word" />
+    </LinearLayout>
+
+    <!-- Hindi Translation Box -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_btn_nothing_outline"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:layout_marginBottom="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="● HINDI MEANING"
+            android:textColor="#D71921"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tv_dict_hindi"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="आकस्मिक लाभ / सुखद संयोग"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- English Definition Box -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="● DEFINITION"
+            android:textColor="#88FFFFFF"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tv_dict_definition"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="The occurrence and development of events by chance in a happy or beneficial way."
+            android:textColor="#E0E0E0"
+            android:textSize="11sp"
+            android:lineSpacingExtra="3dp" />
+
+        <TextView
+            android:id="@+id/tv_dict_example"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="&quot;A fortunate stroke of serendipity brought them together.&quot;"
+            android:textColor="#88FFFFFF"
+            android:textSize="9.5sp"
+            android:fontStyle="italic"
+            android:layout_marginTop="6dp" />
+    </LinearLayout>
+
+    <!-- Context in Subtitle -->
+    <TextView
+        android:id="@+id/tv_dict_context_sentence"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#161616"
+        android:padding="8dp"
+        android:text="IN SUBTITLE: &quot;It was pure serendipity that we survived.&quot;"
+        android:textColor="#A0A0A0"
+        android:textSize="9sp"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Action Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/btn_dict_resume"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_chip_red_active"
+            android:text="▶ RESUME PLAYBACK"
+            android:textColor="#FFFFFF"
+            android:textSize="9.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+</LinearLayout>
+

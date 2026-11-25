@@ -39,6 +39,7 @@ public class MediaAutoScanner {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Context appContext;
     private boolean isWatching = false;
+    private boolean contentObserversRegistered = false;
 
     private ContentObserver videoObserver;
     private ContentObserver audioObserver;
@@ -66,17 +67,26 @@ public class MediaAutoScanner {
      * Start background monitoring of MediaStore and Download directories.
      */
     public synchronized void startWatching(Context context) {
-        if (isWatching || context == null) return;
+        if (context == null) return;
         this.appContext = context.getApplicationContext();
+
+        if (!isWatching || !contentObserversRegistered) {
+            registerContentObservers();
+        }
+        // Re-register directory observers if previously called before storage permission was granted
+        if (!isWatching || fileObservers.isEmpty()) {
+            stopFileObserversOnly();
+            registerFileObservers();
+        }
         this.isWatching = true;
-
-        registerContentObservers();
-        registerFileObservers();
-
-        Log.d(TAG, "MediaAutoScanner started watching for real-time media changes.");
+        Log.d(TAG, "MediaAutoScanner watching for real-time media changes.");
     }
 
     public synchronized void stopWatching() {
+        if (debounceRunnable != null) {
+            mainHandler.removeCallbacks(debounceRunnable);
+            debounceRunnable = null;
+        }
         if (!isWatching || appContext == null) return;
 
         try {
@@ -86,15 +96,23 @@ public class MediaAutoScanner {
         } catch (Exception e) {
             Log.e(TAG, "Error unregistering ContentObservers", e);
         }
+        videoObserver = null;
+        audioObserver = null;
+        downloadsObserver = null;
+        contentObserversRegistered = false;
 
+        stopFileObserversOnly();
+        isWatching = false;
+        Log.d(TAG, "MediaAutoScanner stopped watching.");
+    }
+
+    private void stopFileObserversOnly() {
         for (FileObserver fo : fileObservers) {
             try {
                 fo.stopWatching();
             } catch (Exception ignored) {}
         }
         fileObservers.clear();
-        isWatching = false;
-        Log.d(TAG, "MediaAutoScanner stopped watching.");
     }
 
     public void addListener(OnMediaChangeListener listener) {
@@ -167,6 +185,7 @@ public class MediaAutoScanner {
                         downloadsObserver
                 );
             }
+            contentObserversRegistered = true;
         } catch (Exception e) {
             Log.e(TAG, "Failed registering ContentObservers", e);
         }
