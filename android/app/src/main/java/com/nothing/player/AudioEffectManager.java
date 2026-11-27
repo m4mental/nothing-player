@@ -29,6 +29,8 @@ public class AudioEffectManager {
     private DynamicsProcessing dynamicsProcessing;
     private boolean isNightModeCompressorEnabled = false;
     private int currentAudioSessionId = 0;
+    private int currentVolumeBoostPercent = 0;
+    private Context appContext;
 
     public static synchronized AudioEffectManager getInstance() {
         if (instance == null) {
@@ -41,12 +43,15 @@ public class AudioEffectManager {
 
     public synchronized void attachAudioSession(int sessionId, Context context) {
         if (sessionId <= 0) return;
+        if (context != null) {
+            this.appContext = context.getApplicationContext();
+        }
         if (currentAudioSessionId == sessionId && equalizer != null) {
-            applySettings(context);
+            applySettings(context != null ? context : this.appContext);
             return;
         }
 
-        release();
+        release(context != null ? context : this.appContext);
         this.currentAudioSessionId = sessionId;
 
         try {
@@ -59,10 +64,22 @@ public class AudioEffectManager {
                 context.sendBroadcast(intent);
             }
 
-            // Create AudioFX with high priority (1000)
-            equalizer = new Equalizer(1000, sessionId);
-            bassBoost = new BassBoost(1000, sessionId);
-            virtualizer = new Virtualizer(1000, sessionId);
+            // Create AudioFX with high priority (1000), isolating unsupported HAL effects
+            try {
+                equalizer = new Equalizer(1000, sessionId);
+            } catch (Exception e) {
+                Log.w(TAG, "Equalizer not available", e);
+            }
+            try {
+                bassBoost = new BassBoost(1000, sessionId);
+            } catch (Exception e) {
+                Log.w(TAG, "BassBoost not available", e);
+            }
+            try {
+                virtualizer = new Virtualizer(1000, sessionId);
+            } catch (Exception e) {
+                Log.w(TAG, "Virtualizer not available", e);
+            }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 try {
@@ -87,7 +104,7 @@ public class AudioEffectManager {
                 }
             }
 
-            applySettings(context);
+            applySettings(context != null ? context : this.appContext);
             Log.d(TAG, "Attached AudioFX to session " + sessionId + " bands: " + (equalizer != null ? equalizer.getNumberOfBands() : 0));
         } catch (Exception e) {
             Log.e(TAG, "Failed to attach AudioFX to session " + sessionId, e);
@@ -95,7 +112,9 @@ public class AudioEffectManager {
     }
 
     public synchronized void applySettings(Context context) {
+        if (context == null) context = this.appContext;
         if (context == null) return;
+        this.appContext = context.getApplicationContext();
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         boolean isEnabled = prefs.getBoolean(KEY_ENABLED, true);
 
@@ -105,8 +124,9 @@ public class AudioEffectManager {
                 equalizer.setEnabled(isEnabled);
                 if (isEnabled) {
                     short numBands = equalizer.getNumberOfBands();
-                    short minLevel = equalizer.getBandLevelRange()[0];
-                    short maxLevel = equalizer.getBandLevelRange()[1];
+                    short[] levelRange = equalizer.getBandLevelRange();
+                    short minLevel = levelRange[0];
+                    short maxLevel = levelRange[1];
 
                     for (short i = 0; i < numBands; i++) {
                         int progress = prefs.getInt("eq_band_" + Math.min(i, (short) 4), 15);
@@ -155,22 +175,6 @@ public class AudioEffectManager {
             }
         }
 
-        // Apply Preamp Gain (via LoudnessEnhancer)
-        if (loudnessEnhancer != null) {
-            try {
-                loudnessEnhancer.setEnabled(isEnabled);
-                if (isEnabled) {
-                    int preamp = prefs.getInt(KEY_PREAMP, 12);
-                    // Preamp range: 0 (center 12) -> -12dB to +12dB
-                    int db = preamp - 12;
-                    int targetGainMb = Math.max(0, db * 100); // in millibels (0 to 1200 mB)
-                    loudnessEnhancer.setTargetGain(targetGainMb);
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "Error applying preamp gain", e);
-            }
-        }
-
         // Night Mode Compressor & Dialogue Normalizer
         this.isNightModeCompressorEnabled = prefs.getBoolean("night_mode_compressor", false);
         if (dynamicsProcessing != null) {
@@ -178,11 +182,44 @@ public class AudioEffectManager {
                 dynamicsProcessing.setEnabled(this.isNightModeCompressorEnabled);
             } catch (Exception ignored) {}
         }
-        if (this.isNightModeCompressorEnabled && loudnessEnhancer != null) {
+
+        // Compute combined LoudnessEnhancer gain without overriding master EQ power OFF or user Preamp
+        if (loudnessEnhancer != null) {
             try {
-                loudnessEnhancer.setEnabled(true);
-                loudnessEnhancer.setTargetGain(600); // +6dB speech boost
-            } catch (Exception ignored) {}
+                SharedPreferences appPrefs = context.getSharedPreferences("nothing_player_prefs", Context.MODE_PRIVATE);
+                boolean replayGain = appPrefs.getBoolean("pref_replay_gain_leveler", true);
+                int preamp = prefs.getInt(KEY_PREAMP, 12);
+                int preampGainMb = isEnabled ? Math.max(0, (preamp - 12) * 100) : 0;
+                int boostGainMb = currentVolumeBoostPercent > 0 ? Math.min(1800, currentVolumeBoostPercent * 18) : 0;
+
+                int targetGainMb = 0;
+                boolean shouldEnableLoudness = false;
+
+                if (isEnabled) {
+                    if (preamp != 12) {
+                        targetGainMb = preampGainMb;
+                        shouldEnableLoudness = preampGainMb > 0;
+                    } else if (replayGain) {
+                        targetGainMb = 350; // +3.5dB auto-leveler when preamp is neutral
+                        shouldEnableLoudness = true;
+                    }
+                }
+                if (this.isNightModeCompressorEnabled) {
+                    targetGainMb = Math.max(targetGainMb, 600); // +6dB speech boost
+                    shouldEnableLoudness = true;
+                }
+                if (boostGainMb > 0) {
+                    targetGainMb = Math.max(targetGainMb, boostGainMb);
+                    shouldEnableLoudness = true;
+                }
+
+                loudnessEnhancer.setEnabled(shouldEnableLoudness);
+                if (shouldEnableLoudness) {
+                    loudnessEnhancer.setTargetGain(targetGainMb);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Error applying loudness/preamp gain", e);
+            }
         }
     }
 
@@ -233,24 +270,11 @@ public class AudioEffectManager {
     public synchronized void setNightModeCompressorEnabled(boolean enabled, Context context) {
         this.isNightModeCompressorEnabled = enabled;
         if (context != null) {
+            this.appContext = context.getApplicationContext();
             SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             prefs.edit().putBoolean("night_mode_compressor", enabled).apply();
         }
-        if (dynamicsProcessing != null) {
-            try {
-                dynamicsProcessing.setEnabled(enabled);
-            } catch (Exception ignored) {}
-        }
-        if (loudnessEnhancer != null) {
-            try {
-                if (enabled) {
-                    loudnessEnhancer.setEnabled(true);
-                    loudnessEnhancer.setTargetGain(600); // +6dB dialogue boost
-                } else {
-                    loudnessEnhancer.setTargetGain(0);
-                }
-            } catch (Exception ignored) {}
-        }
+        applySettings(context != null ? context : this.appContext);
     }
 
     public synchronized boolean isNightModeCompressorEnabled() {
@@ -258,19 +282,15 @@ public class AudioEffectManager {
     }
 
     public synchronized void setVolumeBoostGain(int boostPercent) {
-        if (loudnessEnhancer != null) {
-            try {
-                if (boostPercent > 0) {
-                    loudnessEnhancer.setEnabled(true);
-                    int gainMb = Math.min(1800, boostPercent * 18);
-                    loudnessEnhancer.setTargetGain(gainMb);
-                } else {
-                    loudnessEnhancer.setTargetGain(0);
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "Error setting volume boost gain", e);
-            }
+        setVolumeBoostGain(boostPercent, this.appContext);
+    }
+
+    public synchronized void setVolumeBoostGain(int boostPercent, Context context) {
+        this.currentVolumeBoostPercent = Math.max(0, Math.min(100, boostPercent));
+        if (context != null) {
+            this.appContext = context.getApplicationContext();
         }
+        applySettings(context != null ? context : this.appContext);
     }
 
     public synchronized void release() {

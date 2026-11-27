@@ -9,6 +9,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -39,15 +40,23 @@ public class MusicAdapter extends RecyclerView.Adapter<MusicAdapter.MusicViewHol
         this.listener = listener;
     }
 
+    public List<MediaItem> getTracks() {
+        return tracks;
+    }
+
     public void setTracks(List<MediaItem> tracks) {
-        this.tracks = tracks;
-        clearSelection();
-        notifyDataSetChanged();
+        int oldSize = this.tracks.size();
+        this.tracks = tracks != null ? tracks : new ArrayList<>();
+        selectedTracks.clear();
+        isSelectionMode = false;
+        if (listener != null) listener.onSelectionChanged(0);
+        if (oldSize > 0) notifyItemRangeRemoved(0, oldSize);
+        if (!this.tracks.isEmpty()) notifyItemRangeInserted(0, this.tracks.size());
     }
 
     public void setCurrentPlayingId(String id) {
         this.currentPlayingId = id;
-        notifyDataSetChanged();
+        if (!tracks.isEmpty()) notifyItemRangeChanged(0, tracks.size());
     }
 
     public boolean isSelectionMode() {
@@ -61,30 +70,36 @@ public class MusicAdapter extends RecyclerView.Adapter<MusicAdapter.MusicViewHol
     public void clearSelection() {
         selectedTracks.clear();
         isSelectionMode = false;
-        notifyDataSetChanged();
+        if (!tracks.isEmpty()) notifyItemRangeChanged(0, tracks.size());
         if (listener != null) listener.onSelectionChanged(0);
     }
 
     public void selectAll() {
         selectedTracks.clear();
         selectedTracks.addAll(tracks);
-        isSelectionMode = true;
-        notifyDataSetChanged();
+        isSelectionMode = !tracks.isEmpty();
+        if (!tracks.isEmpty()) notifyItemRangeChanged(0, tracks.size());
         if (listener != null) listener.onSelectionChanged(selectedTracks.size());
     }
 
     private void toggleSelection(MediaItem track) {
+        boolean wasSelectionMode = isSelectionMode;
         if (selectedTracks.contains(track)) {
             selectedTracks.remove(track);
         } else {
             selectedTracks.add(track);
         }
-        if (selectedTracks.isEmpty()) {
-            isSelectionMode = false;
+        isSelectionMode = !selectedTracks.isEmpty();
+        if (wasSelectionMode != isSelectionMode) {
+            if (!tracks.isEmpty()) notifyItemRangeChanged(0, tracks.size());
         } else {
-            isSelectionMode = true;
+            int idx = tracks.indexOf(track);
+            if (idx >= 0) {
+                notifyItemChanged(idx);
+            } else if (!tracks.isEmpty()) {
+                notifyItemRangeChanged(0, tracks.size());
+            }
         }
-        notifyDataSetChanged();
         if (listener != null) listener.onSelectionChanged(selectedTracks.size());
     }
 
@@ -105,9 +120,9 @@ public class MusicAdapter extends RecyclerView.Adapter<MusicAdapter.MusicViewHol
         holder.duration.setText(formatDuration(track.duration));
 
         if (track.id != null && track.id.equals(currentPlayingId)) {
-            holder.title.setTextColor(context.getResources().getColor(R.color.nothing_red));
+            holder.title.setTextColor(ContextCompat.getColor(context, R.color.nothing_red));
         } else {
-            holder.title.setTextColor(context.getResources().getColor(R.color.nothing_white));
+            holder.title.setTextColor(ContextCompat.getColor(context, R.color.nothing_white));
         }
 
         if (holder.selectionCheck != null) {
@@ -119,7 +134,7 @@ public class MusicAdapter extends RecyclerView.Adapter<MusicAdapter.MusicViewHol
 
         Glide.with(context)
                 .load(track.path != null ? track.path : track.contentUri)
-                .placeholder(android.R.drawable.ic_lock_silent_mode_off)
+                .placeholder(R.drawable.ic_headphones)
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
                 .into(holder.art);
 
@@ -127,7 +142,8 @@ public class MusicAdapter extends RecyclerView.Adapter<MusicAdapter.MusicViewHol
             if (isSelectionMode) {
                 toggleSelection(track);
             } else if (listener != null) {
-                listener.onTrackClick(track, position);
+                int adapterPos = holder.getBindingAdapterPosition();
+                listener.onTrackClick(track, adapterPos != RecyclerView.NO_POSITION ? adapterPos : position);
             }
         });
 

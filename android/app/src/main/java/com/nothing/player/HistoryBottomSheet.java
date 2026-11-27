@@ -112,7 +112,19 @@ public class HistoryBottomSheet extends BottomSheetDialogFragment implements His
     }
 
     private void launchPlayer(PlaybackHistoryManager.HistoryItem item, long startPosition, boolean startOver) {
-        if (getContext() == null) return;
+        if (getContext() == null || item == null || item.pathOrUri == null || item.pathOrUri.trim().isEmpty()) return;
+        if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
+            String activePath = BackgroundPlaybackManager.getInstance().getCurrentPath();
+            if (activePath != null && activePath.equals(item.pathOrUri) && !startOver) {
+                Intent resumeIntent = new Intent(getContext(), ExoVideoPlayerActivity.class);
+                resumeIntent.putExtra("resume_active_playback", true);
+                startActivity(resumeIntent);
+                dismiss();
+                return;
+            } else {
+                BackgroundPlaybackManager.getInstance().stopAndRelease();
+            }
+        }
         Intent intent = new Intent(getContext(), ExoVideoPlayerActivity.class);
         intent.setAction(Intent.ACTION_VIEW);
         intent.setData(Uri.parse(item.pathOrUri));

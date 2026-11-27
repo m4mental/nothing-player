@@ -12,6 +12,7 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 public class EqualizerActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "nothing_equalizer_prefs";
@@ -91,8 +92,8 @@ public class EqualizerActivity extends AppCompatActivity {
         // Setup Reset
         btnReset.setOnClickListener(v -> {
             applyPresetLevels(new int[]{15, 15, 15, 15, 15});
-            applyBassVirtualizerPreamp(60, 50, 12);
-            selectPreset(chipPunch);
+            applyBassVirtualizerPreamp(0, 0, 12);
+            selectPreset(chipFlat);
         });
 
         // Setup 5 Frequency Bands
@@ -223,7 +224,36 @@ public class EqualizerActivity extends AppCompatActivity {
             applyBassVirtualizerPreamp(0, 0, -1);
         });
 
+        restoreSelectedPreset();
         initAudioEffects();
+    }
+
+    private void restoreSelectedPreset() {
+        int[] b = new int[5];
+        for (int i = 0; i < 5; i++) {
+            b[i] = prefs.getInt("eq_band_" + i, 15);
+        }
+        int bass = prefs.getInt(KEY_BASS, 60);
+        int virt = prefs.getInt(KEY_VIRTUALIZER, 50);
+
+        if (matchesPreset(b, bass, virt, new int[]{21, 18, 14, 18, 20}, 80, 60)) selectPreset(chipPunch);
+        else if (matchesPreset(b, bass, virt, new int[]{24, 19, 17, 21, 23}, 90, 100)) selectPreset(chipCinema);
+        else if (matchesPreset(b, bass, virt, new int[]{25, 22, 16, 13, 14}, 100, 40)) selectPreset(chipBass);
+        else if (matchesPreset(b, bass, virt, new int[]{22, 19, 13, 19, 23}, 85, 70)) selectPreset(chipEdm);
+        else if (matchesPreset(b, bass, virt, new int[]{20, 16, 18, 21, 22}, 70, 50)) selectPreset(chipRock);
+        else if (matchesPreset(b, bass, virt, new int[]{13, 17, 21, 18, 14}, 50, 45)) selectPreset(chipPop);
+        else if (matchesPreset(b, bass, virt, new int[]{11, 14, 23, 20, 15}, 30, 30)) selectPreset(chipVocal);
+        else if (matchesPreset(b, bass, virt, new int[]{11, 13, 23, 22, 17}, 10, 20)) selectPreset(chipDialogue);
+        else if (matchesPreset(b, bass, virt, new int[]{15, 15, 15, 15, 15}, 0, 0)) selectPreset(chipFlat);
+        else selectPreset(null);
+    }
+
+    private boolean matchesPreset(int[] bands, int bass, int virt, int[] targetBands, int targetBass, int targetVirt) {
+        if (bass != targetBass || virt != targetVirt) return false;
+        for (int i = 0; i < 5; i++) {
+            if (bands[i] != targetBands[i]) return false;
+        }
+        return true;
     }
 
     private void updateBandValText(int bandIndex, int progress) {
@@ -237,10 +267,12 @@ public class EqualizerActivity extends AppCompatActivity {
     }
 
     private void applyPresetLevels(int[] levels) {
+        SharedPreferences.Editor editor = prefs.edit();
         for (int i = 0; i < 5; i++) {
             bandSeekbars[i].setProgress(levels[i]);
-            prefs.edit().putInt("eq_band_" + i, levels[i]).apply();
+            editor.putInt("eq_band_" + i, levels[i]);
         }
+        editor.apply();
         applyEffects();
     }
 
@@ -248,7 +280,7 @@ public class EqualizerActivity extends AppCompatActivity {
         if (switchEqPower != null) {
             switchEqPower.setChecked(isEqEnabled);
             switchEqPower.setText(isEqEnabled ? "ON" : "OFF");
-            switchEqPower.setTextColor(getResources().getColor(isEqEnabled ? R.color.nothing_white : R.color.nothing_white_40));
+            switchEqPower.setTextColor(ContextCompat.getColor(this, isEqEnabled ? R.color.nothing_white : R.color.nothing_white_40));
         }
 
         if (eqPowerLed != null) {
@@ -268,13 +300,16 @@ public class EqualizerActivity extends AppCompatActivity {
 
     private void selectPreset(TextView selected) {
         TextView[] chips = {chipPunch, chipCinema, chipBass, chipEdm, chipRock, chipPop, chipVocal, chipDialogue, chipFlat};
+        int black = ContextCompat.getColor(this, R.color.nothing_black);
+        int white70 = ContextCompat.getColor(this, R.color.nothing_white_70);
         for (TextView c : chips) {
+            if (c == null) continue;
             if (c == selected) {
                 c.setBackgroundResource(R.drawable.bg_chip_selected);
-                c.setTextColor(getResources().getColor(R.color.nothing_black));
+                c.setTextColor(black);
             } else {
                 c.setBackgroundResource(R.drawable.bg_chip_unselected);
-                c.setTextColor(getResources().getColor(R.color.nothing_white_70));
+                c.setTextColor(white70);
             }
         }
     }
@@ -300,11 +335,24 @@ public class EqualizerActivity extends AppCompatActivity {
             AudioEffectManager.getInstance().attachAudioSession(extraSessionId, this);
         } else if (MusicPlaybackService.instance != null && MusicPlaybackService.instance.getAudioSessionId() > 0) {
             AudioEffectManager.getInstance().attachAudioSession(MusicPlaybackService.instance.getAudioSessionId(), this);
+        } else if (BackgroundPlaybackManager.getInstance().hasActiveSession()
+                && !BackgroundPlaybackManager.getInstance().isVlcActive()
+                && BackgroundPlaybackManager.getInstance().getActivePlayer() != null) {
+            int bgSession = BackgroundPlaybackManager.getInstance().getActivePlayer().getAudioSessionId();
+            if (bgSession > 0) {
+                AudioEffectManager.getInstance().attachAudioSession(bgSession, this);
+            }
         }
         applyEffects();
     }
 
     private void applyEffects() {
+        if (BackgroundPlaybackManager.getInstance().hasActiveSession()
+                && BackgroundPlaybackManager.getInstance().isVlcActive()
+                && BackgroundPlaybackManager.getInstance().getActiveVlcPlayer() != null) {
+            AudioEffectManager.getInstance().applyVlcEqualizer(
+                    BackgroundPlaybackManager.getInstance().getActiveVlcPlayer(), this);
+        }
         AudioEffectManager.getInstance().applySettings(this);
     }
 }

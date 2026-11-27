@@ -25,7 +25,7 @@
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:src="@drawable/ic_close_dotmatrix"
             app:tint="@color/nothing_white"
             android:contentDescription="Close Selection" />
 
@@ -126,6 +126,7 @@
             android:layout_weight="1"
             android:background="@drawable/bg_chip_unselected"
             android:hint="Search videos, movies, clips..."
+            android:inputType="text"
             android:textColorHint="@color/nothing_white_40"
             android:textColor="@color/nothing_white"
             android:textSize="10.5sp"
@@ -170,6 +171,34 @@
                 android:paddingHorizontal="16dp" />
 
             <TextView
+                android:id="@+id/chip_all_videos"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_chip_unselected"
+                android:text="ALL VIDEOS"
+                android:textColor="@color/nothing_white_70"
+                android:textSize="9.5sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:paddingHorizontal="16dp" />
+
+            <TextView
+                android:id="@+id/chip_network_stream"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_chip_unselected"
+                android:text="ONLINE STREAM"
+                android:textColor="@color/nothing_white_70"
+                android:textSize="9.5sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:paddingHorizontal="14dp" />
+
+            <TextView
                 android:id="@+id/chip_series"
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"
@@ -198,32 +227,18 @@
                 android:paddingHorizontal="16dp" />
 
             <TextView
-                android:id="@+id/chip_all_videos"
+                android:id="@+id/chip_playlists"
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/bg_chip_unselected"
-                android:text="ALL VIDEOS"
+                android:text="PLAYLISTS"
                 android:textColor="@color/nothing_white_70"
                 android:textSize="9.5sp"
                 android:fontFamily="@font/ndot"
                 android:textStyle="bold"
                 android:gravity="center"
                 android:paddingHorizontal="16dp" />
-
-            <TextView
-                android:id="@+id/chip_network_stream"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/bg_chip_unselected"
-                android:text="ONLINE STREAM"
-                android:textColor="@color/nothing_white_70"
-                android:textSize="9.5sp"
-                android:fontFamily="@font/ndot"
-                android:textStyle="bold"
-                android:gravity="center"
-                android:paddingHorizontal="14dp" />
         </LinearLayout>
     </HorizontalScrollView>
 
@@ -339,6 +354,7 @@
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
                 android:background="@drawable/bg_chip_red_active"
+                app:backgroundTint="@null"
                 android:text="RESUME"
                 android:textColor="#FFFFFF"
                 android:textSize="8sp"

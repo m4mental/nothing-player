@@ -15,9 +15,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class PlaylistQueueAdapter extends RecyclerView.Adapter<PlaylistQueueAdapter.QueueViewHolder> {
 
@@ -103,12 +103,12 @@ public class PlaylistQueueAdapter extends RecyclerView.Adapter<PlaylistQueueAdap
         // Load thumbnail
         try {
             String thumbUrl = null;
-            if (item.path != null && item.path.contains("youtube.com")) {
+            if (YouTubeStreamResolver.isYouTubeUrl(item.path)) {
                 String vid = YouTubeStreamResolver.extractVideoId(item.path);
                 if (vid != null && !vid.isEmpty()) {
                     thumbUrl = "https://img.youtube.com/vi/" + vid + "/mqdefault.jpg";
                 }
-            } else if (item.uri != null && item.uri.contains("youtube.com")) {
+            } else if (YouTubeStreamResolver.isYouTubeUrl(item.uri)) {
                 String vid = YouTubeStreamResolver.extractVideoId(item.uri);
                 if (vid != null && !vid.isEmpty()) {
                     thumbUrl = "https://img.youtube.com/vi/" + vid + "/mqdefault.jpg";
@@ -124,9 +124,15 @@ public class PlaylistQueueAdapter extends RecyclerView.Adapter<PlaylistQueueAdap
                         .into(holder.thumb);
             } else {
                 Uri thumbUri = null;
-                if (item.path != null && !item.path.isEmpty() && new File(item.path).exists()) {
-                    thumbUri = Uri.fromFile(new File(item.path));
-                } else if (item.uri != null && !item.uri.isEmpty()) {
+                if (item.uri != null && item.uri.startsWith("content://")) {
+                    thumbUri = Uri.parse(item.uri);
+                } else if (item.path != null && !item.path.isEmpty() && !StreamUrlHelper.isOnlineStream(item.path)) {
+                    if (item.path.startsWith("content://") || item.path.startsWith("file://")) {
+                        thumbUri = Uri.parse(item.path);
+                    } else {
+                        thumbUri = Uri.fromFile(new java.io.File(item.path));
+                    }
+                } else if (item.uri != null && !item.uri.isEmpty() && !StreamUrlHelper.isOnlineStream(item.uri)) {
                     thumbUri = Uri.parse(item.uri);
                 }
 
@@ -135,6 +141,7 @@ public class PlaylistQueueAdapter extends RecyclerView.Adapter<PlaylistQueueAdap
                             .asBitmap()
                             .load(thumbUri)
                             .placeholder(R.drawable.ic_video)
+                            .error(R.drawable.ic_video)
                             .override(160, 100)
                             .diskCacheStrategy(DiskCacheStrategy.ALL)
                             .into(holder.thumb);
@@ -147,7 +154,10 @@ public class PlaylistQueueAdapter extends RecyclerView.Adapter<PlaylistQueueAdap
         }
 
         holder.itemView.setOnClickListener(v -> {
-            if (listener != null) listener.onItemClick(position);
+            int adapterPos = holder.getBindingAdapterPosition();
+            if (listener != null && adapterPos != RecyclerView.NO_POSITION) {
+                listener.onItemClick(adapterPos);
+            }
         });
     }
 
@@ -157,14 +167,15 @@ public class PlaylistQueueAdapter extends RecyclerView.Adapter<PlaylistQueueAdap
     }
 
     private String formatTime(long millis) {
+        if (millis < 0) millis = 0;
         long seconds = millis / 1000;
         long h = seconds / 3600;
         long m = (seconds % 3600) / 60;
         long s = seconds % 60;
         if (h > 0) {
-            return String.format("%d:%02d:%02d", h, m, s);
+            return String.format(Locale.US, "%d:%02d:%02d", h, m, s);
         }
-        return String.format("%02d:%02d", m, s);
+        return String.format(Locale.US, "%02d:%02d", m, s);
     }
 
     static class QueueViewHolder extends RecyclerView.ViewHolder {

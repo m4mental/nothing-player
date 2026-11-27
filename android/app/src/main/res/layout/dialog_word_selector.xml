@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_card_nothing"
+    android:orientation="vertical"
+    android:padding="18dp"
+    android:layout_margin="16dp"
+    android:minWidth="330dp">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <View
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:background="@drawable/led_red"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TAP ANY WORD TO LOOKUP &amp; TRANSLATE"
+                android:textColor="#D71921"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btn_close_word_selector"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_close_dotmatrix"
+            app:tint="#FFFFFF"
+            android:contentDescription="Close Word Selector" />
+    </RelativeLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#22FFFFFF"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Subtitle Line Preview -->
+    <TextView
+        android:id="@+id/tv_selector_subtitle_line"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#161616"
+        android:padding="10dp"
+        android:text="&quot;The atmospheric anomaly is expanding beyond containment.&quot;"
+        android:textColor="#FFFFFF"
+        android:textSize="11sp"
+        android:fontFamily="@font/ndot"
+        android:layout_marginBottom="14dp" />
+
+    <!-- Word Chips Flow Container -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxHeight="220dp"
+        android:scrollbars="none"
+        android:layout_marginBottom="14dp">
+
+        <LinearLayout
+            android:id="@+id/layout_selector_words"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tap any word chip above for instant English definition, phonetic &amp; Hindi translation."
+        android:textColor="#66FFFFFF"
+        android:textSize="8sp"
+        android:gravity="center" />
+
+</LinearLayout>
+

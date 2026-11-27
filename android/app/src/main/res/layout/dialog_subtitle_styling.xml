@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_dialog_nothing"
+    android:padding="20dp">
+
+    <!-- Header -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SUBTITLE STYLING STUDIO"
+        android:textColor="#FFFFFF"
+        android:textSize="12.5sp"
+        android:textStyle="bold"
+        android:fontFamily="@font/ndot"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Section 1: Font Family -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="FONT TYPOGRAPHY"
+        android:textColor="@color/nothing_white_40"
+        android:textSize="8sp"
+        android:fontFamily="@font/ndot"
+        android:layout_marginBottom="6dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="14dp">
+
+        <Button
+            android:id="@+id/btn_sub_font_ndot"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="NDOT MATRIX"
+            android:textColor="#FFFFFF"
+            android:textSize="9sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:background="@drawable/bg_chip_red_active"
+            android:layout_marginEnd="6dp" />
+
+        <Button
+            android:id="@+id/btn_sub_font_sans"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="CLEAN SANS"
+            android:textColor="#FFFFFF"
+            android:textSize="9sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:background="@drawable/bg_chip_dark_inactive" />
+    </LinearLayout>
+
+    <!-- Section 2: Contrast Backing -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="BACKGROUND CONTRAST PLATE"
+        android:textColor="@color/nothing_white_40"
+        android:textSize="8sp"
+        android:fontFamily="@font/ndot"
+        android:layout_marginBottom="6dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="14dp">
+
+        <Button
+            android:id="@+id/btn_sub_box_on"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="DARK CAPSULE"
+            android:textColor="#FFFFFF"
+            android:textSize="9sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:background="@drawable/bg_chip_red_active"
+            android:layout_marginEnd="6dp" />
+
+        <Button
+            android:id="@+id/btn_sub_box_off"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="TRANSPARENT"
+            android:textColor="#FFFFFF"
+            android:textSize="9sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:background="@drawable/bg_chip_dark_inactive" />
+    </LinearLayout>
+
+    <!-- Section 3: Font Size -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TEXT SIZE"
+        android:textColor="@color/nothing_white_40"
+        android:textSize="8sp"
+        android:fontFamily="@font/ndot"
+        android:layout_marginBottom="6dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="18dp">
+
+        <Button
+            android:id="@+id/btn_sub_size_14"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:text="14SP"
+            android:textColor="#FFFFFF"
+            android:textSize="8.5sp"
+            android:fontFamily="@font/ndot"
+            android:background="@drawable/bg_chip_dark_inactive"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btn_sub_size_18"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:text="18SP"
+            android:textColor="#FFFFFF"
+            android:textSize="8.5sp"
+            android:fontFamily="@font/ndot"
+            android:background="@drawable/bg_chip_red_active"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btn_sub_size_22"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:text="22SP"
+            android:textColor="#FFFFFF"
+            android:textSize="8.5sp"
+            android:fontFamily="@font/ndot"
+            android:background="@drawable/bg_chip_dark_inactive"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btn_sub_size_26"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:text="26SP"
+            android:textColor="#FFFFFF"
+            android:textSize="8.5sp"
+            android:fontFamily="@font/ndot"
+            android:background="@drawable/bg_chip_dark_inactive" />
+    </LinearLayout>
+
+    <!-- Close / Apply Button -->
+    <Button
+        android:id="@+id/btn_sub_styling_done"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:text="APPLY AND CLOSE"
+        android:textColor="#FFFFFF"
+        android:textSize="10.5sp"
+        android:textStyle="bold"
+        android:fontFamily="@font/ndot"
+        android:background="@drawable/bg_chip_red_active" />
+
+</LinearLayout>

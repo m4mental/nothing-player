@@ -14,11 +14,26 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
 
 public class FileInfoBottomSheet extends BottomSheetDialogFragment {
+    public interface OnMetadataUpdatedListener {
+        void onMetadataUpdated();
+    }
+
     private MediaItem item;
+    private OnMetadataUpdatedListener metadataUpdatedListener;
+
+    public void setOnMetadataUpdatedListener(OnMetadataUpdatedListener listener) {
+        this.metadataUpdatedListener = listener;
+    }
 
     public static FileInfoBottomSheet newInstance(MediaItem item) {
         FileInfoBottomSheet sheet = new FileInfoBottomSheet();
@@ -60,10 +75,10 @@ public class FileInfoBottomSheet extends BottomSheetDialogFragment {
 
         if (item.audioCodec != null && (item.audioCodec.contains("Dolby") || item.audioCodec.contains("5.1") || item.audioCodec.contains("E-AC-3"))) {
             badgeFormat.setText("DOLBY 5.1");
-            badgeFormat.setTextColor(getResources().getColor(R.color.nothing_red));
+            badgeFormat.setTextColor(ContextCompat.getColor(requireContext(), R.color.nothing_red));
         } else {
             badgeFormat.setText(item.format);
-            badgeFormat.setTextColor(getResources().getColor(R.color.nothing_white));
+            badgeFormat.setTextColor(ContextCompat.getColor(requireContext(), R.color.nothing_white));
         }
 
         btnCopy.setOnClickListener(v -> {
@@ -77,15 +92,26 @@ public class FileInfoBottomSheet extends BottomSheetDialogFragment {
             btnMatch.setOnClickListener(v -> showMatchDialog());
         }
 
+        Button btnPlaylist = view.findViewById(R.id.btn_add_to_playlist);
+        if (btnPlaylist != null) {
+            btnPlaylist.setOnClickListener(v -> showAddToPlaylistDialog());
+        }
+
         btnPlay.setOnClickListener(v -> {
+            Context ctx = getContext();
             dismiss();
             if ("video".equals(item.type)) {
-                Intent intent = new Intent(getContext(), ExoVideoPlayerActivity.class);
-                intent.putExtra("video_path", item.path != null ? item.path : item.contentUri);
-                intent.putExtra("video_title", item.title);
-                startActivity(intent);
+                if (ctx != null) {
+                    Intent intent = new Intent(ctx, ExoVideoPlayerActivity.class);
+                    intent.putExtra("path", item.path);
+                    intent.putExtra("video_path", item.path != null ? item.path : item.contentUri);
+                    intent.putExtra("contentUri", item.contentUri);
+                    intent.putExtra("title", item.title);
+                    intent.putExtra("video_title", item.title);
+                    ctx.startActivity(intent);
+                }
             } else if (getActivity() instanceof MainActivity) {
-                ((MainActivity) getActivity()).playAudioTrack(item, null, -1);
+                ((MainActivity) getActivity()).playAudioTrack(item, Collections.singletonList(item), 0);
             }
         });
 
@@ -97,10 +123,10 @@ public class FileInfoBottomSheet extends BottomSheetDialogFragment {
     private void showMatchDialog() {
         if (getContext() == null || item == null) return;
 
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(getContext());
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         View view = LayoutInflater.from(getContext()).inflate(R.layout.dialog_match_metadata, null);
         builder.setView(view);
-        android.app.AlertDialog dialog = builder.create();
+        AlertDialog dialog = builder.create();
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
         }
@@ -115,11 +141,12 @@ public class FileInfoBottomSheet extends BottomSheetDialogFragment {
         if ("movie".equalsIgnoreCase(item.mediaCategory)) selectedType[0] = "movie";
 
         Runnable updateButtons = () -> {
+            if (!isAdded() || getContext() == null) return;
             boolean isSeries = "series".equalsIgnoreCase(selectedType[0]);
             btnSeries.setBackgroundResource(isSeries ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-            btnSeries.setTextColor(getResources().getColor(isSeries ? R.color.nothing_black : R.color.nothing_white));
+            btnSeries.setTextColor(ContextCompat.getColor(requireContext(), isSeries ? R.color.nothing_black : R.color.nothing_white));
             btnMovie.setBackgroundResource(!isSeries ? R.drawable.bg_chip_selected : R.drawable.bg_chip_unselected);
-            btnMovie.setTextColor(getResources().getColor(!isSeries ? R.color.nothing_black : R.color.nothing_white));
+            btnMovie.setTextColor(ContextCompat.getColor(requireContext(), !isSeries ? R.color.nothing_black : R.color.nothing_white));
         };
         updateButtons.run();
 
@@ -139,14 +166,22 @@ public class FileInfoBottomSheet extends BottomSheetDialogFragment {
         btnCancel.setOnClickListener(v -> dialog.dismiss());
         btnSearch.setOnClickListener(v -> {
             String query = etQuery.getText().toString().trim();
-            if (query.isEmpty()) return;
+            if (query.isEmpty() || getContext() == null) return;
 
             Toast.makeText(getContext(), "SEARCHING ONLINE REGISTRY...", Toast.LENGTH_SHORT).show();
-            OnlineMetadataManager.searchAndApply(getContext(), item, query, selectedType[0], info -> {
+            Context appCtx = getContext().getApplicationContext();
+            OnlineMetadataManager.searchAndApply(appCtx, item, query, selectedType[0], info -> {
+                if (info != null) {
+                    MediaRepository.updateVideoMetadataInCache(appCtx, item);
+                    if (metadataUpdatedListener != null) {
+                        metadataUpdatedListener.onMetadataUpdated();
+                    }
+                }
+                if (!isAdded() || getContext() == null) return;
                 if (info != null) {
                     Toast.makeText(getContext(), "MATCHED: " + info.title, Toast.LENGTH_SHORT).show();
-                    dialog.dismiss();
-                    dismiss();
+                    if (dialog.isShowing()) dialog.dismiss();
+                    dismissAllowingStateLoss();
                 } else {
                     Toast.makeText(getContext(), "NO ONLINE MATCH FOUND", Toast.LENGTH_SHORT).show();
                 }
@@ -154,5 +189,54 @@ public class FileInfoBottomSheet extends BottomSheetDialogFragment {
         });
 
         dialog.show();
+    }
+
+    private void showAddToPlaylistDialog() {
+        if (getContext() == null || item == null) return;
+        List<String> names = VirtualPlaylistManager.getPlaylistNames(getContext());
+        List<String> displayList = new ArrayList<>(names);
+        displayList.add("+ CREATE NEW PLAYLIST");
+
+        NothingDialogHelper.showSelectionDialog(
+            requireActivity(),
+            "ADD TO PLAYLIST",
+            displayList,
+            -1,
+            (which, selectedText) -> {
+                if (getContext() == null) return;
+                if (which == displayList.size() - 1) {
+                    showCreatePlaylistDialog();
+                } else {
+                    String chosen = names.get(which);
+                    String targetPath = item.path != null ? item.path : item.contentUri;
+                    VirtualPlaylistManager.addToPlaylist(getContext(), chosen, targetPath);
+                    Toast.makeText(getContext(), "Added to " + chosen, Toast.LENGTH_SHORT).show();
+                    dismissAllowingStateLoss();
+                }
+            }
+        );
+    }
+
+    private void showCreatePlaylistDialog() {
+        if (getContext() == null || item == null) return;
+        NothingDialogHelper.showInputDialog(
+            getContext(),
+            "CREATE PLAYLIST",
+            null,
+            "PLAYLIST NAME (ALL CAPS)",
+            "CREATE & ADD",
+            android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS,
+            rawName -> {
+                if (!isAdded() || getContext() == null) return;
+                String name = rawName.toUpperCase(Locale.US);
+                if (!name.isEmpty()) {
+                    VirtualPlaylistManager.createPlaylist(getContext(), name);
+                    String targetPath = item.path != null ? item.path : item.contentUri;
+                    VirtualPlaylistManager.addToPlaylist(getContext(), name, targetPath);
+                    Toast.makeText(getContext(), "Created & Added to " + name, Toast.LENGTH_SHORT).show();
+                    dismissAllowingStateLoss();
+                }
+            }
+        );
     }
 }

@@ -2,6 +2,8 @@ package com.nothing.player;
 
 import android.content.Context;
 import android.media.MediaScannerConnection;
+import android.os.Build;
+import android.os.Environment;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -12,8 +14,10 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public class TrashManager {
     private static final String TAG = "TrashManager";
@@ -68,11 +72,15 @@ public class TrashManager {
             boolean moved = sourceFile.renameTo(destFile);
             if (!moved) {
                 // If rename across mounts fails, copy and delete
-                moved = copyAndDelete(sourceFile, destFile);
+                moved = FileDeleteHelper.copyAndDeleteFile(context, sourceFile, destFile, item.contentUri);
             }
 
             if (moved) {
-                MediaScannerConnection.scanFile(context, new String[]{sourceFile.getAbsolutePath()}, null, null);
+                MediaScannerConnection.scanFile(context.getApplicationContext(), new String[]{sourceFile.getAbsolutePath()}, null, null);
+                Set<String> removed = new HashSet<>();
+                removed.add(sourceFile.getAbsolutePath());
+                if (item.contentUri != null && !item.contentUri.isEmpty()) removed.add(item.contentUri);
+                MediaRepository.removeItemsFromCache(context.getApplicationContext(), removed);
 
                 TrashItem trashItem = new TrashItem();
                 trashItem.id = System.currentTimeMillis() + "_" + uniqueSuffix;
@@ -101,7 +109,13 @@ public class TrashManager {
         }
 
         try {
-            File targetFile = new File(item.originalPath);
+            String restorePath = item.originalPath;
+            if (restorePath == null || restorePath.trim().isEmpty()) {
+                File moviesDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "NothingPlayer");
+                String fallbackName = item.title != null && !item.title.trim().isEmpty() ? item.title.trim() : trashedFile.getName();
+                restorePath = new File(moviesDir, fallbackName).getAbsolutePath();
+            }
+            File targetFile = new File(restorePath);
             File parent = targetFile.getParentFile();
             if (parent != null && !parent.exists()) {
                 parent.mkdirs();
@@ -109,11 +123,14 @@ public class TrashManager {
 
             boolean restored = trashedFile.renameTo(targetFile);
             if (!restored) {
-                restored = copyAndDelete(trashedFile, targetFile);
+                restored = FileDeleteHelper.copyAndDeleteFile(context, trashedFile, targetFile, null);
+            }
+            if (!restored && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                restored = FileDeleteHelper.restoreVideoViaMediaStore(context, trashedFile, targetFile.getName());
             }
 
             if (restored) {
-                MediaScannerConnection.scanFile(context, new String[]{targetFile.getAbsolutePath()}, null, null);
+                MediaScannerConnection.scanFile(context.getApplicationContext(), new String[]{targetFile.getAbsolutePath()}, null, null);
                 removeItemFromMeta(context, item.id);
                 return true;
             }
@@ -172,6 +189,10 @@ public class TrashManager {
                 item.size = obj.optLong("size");
                 item.duration = obj.optLong("duration");
 
+                if (item.trashedPath == null || item.trashedPath.isEmpty()) {
+                    needsClean = true;
+                    continue;
+                }
                 File f = new File(item.trashedPath);
                 if (!f.exists() || (now - item.trashedAt > THIRTY_DAYS_MS)) {
                     // Expired or missing
@@ -231,22 +252,6 @@ public class TrashManager {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error writing trash metadata", e);
-        }
-    }
-
-    private static boolean copyAndDelete(File src, File dst) {
-        try (FileInputStream in = new FileInputStream(src);
-             FileOutputStream out = new FileOutputStream(dst)) {
-            byte[] buf = new byte[8192];
-            int len;
-            while ((len = in.read(buf)) > 0) {
-                out.write(buf, 0, len);
-            }
-            out.flush();
-            src.delete();
-            return true;
-        } catch (Exception e) {
-            return false;
         }
     }
 }

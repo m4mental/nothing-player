@@ -37,8 +37,10 @@ public class HistoryListAdapter extends RecyclerView.Adapter<HistoryListAdapter.
     }
 
     public void setItems(List<PlaybackHistoryManager.HistoryItem> newItems) {
-        this.items = newItems != null ? newItems : new ArrayList<>();
-        notifyDataSetChanged();
+        int oldSize = this.items.size();
+        this.items = newItems != null ? new ArrayList<>(newItems) : new ArrayList<>();
+        if (oldSize > 0) notifyItemRangeRemoved(0, oldSize);
+        if (!this.items.isEmpty()) notifyItemRangeInserted(0, this.items.size());
     }
 
     @NonNull
@@ -53,12 +55,17 @@ public class HistoryListAdapter extends RecyclerView.Adapter<HistoryListAdapter.
         PlaybackHistoryManager.HistoryItem item = items.get(position);
 
         holder.title.setText(item.title != null ? item.title : "Video");
-        holder.watchedTime.setText("Watched: " + item.getExactDateTime());
+        holder.watchedTime.setText(("WATCHED: " + item.getExactDateTime()).toUpperCase(java.util.Locale.US));
         holder.duration.setText(item.getFormattedDuration());
 
         int percent = item.getProgressPercent();
-        holder.progressBar.setProgress(percent);
-        holder.progressText.setText(item.getFormattedPosition() + " / " + item.getFormattedDuration() + " (" + percent + "% watched)");
+        if (percent > 0 && item.positionMs > 0) {
+            holder.progressBar.setVisibility(View.VISIBLE);
+            holder.progressBar.setProgress(percent);
+        } else {
+            holder.progressBar.setVisibility(View.GONE);
+        }
+        holder.progressText.setText(item.getFormattedPosition() + " / " + item.getFormattedDuration() + " (" + percent + "% WATCHED)");
 
         Glide.with(context)
                 .load(item.pathOrUri)

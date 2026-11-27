@@ -28,13 +28,17 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MediaRepository {
     private static final String TAG = "MediaRepository";
     private static final String CACHE_VIDEOS_FILE = "cached_videos.json";
     private static final String CACHE_AUDIOS_FILE = "cached_audios.json";
+    private static final ExecutorService IO_EXECUTOR = Executors.newSingleThreadExecutor();
 
     private static List<MediaItem> cachedVideos = null;
     private static List<MediaItem> cachedAudios = null;
@@ -69,9 +73,11 @@ public class MediaRepository {
      * Background scanning that updates cache when differences are detected.
      */
     public static void scanMedia(Context context, ScanCallback callback) {
-        new Thread(() -> {
-            List<MediaItem> freshVideos = scanVideos(context);
-            List<MediaItem> freshAudios = scanAudios(context);
+        if (context == null) return;
+        final Context appCtx = context.getApplicationContext();
+        IO_EXECUTOR.execute(() -> {
+            List<MediaItem> freshVideos = scanVideos(appCtx);
+            List<MediaItem> freshAudios = scanAudios(appCtx);
 
             boolean videosChanged;
             boolean audiosChanged;
@@ -84,40 +90,95 @@ public class MediaRepository {
                 }
             }
 
-            if (videosChanged || audiosChanged) {
-                saveListToDisk(context, CACHE_VIDEOS_FILE, freshVideos);
-                saveListToDisk(context, CACHE_AUDIOS_FILE, freshAudios);
+            if (videosChanged) {
+                writeListToDiskSync(appCtx, CACHE_VIDEOS_FILE, new ArrayList<>(freshVideos));
+            }
+            if (audiosChanged) {
+                writeListToDiskSync(appCtx, CACHE_AUDIOS_FILE, new ArrayList<>(freshAudios));
             }
 
             if (callback != null) {
                 callback.onScanComplete(freshVideos, freshAudios);
             }
-        }).start();
+        });
     }
 
     /**
      * Explicitly update cache when items are deleted.
      */
     public static synchronized void removeItemsFromCache(Context context, Set<String> deletedPaths) {
-        if (deletedPaths == null || deletedPaths.isEmpty()) return;
+        if (deletedPaths == null || deletedPaths.isEmpty() || context == null) return;
+        Context appCtx = context.getApplicationContext();
 
         if (cachedVideos != null) {
             List<MediaItem> updated = new ArrayList<>();
             for (MediaItem item : cachedVideos) {
-                if (!deletedPaths.contains(item.path)) updated.add(item);
+                if (!isPathDeleted(item, deletedPaths)) updated.add(item);
             }
             cachedVideos = updated;
-            saveListToDisk(context, CACHE_VIDEOS_FILE, updated);
+            final List<MediaItem> snapshot = new ArrayList<>(updated);
+            IO_EXECUTOR.execute(() -> writeListToDiskSync(appCtx, CACHE_VIDEOS_FILE, snapshot));
         }
 
         if (cachedAudios != null) {
             List<MediaItem> updated = new ArrayList<>();
             for (MediaItem item : cachedAudios) {
-                if (!deletedPaths.contains(item.path)) updated.add(item);
+                if (!isPathDeleted(item, deletedPaths)) updated.add(item);
             }
             cachedAudios = updated;
-            saveListToDisk(context, CACHE_AUDIOS_FILE, updated);
+            final List<MediaItem> snapshot = new ArrayList<>(updated);
+            IO_EXECUTOR.execute(() -> writeListToDiskSync(appCtx, CACHE_AUDIOS_FILE, snapshot));
         }
+    }
+
+    public static synchronized void updateVideoMetadataInCache(Context context, MediaItem updatedItem) {
+        if (context == null || updatedItem == null || cachedVideos == null) return;
+        boolean changed = false;
+        for (MediaItem m : cachedVideos) {
+            boolean samePath = updatedItem.path != null && updatedItem.path.equals(m.path);
+            boolean sameUri = updatedItem.contentUri != null && updatedItem.contentUri.equals(m.contentUri);
+            if (samePath || sameUri) {
+                m.mediaCategory = updatedItem.mediaCategory;
+                m.seriesName = updatedItem.seriesName;
+                m.cleanTitle = updatedItem.cleanTitle;
+                m.posterUrl = updatedItem.posterUrl;
+                m.releaseYear = updatedItem.releaseYear;
+                m.rating = updatedItem.rating;
+                m.synopsis = updatedItem.synopsis;
+                changed = true;
+            }
+        }
+        if (changed) {
+            Context appCtx = context.getApplicationContext();
+            List<MediaItem> snapshot = new ArrayList<>(cachedVideos);
+            IO_EXECUTOR.execute(() -> writeListToDiskSync(appCtx, CACHE_VIDEOS_FILE, snapshot));
+        }
+    }
+
+    public static synchronized void updateAudioCodecInCache(Context context, String pathOrUri, String audioCodec, String audioChannels) {
+        if (context == null || pathOrUri == null || pathOrUri.isEmpty() || cachedVideos == null) return;
+        boolean changed = false;
+        for (MediaItem m : cachedVideos) {
+            if (pathOrUri.equals(m.path) || pathOrUri.equals(m.contentUri)) {
+                if (!java.util.Objects.equals(m.audioCodec, audioCodec)
+                        || !java.util.Objects.equals(m.audioChannels, audioChannels)) {
+                    m.audioCodec = audioCodec;
+                    m.audioChannels = audioChannels;
+                    changed = true;
+                }
+            }
+        }
+        if (changed) {
+            Context appCtx = context.getApplicationContext();
+            List<MediaItem> snapshot = new ArrayList<>(cachedVideos);
+            IO_EXECUTOR.execute(() -> writeListToDiskSync(appCtx, CACHE_VIDEOS_FILE, snapshot));
+        }
+    }
+
+    private static boolean isPathDeleted(MediaItem item, Set<String> deletedPaths) {
+        if (item == null) return true;
+        if (item.path != null && deletedPaths.contains(item.path)) return true;
+        return item.contentUri != null && deletedPaths.contains(item.contentUri);
     }
 
     private static boolean hasListChanged(List<MediaItem> oldList, List<MediaItem> newList) {
@@ -191,8 +252,7 @@ public class MediaRepository {
                 item.rating = obj.optString("rating", null);
                 item.synopsis = obj.optString("synopsis", null);
 
-                // Verify file still exists on disk before adding
-                if (item.path != null && new File(item.path).exists()) {
+                if (item.path != null && !item.path.isEmpty()) {
                     if (item.mediaCategory == null) {
                         MediaOrganizerEngine.processItem(item);
                     }
@@ -205,50 +265,57 @@ public class MediaRepository {
         return list;
     }
 
-    private static void saveListToDisk(Context context, String fileName, List<MediaItem> list) {
+    private static void writeListToDiskSync(Context context, String fileName, List<MediaItem> list) {
         if (context == null || list == null) return;
-        new Thread(() -> {
-            try {
-                File file = new File(context.getFilesDir(), fileName);
-                JSONArray arr = new JSONArray();
-                for (MediaItem item : list) {
-                    JSONObject obj = new JSONObject();
-                    obj.put("id", item.id);
-                    obj.put("title", item.title);
-                    obj.put("path", item.path);
-                    obj.put("contentUri", item.contentUri);
-                    obj.put("duration", item.duration);
-                    obj.put("size", item.size);
-                    obj.put("format", item.format);
-                    obj.put("resolution", item.resolution);
-                    obj.put("folder", item.folder);
-                    obj.put("artist", item.artist);
-                    obj.put("album", item.album);
-                    obj.put("audioCodec", item.audioCodec);
-                    obj.put("audioChannels", item.audioChannels);
-                    obj.put("type", item.type);
-                    obj.put("addedAt", item.addedAt);
-                    if (item.mediaCategory != null) obj.put("mediaCategory", item.mediaCategory);
-                    if (item.seriesName != null) obj.put("seriesName", item.seriesName);
-                    if (item.seasonNumber != -1) obj.put("seasonNumber", item.seasonNumber);
-                    if (item.episodeNumber != -1) obj.put("episodeNumber", item.episodeNumber);
-                    if (item.cleanTitle != null) obj.put("cleanTitle", item.cleanTitle);
-                    if (item.posterUrl != null) obj.put("posterUrl", item.posterUrl);
-                    if (item.releaseYear != null) obj.put("releaseYear", item.releaseYear);
-                    if (item.rating != null) obj.put("rating", item.rating);
-                    if (item.synopsis != null) obj.put("synopsis", item.synopsis);
-                    arr.put(obj);
-                }
+        try {
+            File file = new File(context.getFilesDir(), fileName);
+            File tmpFile = new File(context.getFilesDir(), fileName + ".tmp");
+            JSONArray arr = new JSONArray();
+            for (MediaItem item : list) {
+                JSONObject obj = new JSONObject();
+                obj.put("id", item.id);
+                obj.put("title", item.title);
+                obj.put("path", item.path);
+                obj.put("contentUri", item.contentUri);
+                obj.put("duration", item.duration);
+                obj.put("size", item.size);
+                obj.put("format", item.format);
+                obj.put("resolution", item.resolution);
+                obj.put("folder", item.folder);
+                obj.put("artist", item.artist);
+                obj.put("album", item.album);
+                obj.put("audioCodec", item.audioCodec);
+                obj.put("audioChannels", item.audioChannels);
+                obj.put("type", item.type);
+                obj.put("addedAt", item.addedAt);
+                if (item.mediaCategory != null) obj.put("mediaCategory", item.mediaCategory);
+                if (item.seriesName != null) obj.put("seriesName", item.seriesName);
+                if (item.seasonNumber != -1) obj.put("seasonNumber", item.seasonNumber);
+                if (item.episodeNumber != -1) obj.put("episodeNumber", item.episodeNumber);
+                if (item.cleanTitle != null) obj.put("cleanTitle", item.cleanTitle);
+                if (item.posterUrl != null) obj.put("posterUrl", item.posterUrl);
+                if (item.releaseYear != null) obj.put("releaseYear", item.releaseYear);
+                if (item.rating != null) obj.put("rating", item.rating);
+                if (item.synopsis != null) obj.put("synopsis", item.synopsis);
+                arr.put(obj);
+            }
 
+            try (FileOutputStream fos = new FileOutputStream(tmpFile);
+                 OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8)) {
+                osw.write(arr.toString());
+                osw.flush();
+            }
+            if (!tmpFile.renameTo(file)) {
                 try (FileOutputStream fos = new FileOutputStream(file);
                      OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8)) {
                     osw.write(arr.toString());
                     osw.flush();
                 }
-            } catch (Exception e) {
-                Log.w(TAG, "Failed saving cache file: " + fileName, e);
+                tmpFile.delete();
             }
-        }).start();
+        } catch (Exception e) {
+            Log.w(TAG, "Failed saving cache file: " + fileName, e);
+        }
     }
 
     public static List<MediaItem> scanVideos(Context context) {
@@ -291,6 +358,7 @@ public class MediaRepository {
                     knownPaths.add(path);
 
                     File f = new File(path);
+                    if (!f.exists() || f.length() <= 0) continue;
                     String folder = "Storage";
                     if (f.getParentFile() != null) {
                         folder = f.getParentFile().getName();
@@ -299,7 +367,7 @@ public class MediaRepository {
                     String format = "MP4";
                     String name = f.getName();
                     if (name.contains(".")) {
-                        format = name.substring(name.lastIndexOf(".") + 1).toUpperCase();
+                        format = name.substring(name.lastIndexOf(".") + 1).toUpperCase(Locale.US);
                     }
 
                     String res = "HD";
@@ -403,6 +471,7 @@ public class MediaRepository {
                     knownPaths.add(path);
 
                     File f = new File(path);
+                    if (!f.exists() || f.length() <= 0) continue;
                     String folder = "Music";
                     if (f.getParentFile() != null) {
                         folder = f.getParentFile().getName();
@@ -411,7 +480,7 @@ public class MediaRepository {
                     String format = "MP3";
                     String name = f.getName();
                     if (name.contains(".")) {
-                        format = name.substring(name.lastIndexOf(".") + 1).toUpperCase();
+                        format = name.substring(name.lastIndexOf(".") + 1).toUpperCase(Locale.US);
                     }
 
                     Uri contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id);
@@ -479,7 +548,7 @@ public class MediaRepository {
         String name = dir.getName();
         if (name.startsWith(".")) return true; // skip hidden system folders (.thumbnails, .cache)
 
-        String lowerPath = dir.getAbsolutePath().replace('\\', '/').toLowerCase();
+        String lowerPath = dir.getAbsolutePath().replace('\\', '/').toLowerCase(Locale.US);
         // Explicitly skip Android/data and Android/obb folders (case-insensitive)
         if (lowerPath.contains("/android/data") || lowerPath.contains("/android/obb") ||
             lowerPath.endsWith("/android/data") || lowerPath.endsWith("/android/obb")) {
@@ -508,13 +577,7 @@ public class MediaRepository {
                 String path = f.getAbsolutePath();
                 if (knownPaths.contains(path)) continue;
 
-                String lower = f.getName().toLowerCase();
-                if (lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".webm") ||
-                    lower.endsWith(".avi") || lower.endsWith(".mov") || lower.endsWith(".3gp") ||
-                    lower.endsWith(".ts") || lower.endsWith(".m4v") || lower.endsWith(".flv") ||
-                    lower.endsWith(".wmv") || lower.endsWith(".vob") || lower.endsWith(".ogv") ||
-                    lower.endsWith(".divx") || lower.endsWith(".rmvb") || lower.endsWith(".mpg") ||
-                    lower.endsWith(".mpeg") || lower.endsWith(".m2ts")) {
+                if (isVideoExtension(f.getName())) {
 
                     knownPaths.add(path);
                     MediaItem item = createMediaItemFromDiskFile(context, f, "video");
@@ -527,6 +590,20 @@ public class MediaRepository {
                 }
             }
         }
+    }
+
+    public static boolean isVideoExtension(String filename) {
+        if (filename == null) return false;
+        String lower = filename.toLowerCase(Locale.US);
+        return lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".webm") ||
+                lower.endsWith(".avi") || lower.endsWith(".mov") || lower.endsWith(".3gp") ||
+                lower.endsWith(".3g2") || lower.endsWith(".ts") || lower.endsWith(".m2ts") ||
+                lower.endsWith(".mts") || lower.endsWith(".m4v") || lower.endsWith(".flv") ||
+                lower.endsWith(".f4v") || lower.endsWith(".wmv") || lower.endsWith(".vob") ||
+                lower.endsWith(".ogv") || lower.endsWith(".ogm") || lower.endsWith(".divx") ||
+                lower.endsWith(".rmvb") || lower.endsWith(".rm") || lower.endsWith(".mpg") ||
+                lower.endsWith(".mpeg") || lower.endsWith(".asf") || lower.endsWith(".mxf") ||
+                lower.endsWith(".trp");
     }
 
     private static void scanDirectoryForAudios(Context context, File dir, Set<String> knownPaths, List<MediaItem> list, int depth) {
@@ -545,7 +622,7 @@ public class MediaRepository {
                 String path = f.getAbsolutePath();
                 if (knownPaths.contains(path)) continue;
 
-                String lower = f.getName().toLowerCase();
+                String lower = f.getName().toLowerCase(Locale.US);
                 if (lower.endsWith(".mp3") || lower.endsWith(".flac") || lower.endsWith(".wav") ||
                     lower.endsWith(".m4a") || lower.endsWith(".aac") || lower.endsWith(".ogg") ||
                     lower.endsWith(".opus") || lower.endsWith(".wma") || lower.endsWith(".alac") ||
@@ -569,14 +646,15 @@ public class MediaRepository {
             String path = f.getAbsolutePath();
             String name = f.getName();
             String title = name.contains(".") ? name.substring(0, name.lastIndexOf('.')) : name;
-            String format = name.contains(".") ? name.substring(name.lastIndexOf('.') + 1).toUpperCase() : "MEDIA";
+            String format = name.contains(".") ? name.substring(name.lastIndexOf('.') + 1).toUpperCase(Locale.US) : "MEDIA";
             String folder = f.getParentFile() != null ? f.getParentFile().getName() : "Storage";
             long size = f.length();
             long added = f.lastModified();
             long duration = 0;
             String res = "HD";
 
-            try (MediaMetadataRetriever mmr = new MediaMetadataRetriever()) {
+            MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+            try {
                 mmr.setDataSource(path);
                 String durStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
                 if (durStr != null) duration = Long.parseLong(durStr);
@@ -591,7 +669,12 @@ public class MediaRepository {
                     else if (w >= 1280 || h >= 720) res = "720p HD";
                     else if (w > 0 && h > 0) res = w + "x" + h;
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            } finally {
+                try {
+                    mmr.release();
+                } catch (Exception ignored) {}
+            }
 
             MediaItem item = new MediaItem(
                 "file_" + Math.abs(path.hashCode()),
@@ -620,8 +703,8 @@ public class MediaRepository {
     }
 
     private static void extractAudioFormat(MediaItem item) {
-        String lowerTitle = item.title != null ? item.title.toLowerCase() : "";
-        String lowerPath = item.path != null ? item.path.toLowerCase() : "";
+        String lowerTitle = item.title != null ? item.title.toLowerCase(Locale.US) : "";
+        String lowerPath = item.path != null ? item.path.toLowerCase(Locale.US) : "";
 
         if (lowerTitle.contains("eac3") || lowerTitle.contains("e-ac-3") || lowerTitle.contains("ddp") || lowerTitle.contains("dd5.1") || lowerTitle.contains("5.1") ||
             lowerPath.contains("eac3") || lowerPath.contains("dd5.1") || lowerPath.contains("5.1")) {

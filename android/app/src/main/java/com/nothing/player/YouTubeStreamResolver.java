@@ -99,9 +99,10 @@ public class YouTubeStreamResolver {
 
             // Try resolving direct HLS or MP4 stream
             for (String instance : STREAM_ENDPOINTS) {
+                HttpURLConnection conn = null;
                 try {
                     URL apiUrl = new URL(instance + videoId);
-                    HttpURLConnection conn = (HttpURLConnection) apiUrl.openConnection();
+                    conn = (HttpURLConnection) apiUrl.openConnection();
                     conn.setRequestMethod("GET");
                     conn.setConnectTimeout(3000);
                     conn.setReadTimeout(3500);
@@ -110,13 +111,13 @@ public class YouTubeStreamResolver {
 
                     int code = conn.getResponseCode();
                     if (code == 200) {
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                         StringBuilder sb = new StringBuilder();
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            sb.append(line);
+                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                sb.append(line);
+                            }
                         }
-                        reader.close();
 
                         JSONObject json = new JSONObject(sb.toString());
                         if (json.has("title")) {
@@ -150,13 +151,20 @@ public class YouTubeStreamResolver {
                     }
                 } catch (Exception ignored) {
                     // Try next endpoint
+                } finally {
+                    if (conn != null) {
+                        conn.disconnect();
+                    }
                 }
             }
 
-            final String finalStream = (foundStreamUrl != null && !foundStreamUrl.isEmpty()) ? foundStreamUrl : url;
-            final String finalTitle = foundTitle;
-
-            mainHandler.post(() -> callback.onResolved(finalStream, finalTitle));
+            if (foundStreamUrl != null && !foundStreamUrl.isEmpty()) {
+                final String finalStream = foundStreamUrl;
+                final String finalTitle = foundTitle;
+                mainHandler.post(() -> callback.onResolved(finalStream, finalTitle));
+            } else {
+                mainHandler.post(() -> callback.onError("Could not resolve direct YouTube stream"));
+            }
         });
     }
 }

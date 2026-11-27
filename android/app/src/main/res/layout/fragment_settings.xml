@@ -4,13 +4,27 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/nothing_black"
-    android:padding="14dp">
+    android:padding="14dp"
+    android:scrollbars="none">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingBottom="80dp">
+        android:paddingBottom="100dp">
+
+        <!-- SECTION 1: AUDIO OUTPUT & HARDWARE DSP ENGINE -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AUDIO OUTPUT &amp; DSP ENGINE"
+            android:textColor="@color/nothing_red"
+            android:textSize="9.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="4dp" />
 
         <!-- 10-Band DSP Equalizer Card -->
         <RelativeLayout
@@ -18,27 +32,27 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_card_nothing"
-            android:padding="16dp"
-            android:layout_marginBottom="10dp"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp"
             android:clickable="true"
             android:focusable="true">
 
             <ImageView
                 android:id="@+id/eq_icon"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
                 android:layout_alignParentStart="true"
                 android:layout_centerVertical="true"
                 android:background="@drawable/bg_circle_button"
                 android:padding="8dp"
-                android:src="@android:drawable/ic_menu_sort_by_size"
+                android:src="@drawable/ic_audio_track"
                 app:tint="@color/nothing_red" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_toEndOf="@id/eq_icon"
-                android:layout_toStartOf="@id/eq_arrow"
+                android:layout_toStartOf="@+id/eq_arrow"
                 android:layout_centerVertical="true"
                 android:layout_marginStart="12dp"
                 android:orientation="vertical">
@@ -46,20 +60,20 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="10-Band DSP Equalizer"
+                    android:text="10-Band DSP Equalizer Hub"
                     android:textColor="@color/nothing_white"
-                    android:textSize="14sp"
-                    android:fontFamily="monospace"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
                     android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:text="Bass punch, Preamp &amp; Nothing acoustic presets"
+                    android:text="Bass punch, 3D spatial &amp; Nothing acoustic presets"
                     android:textColor="@color/nothing_white_40"
-                    android:textSize="11sp"
-                    android:fontFamily="sans-serif" />
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
             </LinearLayout>
 
             <TextView
@@ -70,80 +84,18 @@
                 android:layout_centerVertical="true"
                 android:text="›"
                 android:textColor="@color/nothing_white_40"
-                android:textSize="15sp"
+                android:textSize="16sp"
                 android:fontFamily="@font/ndot" />
         </RelativeLayout>
 
-        <!-- Hardware Acceleration (HW+) -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_card_nothing"
-            android:padding="16dp"
-            android:layout_marginBottom="10dp">
-
-            <ImageView
-                android:id="@+id/hw_icon"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_alignParentStart="true"
-                android:layout_centerVertical="true"
-                android:background="@drawable/bg_circle_button"
-                android:padding="8dp"
-                android:src="@android:drawable/ic_menu_manage"
-                app:tint="@color/nothing_red" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_toEndOf="@id/hw_icon"
-                android:layout_toStartOf="@id/hw_badge"
-                android:layout_centerVertical="true"
-                android:layout_marginStart="12dp"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Hardware Acceleration (HW+)"
-                    android:textColor="@color/nothing_white"
-                    android:textSize="14sp"
-                    android:fontFamily="monospace"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="GPU hardware decoding for 4K / 60FPS"
-                    android:textColor="@color/nothing_white_40"
-                    android:textSize="11sp"
-                    android:fontFamily="sans-serif" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/hw_badge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:background="#22D71921"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="4dp"
-                android:text="ACTIVE (HW)"
-                android:textColor="@color/nothing_red"
-                android:textSize="10sp"
-                android:fontFamily="monospace"
-                android:textStyle="bold" />
-        </RelativeLayout>
-
-        <!-- Audio Boost 200% Control -->
+        <!-- MX Audio Boost Limit Card -->
+        <!-- Stereo L/R Balance Fader Card -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_card_nothing"
-            android:padding="16dp"
-            android:layout_marginBottom="10dp"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp"
             android:orientation="vertical">
 
             <RelativeLayout
@@ -153,21 +105,21 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="MX Audio Boost Limit"
+                    android:text="STEREO L / R BALANCE FADER"
                     android:textColor="@color/nothing_white"
-                    android:textSize="14sp"
-                    android:fontFamily="monospace"
+                    android:textSize="11.5sp"
+                    android:fontFamily="@font/ndot"
                     android:textStyle="bold" />
 
                 <TextView
-                    android:id="@+id/tv_audio_boost_val"
+                    android:id="@+id/tv_audio_balance_val"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
-                    android:text="150%"
+                    android:text="CENTER (0)"
                     android:textColor="@color/nothing_red"
-                    android:textSize="13sp"
-                    android:fontFamily="monospace"
+                    android:textSize="10.5sp"
+                    android:fontFamily="@font/ndot"
                     android:textStyle="bold" />
             </RelativeLayout>
 
@@ -175,28 +127,1503 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Overdrive volume up to 200% with clipping protection"
+                android:text="Left and Right channel acoustic pan calibration"
                 android:textColor="@color/nothing_white_40"
-                android:textSize="11sp" />
+                android:textSize="8.5sp"
+                android:fontFamily="@font/ndot" />
 
-            <SeekBar
-                android:id="@+id/seekbar_audio_boost"
+            <com.nothing.player.DotMatrixSeekBar
+                android:id="@+id/seekbar_audio_balance"
+                android:layout_width="match_parent"
+                android:layout_height="24dp"
+                android:layout_marginTop="8dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:max="200"
+                android:progress="100" />
+        </LinearLayout>
+
+        <!-- Headset Disconnect Guard (Auto-Pause & Resume) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="16dp"
+            android:orientation="vertical">
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_toStartOf="@+id/switch_headset_auto_pause"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="HEADSET AUTO-PAUSE"
+                        android:textColor="@color/nothing_white"
+                        android:textSize="11.5sp"
+                        android:fontFamily="@font/ndot"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Pause instantly when headphones / Bluetooth disconnect"
+                        android:textColor="@color/nothing_white_40"
+                        android:textSize="8.5sp"
+                        android:fontFamily="@font/ndot" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_headset_auto_pause"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    app:thumbTint="@color/nothing_red"
+                    app:trackTint="#66D71921" />
+            </RelativeLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#1AFFFFFF"
+                android:layout_marginVertical="8dp" />
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_toStartOf="@+id/switch_headset_auto_resume"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="HEADSET AUTO-RESUME"
+                        android:textColor="@color/nothing_white"
+                        android:textSize="11.5sp"
+                        android:fontFamily="@font/ndot"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Auto-resume playback when headphones are reconnected"
+                        android:textColor="@color/nothing_white_40"
+                        android:textSize="8.5sp"
+                        android:fontFamily="@font/ndot" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_headset_auto_resume"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    app:thumbTint="@color/nothing_red"
+                    app:trackTint="#66D71921" />
+            </RelativeLayout>
+        </LinearLayout>
+
+        <!-- SECTION 2: VIDEO RENDERING & HARDWARE DECODERS -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="VIDEO RENDERING &amp; DECODERS"
+            android:textColor="@color/nothing_red"
+            android:textSize="9.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Per-Codec HEVC / H.265 Decoder Routing -->
+        <RelativeLayout
+            android:id="@+id/card_codec_hevc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:max="100"
-                android:progress="50"
-                android:progressTint="@color/nothing_red"
-                android:thumbTint="@color/nothing_white" />
+                android:layout_toStartOf="@+id/tv_codec_hevc_val"
+                android:layout_centerVertical="true"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="HEVC / H.265 4K DECODER"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="11.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Auto fallback or force GPU HW+ acceleration"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_codec_hevc_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="#22D71921"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="AUTO (RECOMMENDED)"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <!-- Dynamic Display Refresh Rate (24Hz / 60Hz / 120Hz) -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/switch_match_refresh_rate"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MATCH DISPLAY REFRESH RATE"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="11.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sync 24Hz / 48Hz / 60Hz / 120Hz for zero cinema judder"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_match_refresh_rate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:thumbTint="@color/nothing_red"
+                app:trackTint="#66D71921" />
+        </RelativeLayout>
+
+
+        <!-- SECTION 3: GESTURE & TOUCH ZONE STUDIO -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="GESTURE &amp; TOUCH ZONE STUDIO"
+            android:textColor="@color/nothing_red"
+            android:textSize="9.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Double-Tap Seek Step -->
+        <RelativeLayout
+            android:id="@+id/card_double_tap_step"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/tv_double_tap_step_val"
+                android:layout_centerVertical="true"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="DOUBLE-TAP SEEK JUMP STEP"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="11.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Timeline jump interval on left / right double tap"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_double_tap_step_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="#22D71921"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="10 SECONDS"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <!-- Long-Press Turbo Multiplier -->
+        <RelativeLayout
+            android:id="@+id/card_long_press_multiplier"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/tv_long_press_multiplier_val"
+                android:layout_centerVertical="true"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="LONG-PRESS TURBO SPEED"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="11.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Fast-forward speed target while holding the screen"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_long_press_multiplier_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="#22D71921"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="2.0X SPEED"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <!-- Max Pinch-Zoom Limit -->
+        <RelativeLayout
+            android:id="@+id/card_max_zoom"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/tv_max_zoom_val"
+                android:layout_centerVertical="true"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MAX PINCH-ZOOM LIMIT"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="11.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Maximum allowed video zoom factor with free pan"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_max_zoom_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="#22D71921"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="400% ZOOM"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <!-- Pocket & Screen-Off Hardware Keys Track Skip -->
+        <RelativeLayout
+            android:id="@+id/card_pocket_hardware_keys"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/switch_pocket_hardware_keys"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="POCKET &amp; SCREEN-OFF HARDWARE KEYS"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="11.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Long-press Vol+ for Next, Vol- for Previous when screen is off / locked"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_pocket_hardware_keys"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:thumbTint="@color/nothing_red"
+                app:trackTint="#66D71921" />
+        </RelativeLayout>
+
+        <!-- Auto Subtitle Guard in Zoom & Ultrawide -->
+        <RelativeLayout
+            android:id="@+id/card_subtitle_guard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/switch_settings_subtitle_guard"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AUTO SUBTITLE GUARD (ZOOM / 21:9)"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="11.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Auto-lifts cropped video so bottom hardcoded subtitles are never cut off"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_settings_subtitle_guard"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:thumbTint="@color/nothing_red"
+                app:trackTint="#66D71921" />
+        </RelativeLayout>
+
+
+        <!-- SECTION 5: NOTHING OS UI & ACCENT STUDIO -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="NOTHING OS UI &amp; ACCENT STUDIO"
+            android:textColor="@color/nothing_red"
+            android:textSize="9.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Accent Color Studio -->
+        <RelativeLayout
+            android:id="@+id/card_accent_color"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/tv_accent_color_val"
+                android:layout_centerVertical="true"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SIGNATURE ACCENT PALETTE"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="11.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Red, Pure White or Carbon stealth theme"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_accent_color_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="#22D71921"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="NOTHING RED"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <!-- Browser Media View Density -->
+        <RelativeLayout
+            android:id="@+id/card_browser_density"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="16dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/tv_browser_density_val"
+                android:layout_centerVertical="true"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MEDIA BROWSER CARD DENSITY"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="11.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Default grid cards layout across folders &amp; videos"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_browser_density_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="#22D71921"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="2-COLUMN GRID"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <!-- SECTION: VIDEOPHILE RENDERING & AMOLED STUDIO -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="VIDEOPHILE RENDERING &amp; AMOLED STUDIO"
+            android:textColor="@color/nothing_red"
+            android:textSize="9.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="16dp" />
+
+        <!-- AMOLED Deep Black Filter -->
+        <RelativeLayout
+            android:id="@+id/card_amoled_pure_black"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/switch_amoled_pure_black"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AMOLED Pure-Black Clamping"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="True #000000 black letterbox &amp; grey noise elimination"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_amoled_pure_black"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:thumbTint="@color/nothing_red"
+                app:trackTint="#66D71921" />
+        </RelativeLayout>
+
+        <!-- Warm Eye Comfort Shield -->
+        <RelativeLayout
+            android:id="@+id/card_eye_comfort"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/switch_eye_comfort"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Warm Eye Comfort Shield"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Blue-light reduction amber layer for night viewing"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_eye_comfort"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:thumbTint="@color/nothing_red"
+                app:trackTint="#66D71921" />
+        </RelativeLayout>
+
+        <!-- RAM Buffer Cache Customizer -->
+        <RelativeLayout
+            android:id="@+id/card_buffer_size_mode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/tv_buffer_size_mode_val"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="RAM Buffer Cache Size"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Ultra-Low (5MB seek) / Balanced (25MB) / Heavy (100MB anti-stutter)"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_buffer_size_mode_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="#22D71921"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="BALANCED"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <!-- SECTION: AUDIOPHILE REPLAYGAIN & DAC STUDIO -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AUDIOPHILE REPLAYGAIN &amp; DAC STUDIO"
+            android:textColor="@color/nothing_red"
+            android:textSize="9.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="16dp" />
+
+        <!-- ReplayGain Loudness Auto-Leveler -->
+        <RelativeLayout
+            android:id="@+id/card_replay_gain_leveler"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/switch_replay_gain_leveler"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ReplayGain Loudness Auto-Leveler"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="EBU R128 auto-normalizes audio volume between quiet &amp; loud tracks"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_replay_gain_leveler"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:thumbTint="@color/nothing_red"
+                app:trackTint="#66D71921" />
+        </RelativeLayout>
+
+        <!-- DJ Crossfade Blending -->
+        <RelativeLayout
+            android:id="@+id/card_crossfade_sec"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/tv_crossfade_sec_val"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="DJ Crossfade Blending"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Seamless audio transition between playlist songs and clips"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_crossfade_sec_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="#22D71921"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="OFF (0S)"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <!-- Bit-Perfect USB DAC Passthrough -->
+        <RelativeLayout
+            android:id="@+id/card_dac_passthrough"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/switch_dac_passthrough"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Bit-Perfect USB DAC Passthrough"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Direct 24-bit/192kHz output bypasses Android mixer resampling"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_dac_passthrough"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:thumbTint="@color/nothing_red"
+                app:trackTint="#66D71921" />
+        </RelativeLayout>
+
+        <!-- SECTION: DUAL SUBTITLES & ACCESSIBILITY -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="DUAL SUBTITLES &amp; ACCESSIBILITY"
+            android:textColor="@color/nothing_red"
+            android:textSize="9.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="16dp" />
+
+        <!-- Hearing-Impaired (SDH) Cleaner -->
+        <RelativeLayout
+            android:id="@+id/card_sub_clean_sdh"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/switch_sub_clean_sdh"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SDH Sound Effects Cleaner"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Strips [MUSIC], (SIGHS), [APPLAUSE] &amp; actor labels from subtitles"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_sub_clean_sdh"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:thumbTint="@color/nothing_red"
+                app:trackTint="#66D71921" />
+        </RelativeLayout>
+
+        <!-- SECTION: ERGONOMICS, PALM REJECTION & SCRUBBING -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ERGONOMICS, PALM REJECTION &amp; SCRUBBING"
+            android:textColor="@color/nothing_red"
+            android:textSize="9.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="16dp" />
+
+        <!-- Palm Rejection Deadzone Card -->
+        <RelativeLayout
+            android:id="@+id/card_palm_rejection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/tv_palm_rejection_val"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Edge Palm Rejection Deadzone"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Prevents accidental edge touches on bezel-less screen grip"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_palm_rejection_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="#22D71921"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="OFF (0DP)"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <!-- Swipe Travel Sensitivity Slider -->
+        <RelativeLayout
+            android:id="@+id/card_gesture_sensitivity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/tv_gesture_sensitivity_val"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Swipe Gesture Travel Sensitivity"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Volume and brightness vertical swipe responsiveness"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_gesture_sensitivity_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="#22D71921"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="NORMAL (1.0X)"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <!-- Scrubbing Precision Mode -->
+        <RelativeLayout
+            android:id="@+id/card_scrubbing_mode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/tv_scrubbing_mode_val"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Scrubbing Seek Precision"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Fast Keyframe (0ms instant) vs Exact Frame (sample-accurate)"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_scrubbing_mode_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="#22D71921"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="FAST KEYFRAME"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <!-- SECTION: SMART AUTOMATION & NAVIGATION -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SMART AUTOMATION &amp; NAVIGATION"
+            android:textColor="@color/nothing_red"
+            android:textSize="9.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="16dp" />
+
+        <!-- Video-Adaptive Auto-Rotation -->
+        <RelativeLayout
+            android:id="@+id/card_auto_rotate_by_aspect"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/switch_auto_rotate_by_aspect"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Video-Adaptive Auto-Rotation"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Auto-landscape for 16:9/21:9 &amp; auto-portrait for vertical shorts"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_auto_rotate_by_aspect"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:thumbTint="@color/nothing_red"
+                app:trackTint="#66D71921" />
+        </RelativeLayout>
+
+        <!-- Auto-PiP on Home Gesture -->
+        <RelativeLayout
+            android:id="@+id/card_auto_pip_home"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/switch_auto_pip_home"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Auto-PiP on Home Gesture"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Shrink into Picture-in-Picture window when swiping home"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_auto_pip_home"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:thumbTint="@color/nothing_red"
+                app:trackTint="#66D71921" />
+        </RelativeLayout>
+
+        <!-- Smart Resume Policy Card -->
+        <RelativeLayout
+            android:id="@+id/card_resume_policy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/tv_resume_policy_val"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Smart Playback Resume Policy"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Always Resume / Discard if &lt; 2 min left / Always Start"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_resume_policy_val"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="#22D71921"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="ALWAYS RESUME"
+                android:textColor="@color/nothing_red"
+                android:textSize="9sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
+        <!-- SECTION: BATTERY & BURN-IN DEFENSE -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="BATTERY &amp; BURN-IN DEFENSE"
+            android:textColor="@color/nothing_red"
+            android:textSize="9.5sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="16dp" />
+
+        <!-- Ultra-Eco 30FPS Battery Saver -->
+        <RelativeLayout
+            android:id="@+id/card_eco_battery_saver"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/switch_eco_battery_saver"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ultra-Eco 30FPS Battery Saver"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Limits display to 30Hz &amp; caps CPU decoder when battery &lt; 15%"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_eco_battery_saver"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:thumbTint="@color/nothing_red"
+                app:trackTint="#66D71921" />
+        </RelativeLayout>
+
+        <!-- AMOLED Pixel Shifter (Burn-in Defense) -->
+        <RelativeLayout
+            android:id="@+id/card_amoled_pixel_shift"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toStartOf="@+id/switch_amoled_pixel_shift"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AMOLED Pixel Shifter (Burn-In Guard)"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Imperceptibly shifts static HUD controls ±1px every 3 min"
+                    android:textColor="@color/nothing_white_40"
+                    android:textSize="8.5sp"
+                    android:fontFamily="@font/ndot" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_amoled_pixel_shift"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:thumbTint="@color/nothing_red"
+                app:trackTint="#66D71921" />
+        </RelativeLayout>
+
+
+        <!-- Vault Auto-Lock & JSON Backup Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="14dp"
+            android:layout_marginBottom="14dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="DATA BACKUP &amp; VAULT SECURITY"
+                android:textColor="@color/nothing_red"
+                android:textSize="10sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold"
+                android:letterSpacing="0.08"
+                android:layout_marginBottom="10dp" />
+
+            <RelativeLayout
+                android:id="@+id/card_vault_autolock"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingVertical="8dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:text="VAULT AUTO-LOCK TIMEOUT"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="11.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_vault_autolock_val"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:text="30 SECONDS"
+                    android:textColor="@color/nothing_red"
+                    android:textSize="10sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+            </RelativeLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="10dp">
+
+                <Button
+                    android:id="@+id/btn_export_backup_json"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_circle_red"
+                    app:backgroundTint="@null"
+                    android:text="EXPORT JSON"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="9.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/btn_import_backup_json"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:background="@drawable/bg_btn_nothing_outline"
+                    app:backgroundTint="@null"
+                    android:text="IMPORT JSON"
+                    android:textColor="@color/nothing_white"
+                    android:textSize="9.5sp"
+                    android:fontFamily="@font/ndot"
+                    android:textStyle="bold" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- About Nothing Box -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/nothing_surface"
-            android:padding="20dp"
-            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_card_nothing"
+            android:padding="18dp"
             android:orientation="vertical"
             android:gravity="center">
 
@@ -205,8 +1632,8 @@
                 android:layout_height="wrap_content"
                 android:text="NOTHING PLAYER (01)"
                 android:textColor="@color/nothing_white"
-                android:textSize="14sp"
-                android:fontFamily="monospace"
+                android:textSize="12.5sp"
+                android:fontFamily="@font/ndot"
                 android:textStyle="bold"
                 android:letterSpacing="0.1" />
 
@@ -214,18 +1641,21 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="100% PURE NATIVE ANDROID ARCHITECTURE"
-                android:textColor="@color/nothing_white_40"
-                android:textSize="10sp"
-                android:fontFamily="monospace" />
+                android:text="ULTRA HIGH-END HARDWARE-CALIBRATED MEDIA ENGINE"
+                android:textColor="@color/nothing_red"
+                android:textSize="8sp"
+                android:fontFamily="@font/ndot"
+                android:textStyle="bold" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Engineered for Nothing Phone (2a) &amp; all Android Devices"
+                android:layout_marginTop="3dp"
+                android:text="Customized for Nothing OS, LTPO Dynamic Refresh &amp; Pure Dot-Matrix"
                 android:textColor="@color/nothing_white_40"
-                android:textSize="10sp" />
+                android:textSize="8sp"
+                android:fontFamily="@font/ndot"
+                android:gravity="center" />
         </LinearLayout>
 
     </LinearLayout>

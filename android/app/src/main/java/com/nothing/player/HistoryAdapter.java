@@ -33,8 +33,10 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
     }
 
     public void setItems(List<PlaybackHistoryManager.HistoryItem> newItems) {
-        this.items = newItems != null ? newItems : new ArrayList<>();
-        notifyDataSetChanged();
+        int oldSize = this.items.size();
+        this.items = newItems != null ? new ArrayList<>(newItems) : new ArrayList<>();
+        if (oldSize > 0) notifyItemRangeRemoved(0, oldSize);
+        if (!this.items.isEmpty()) notifyItemRangeInserted(0, this.items.size());
     }
 
     @NonNull
@@ -52,7 +54,12 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.ViewHold
         holder.duration.setText(item.getFormattedDuration());
 
         int percent = item.getProgressPercent();
-        holder.progressBar.setProgress(percent);
+        if (percent > 0 && item.positionMs > 0) {
+            holder.progressBar.setVisibility(View.VISIBLE);
+            holder.progressBar.setProgress(percent);
+        } else {
+            holder.progressBar.setVisibility(View.GONE);
+        }
         holder.subtext.setText(item.getFormattedPosition() + " / " + item.getFormattedDuration() + " • " + percent + "%");
 
         Glide.with(context)

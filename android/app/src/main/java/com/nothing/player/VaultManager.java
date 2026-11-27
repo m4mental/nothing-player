@@ -3,6 +3,8 @@ package com.nothing.player;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.media.MediaScannerConnection;
+import android.os.Build;
+import android.os.Environment;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -14,8 +16,10 @@ import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public class VaultManager {
     private static final String TAG = "VaultManager";
@@ -30,6 +34,8 @@ public class VaultManager {
     private static final String KEY_DECOY_PATTERN_HASH = "vault_decoy_pattern_hash";
     private static final String KEY_BIOMETRIC_ENABLED = "vault_biometric_enabled";
     private static final String KEY_AUTO_BIOMETRIC = "vault_auto_biometric";
+    private static final String KEY_AUTO_LOCK_SEC = "vault_auto_lock_sec";
+    private static final String KEY_LAST_BACKGROUND_MS = "vault_last_background_ms";
     private static final String VAULT_DIR = ".vault";
     private static final String META_FILE = "vault_metadata.json";
 
@@ -160,6 +166,39 @@ public class VaultManager {
         return prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false);
     }
 
+    public static int getAutoLockSeconds(Context context) {
+        if (context == null) return 30;
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getInt(KEY_AUTO_LOCK_SEC, 30);
+    }
+
+    public static void setAutoLockSeconds(Context context, int seconds) {
+        if (context == null) return;
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putInt(KEY_AUTO_LOCK_SEC, seconds).apply();
+    }
+
+    public static void recordBackgroundTimestamp(Context context) {
+        if (context == null) return;
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putLong(KEY_LAST_BACKGROUND_MS, System.currentTimeMillis()).apply();
+    }
+
+    public static void clearBackgroundTimestamp(Context context) {
+        if (context == null) return;
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().remove(KEY_LAST_BACKGROUND_MS).apply();
+    }
+
+    public static boolean isSessionExpired(Context context) {
+        if (context == null || !isSecurityConfigured(context)) return false;
+        int timeoutSec = getAutoLockSeconds(context);
+        if (timeoutSec < 0) return false; // OFF
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        long bgMs = prefs.getLong(KEY_LAST_BACKGROUND_MS, 0L);
+        if (bgMs <= 0L) return false;
+        return (System.currentTimeMillis() - bgMs) >= (timeoutSec * 1000L);
+    }
+
     public static void setBiometricEnabled(Context context, boolean enabled) {
         if (context == null) return;
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -228,11 +267,15 @@ public class VaultManager {
 
             boolean moved = sourceFile.renameTo(destFile);
             if (!moved) {
-                moved = copyAndDelete(sourceFile, destFile);
+                moved = FileDeleteHelper.copyAndDeleteFile(context, sourceFile, destFile, item.contentUri);
             }
 
             if (moved) {
-                MediaScannerConnection.scanFile(context, new String[]{sourceFile.getAbsolutePath()}, null, null);
+                MediaScannerConnection.scanFile(context.getApplicationContext(), new String[]{sourceFile.getAbsolutePath()}, null, null);
+                Set<String> removed = new HashSet<>();
+                removed.add(sourceFile.getAbsolutePath());
+                if (item.contentUri != null && !item.contentUri.isEmpty()) removed.add(item.contentUri);
+                MediaRepository.removeItemsFromCache(context.getApplicationContext(), removed);
 
                 VaultItem vaultItem = new VaultItem();
                 vaultItem.id = System.currentTimeMillis() + "_" + uniqueSuffix;
@@ -261,7 +304,13 @@ public class VaultManager {
         }
 
         try {
-            File targetFile = new File(item.originalPath);
+            String restorePath = item.originalPath;
+            if (restorePath == null || restorePath.trim().isEmpty()) {
+                File moviesDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "NothingPlayer");
+                String fallbackName = item.title != null && !item.title.trim().isEmpty() ? item.title.trim() : vaultFile.getName();
+                restorePath = new File(moviesDir, fallbackName).getAbsolutePath();
+            }
+            File targetFile = new File(restorePath);
             File parent = targetFile.getParentFile();
             if (parent != null && !parent.exists()) {
                 parent.mkdirs();
@@ -269,11 +318,14 @@ public class VaultManager {
 
             boolean restored = vaultFile.renameTo(targetFile);
             if (!restored) {
-                restored = copyAndDelete(vaultFile, targetFile);
+                restored = FileDeleteHelper.copyAndDeleteFile(context, vaultFile, targetFile, null);
+            }
+            if (!restored && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                restored = FileDeleteHelper.restoreVideoViaMediaStore(context, vaultFile, targetFile.getName());
             }
 
             if (restored) {
-                MediaScannerConnection.scanFile(context, new String[]{targetFile.getAbsolutePath()}, null, null);
+                MediaScannerConnection.scanFile(context.getApplicationContext(), new String[]{targetFile.getAbsolutePath()}, null, null);
                 removeItemFromMeta(context, item.id);
                 return true;
             }
@@ -321,9 +373,11 @@ public class VaultManager {
                 item.size = obj.optLong("size");
                 item.duration = obj.optLong("duration");
 
-                File f = new File(item.vaultPath);
-                if (f.exists()) {
-                    items.add(item);
+                if (item.vaultPath != null && !item.vaultPath.isEmpty()) {
+                    File f = new File(item.vaultPath);
+                    if (f.exists()) {
+                        items.add(item);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -371,22 +425,6 @@ public class VaultManager {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error writing vault metadata", e);
-        }
-    }
-
-    private static boolean copyAndDelete(File src, File dst) {
-        try (FileInputStream in = new FileInputStream(src);
-             FileOutputStream out = new FileOutputStream(dst)) {
-            byte[] buf = new byte[8192];
-            int len;
-            while ((len = in.read(buf)) > 0) {
-                out.write(buf, 0, len);
-            }
-            out.flush();
-            src.delete();
-            return true;
-        } catch (Exception e) {
-            return false;
         }
     }
 }

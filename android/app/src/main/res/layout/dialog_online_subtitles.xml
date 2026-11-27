@@ -70,6 +70,26 @@
             android:paddingHorizontal="14dp" />
     </LinearLayout>
 
+    <!-- 1-Tap Exact Hash Match Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="10dp">
+
+        <Button
+            android:id="@+id/btn_subtitle_hash_match"
+            android:layout_width="match_parent"
+            android:layout_height="34dp"
+            android:background="@drawable/bg_btn_nothing_outline"
+            android:text="🎯 MATCH BY MOVIE HASH (100% FRAME SYNC)"
+            android:textColor="#D71921"
+            android:textSize="8sp"
+            android:fontFamily="@font/ndot"
+            android:textStyle="bold" />
+    </LinearLayout>
+
     <!-- Language Filter Pills -->
     <LinearLayout
         android:layout_width="match_parent"

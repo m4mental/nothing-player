@@ -154,7 +154,7 @@
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_menu_more"
+            android:src="@drawable/ic_more_vert"
             android:contentDescription="Menu"
             app:tint="@color/nothing_white_40" />
     </RelativeLayout>

@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.widget.RemoteViews;
 
 public class NothingPlayerWidgetProvider extends AppWidgetProvider {
@@ -42,18 +43,26 @@ public class NothingPlayerWidgetProvider extends AppWidgetProvider {
             if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
                 BackgroundPlaybackManager.getInstance().playNext(context);
             } else {
-                Intent nextIntent = new Intent(context, MusicPlaybackService.class).setAction(MusicPlaybackService.ACTION_NEXT);
-                context.startService(nextIntent);
+                dispatchMusicServiceAction(context, MusicPlaybackService.ACTION_NEXT);
             }
             updateAllWidgets(context);
         } else if (ACTION_WIDGET_PREV.equals(action)) {
             if (BackgroundPlaybackManager.getInstance().hasActiveSession()) {
                 BackgroundPlaybackManager.getInstance().playPrevious(context);
             } else {
-                Intent prevIntent = new Intent(context, MusicPlaybackService.class).setAction(MusicPlaybackService.ACTION_PREV);
-                context.startService(prevIntent);
+                dispatchMusicServiceAction(context, MusicPlaybackService.ACTION_PREV);
             }
             updateAllWidgets(context);
+        }
+    }
+
+    private static void dispatchMusicServiceAction(Context context, String serviceAction) {
+        if (context == null || MusicPlaybackService.instance == null) return;
+        Intent serviceIntent = new Intent(context, MusicPlaybackService.class).setAction(serviceAction);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            MusicPlaybackService.instance.onStartCommand(serviceIntent, 0, 0);
+        } else {
+            context.startService(serviceIntent);
         }
     }
 

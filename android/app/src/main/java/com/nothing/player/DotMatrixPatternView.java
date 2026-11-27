@@ -50,7 +50,7 @@ public class DotMatrixPatternView extends View {
     private float currentTouchY = -1;
     private boolean isTouching = false;
     private boolean isError = false;
-    private boolean isEnabled = true;
+    private boolean patternEnabled = true;
 
     private float hitRadius;
     private float ringRadius;
@@ -172,8 +172,20 @@ public class DotMatrixPatternView extends View {
     }
 
     @Override
+    public void setEnabled(boolean enabled) {
+        super.setEnabled(enabled);
+        this.patternEnabled = enabled;
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        handler.removeCallbacksAndMessages(null);
+    }
+
+    @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (!isEnabled) return false;
+        if (!patternEnabled || !isEnabled()) return false;
 
         float x = event.getX();
         float y = event.getY();
