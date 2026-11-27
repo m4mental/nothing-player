@@ -43,6 +43,7 @@ public class NowPlayingBottomSheet extends BottomSheetDialogFragment {
     private ScrollView layoutLyricsOverlay;
     private Button btnToggleLyrics;
     private SeekBar seekbar;
+    private DotMatrixSpectrumView spectrumView;
     private ImageButton btnPlayPause, btnPrev, btnNext, btnShuffle, btnRepeat, btnEq, btnClose;
     private boolean isUserSeeking = false;
     private boolean isShuffleOn = false;
@@ -106,6 +107,7 @@ public class NowPlayingBottomSheet extends BottomSheetDialogFragment {
         tvCurrent = view.findViewById(R.id.full_player_time_current);
         tvTotal = view.findViewById(R.id.full_player_time_total);
         seekbar = view.findViewById(R.id.full_player_seekbar);
+        spectrumView = view.findViewById(R.id.now_playing_spectrum);
         btnPlayPause = view.findViewById(R.id.btn_full_play_pause);
         btnPrev = view.findViewById(R.id.btn_full_prev);
         btnNext = view.findViewById(R.id.btn_full_next);
@@ -253,6 +255,10 @@ public class NowPlayingBottomSheet extends BottomSheetDialogFragment {
             if (dur > 0) seekbar.setMax((int) dur);
             seekbar.setProgress((int) pos);
         }
+        if (spectrumView != null) {
+            int sid = MusicPlaybackService.instance != null ? MusicPlaybackService.instance.getAudioSessionId() : 0;
+            spectrumView.attachSession(sid, isPlaying);
+        }
         if (isLyricsVisible) {
             renderLyricsAt(pos, false);
         }
@@ -327,11 +333,18 @@ public class NowPlayingBottomSheet extends BottomSheetDialogFragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if (spectrumView != null) {
+            spectrumView.releaseVisualizer();
+        }
         try { lrcExecutor.shutdownNow(); } catch (Exception ignored) {}
     }
 
     private void updateTrackUI() {
         if (currentTrack == null || title == null || artist == null || tvTotal == null || seekbar == null || btnPlayPause == null) return;
+        if (spectrumView != null) {
+            int sid = MusicPlaybackService.instance != null ? MusicPlaybackService.instance.getAudioSessionId() : 0;
+            spectrumView.attachSession(sid, isPlaying);
+        }
         title.setText(currentTrack.title != null && !currentTrack.title.isEmpty() ? currentTrack.title : "NOTHING TRACK");
         String artistName = (currentTrack.artist != null && !currentTrack.artist.trim().isEmpty())
                 ? currentTrack.artist.trim() : "Unknown Artist";

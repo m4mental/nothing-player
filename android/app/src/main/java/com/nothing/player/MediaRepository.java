@@ -577,13 +577,7 @@ public class MediaRepository {
                 String path = f.getAbsolutePath();
                 if (knownPaths.contains(path)) continue;
 
-                String lower = f.getName().toLowerCase(Locale.US);
-                if (lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".webm") ||
-                    lower.endsWith(".avi") || lower.endsWith(".mov") || lower.endsWith(".3gp") ||
-                    lower.endsWith(".ts") || lower.endsWith(".m4v") || lower.endsWith(".flv") ||
-                    lower.endsWith(".wmv") || lower.endsWith(".vob") || lower.endsWith(".ogv") ||
-                    lower.endsWith(".divx") || lower.endsWith(".rmvb") || lower.endsWith(".mpg") ||
-                    lower.endsWith(".mpeg") || lower.endsWith(".m2ts")) {
+                if (isVideoExtension(f.getName())) {
 
                     knownPaths.add(path);
                     MediaItem item = createMediaItemFromDiskFile(context, f, "video");
@@ -596,6 +590,20 @@ public class MediaRepository {
                 }
             }
         }
+    }
+
+    public static boolean isVideoExtension(String filename) {
+        if (filename == null) return false;
+        String lower = filename.toLowerCase(Locale.US);
+        return lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".webm") ||
+                lower.endsWith(".avi") || lower.endsWith(".mov") || lower.endsWith(".3gp") ||
+                lower.endsWith(".3g2") || lower.endsWith(".ts") || lower.endsWith(".m2ts") ||
+                lower.endsWith(".mts") || lower.endsWith(".m4v") || lower.endsWith(".flv") ||
+                lower.endsWith(".f4v") || lower.endsWith(".wmv") || lower.endsWith(".vob") ||
+                lower.endsWith(".ogv") || lower.endsWith(".ogm") || lower.endsWith(".divx") ||
+                lower.endsWith(".rmvb") || lower.endsWith(".rm") || lower.endsWith(".mpg") ||
+                lower.endsWith(".mpeg") || lower.endsWith(".asf") || lower.endsWith(".mxf") ||
+                lower.endsWith(".trp");
     }
 
     private static void scanDirectoryForAudios(Context context, File dir, Set<String> knownPaths, List<MediaItem> list, int depth) {

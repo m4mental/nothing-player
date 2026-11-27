@@ -50,7 +50,8 @@ public class MediaAutoScanner {
     private static final long DEBOUNCE_DELAY_MS = 800;
 
     private static final Set<String> SUPPORTED_EXTENSIONS = new HashSet<>(Arrays.asList(
-            "mp4", "mkv", "avi", "mov", "webm", "flv", "3gp", "ts", "m4v", "wmv",
+            "mp4", "mkv", "avi", "mov", "webm", "flv", "f4v", "3gp", "3g2", "ts", "m2ts", "mts",
+            "m4v", "wmv", "vob", "ogv", "ogm", "divx", "rmvb", "rm", "mpg", "mpeg", "asf", "mxf", "trp",
             "mp3", "m4a", "wav", "flac", "aac", "ogg", "opus", "wma"
     ));
 

@@ -43,15 +43,6 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Install NPM Dependencies
-        run: npm install
-
-      - name: Build Web Assets
-        run: npm run build
-
-      - name: Sync Capacitor Android
-        run: npx cap sync android
-
       - name: Make Gradlew Executable
         run: chmod +x ./android/gradlew
 
@@ -87,25 +78,25 @@ jobs:
         run: |
           ROOT_DIR=$(pwd)
           mkdir -p release-assets
-          
-          # Copy release or debug APKs
-          if [ -d "android/app/build/outputs/apk/release" ]; then
+
+          # Prefer optimized R8-shrunk Release APKs per CPU architecture
+          if [ -d "android/app/build/outputs/apk/release" ] && ls android/app/build/outputs/apk/release/*.apk >/dev/null 2>&1; then
             cd android/app/build/outputs/apk/release/
             for f in *.apk; do
               if [ -f "$f" ]; then
-                echo "Copying release $f to $ROOT_DIR/release-assets/"
-                cp "$f" "$ROOT_DIR/release-assets/${f/app-/NothingPlayer-}"
+                target_name="${f/app-/NothingPlayer-}"
+                echo "Copying release $f -> $ROOT_DIR/release-assets/$target_name"
+                cp "$f" "$ROOT_DIR/release-assets/$target_name"
               fi
             done
             cd "$ROOT_DIR"
-          fi
-
-          if [ -d "android/app/build/outputs/apk/debug" ]; then
+          elif [ -d "android/app/build/outputs/apk/debug" ]; then
             cd android/app/build/outputs/apk/debug/
             for f in *.apk; do
               if [ -f "$f" ]; then
-                echo "Copying debug $f to $ROOT_DIR/release-assets/"
-                cp "$f" "$ROOT_DIR/release-assets/${f/app-/NothingPlayer-}"
+                target_name="${f/app-/NothingPlayer-}"
+                echo "Copying debug $f -> $ROOT_DIR/release-assets/$target_name"
+                cp "$f" "$ROOT_DIR/release-assets/$target_name"
               fi
             done
             cd "$ROOT_DIR"
@@ -128,14 +119,24 @@ jobs:
             echo "tag_name=beta-latest" >> $GITHUB_OUTPUT
             echo "release_name=🟡 Nothing Player Beta (dev)" >> $GITHUB_OUTPUT
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/alpha" ]; then
+            echo "tag_name=alpha-latest" >> $GITHUB_OUTPUT
+            echo "release_name=🧪 Nothing Player Alpha (experimental)" >> $GITHUB_OUTPUT
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
           else
             echo "tag_name=v2.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
             echo "release_name=🔴 Nothing Player v2.0 (Build #${{ github.run_number }})" >> $GITHUB_OUTPUT
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
           fi
 
+          ARM64_SIZE=$(ls -lh release-assets/*arm64-v8a*.apk 2>/dev/null | head -n1 | awk '{print $5}' || echo "~30M")
+          ARMV7_SIZE=$(ls -lh release-assets/*armeabi-v7a*.apk 2>/dev/null | head -n1 | awk '{print $5}' || echo "~28M")
+          X8664_SIZE=$(ls -lh release-assets/*x86_64*.apk 2>/dev/null | head -n1 | awk '{print $5}' || echo "~33M")
+          X86_SIZE=$(ls -lh release-assets/*-x86-*.apk 2>/dev/null | head -n1 | awk '{print $5}' || echo "~32M")
+          UNIV_SIZE=$(ls -lh release-assets/*universal*.apk 2>/dev/null | head -n1 | awk '{print $5}' || echo "~105M")
+
           cat << EOF > release_notes.md
-          # 🔴 NOTHING PLAYER v2.0 // MULTI-ARCH ANDROID RELEASE
+          # 🔴 NOTHING PLAYER v2.0 // LIGHTWEIGHT MULTI-ARCH ANDROID RELEASE
 
           > **Build Timestamp:** ${DATE}  
           > **Commit:** \`${COMMIT_HASH}\` by @${COMMIT_AUTHOR}  
@@ -143,15 +144,17 @@ jobs:
 
           ---
 
-          ### 📲 Download APK (Choose by Architecture)
+          ### 📲 Which APK should you download? (Multi-Architecture Guide)
 
-          | Architecture | Target Devices | Typical Size |
-          |:---|:---|:---|
-          | **ARM64 (arm64-v8a)** ⭐ *(Recommended)* | Nothing Phone 1/2/2a, Pixel, Samsung, OnePlus, modern 64-bit phones | **~50 MB** |
-          | **ARMv7 (armeabi-v7a)** | Older 32-bit Android phones & budget devices | **~48 MB** |
-          | **x86_64** | 64-bit Android Emulators (PC, Android Studio, WSA) | **~58 MB** |
-          | **x86** | 32-bit PC Emulators | **~55 MB** |
-          | **Universal All-in-One** | Universal bundle with all 4 engines combined | **~190 MB** |
+          | APK File | CPU Architecture | Compatible Devices | Size |
+          |:---|:---|:---|:---|
+          | **\`NothingPlayer-arm64-v8a-release.apk\`** ⭐ | **arm64-v8a** (64-bit ARM) | **90%+ Modern Android Phones** (Nothing, Pixel, Samsung, OnePlus) | **${ARM64_SIZE}** |
+          | **\`NothingPlayer-armeabi-v7a-release.apk\`** | **armeabi-v7a** (32-bit ARM) | Older 32-bit Android Phones & Budget Devices | **${ARMV7_SIZE}** |
+          | **\`NothingPlayer-x86_64-release.apk\`** | **x86_64** (64-bit x86) | Android Emulators, PC (WSA) & ChromeOS | **${X8664_SIZE}** |
+          | **\`NothingPlayer-x86-release.apk\`** | **x86** (32-bit x86) | Legacy 32-bit PC Emulators | **${X86_SIZE}** |
+          | **\`NothingPlayer-universal-release.apk\`** | **Universal All-in-One** | Works on Any Android Device | **${UNIV_SIZE}** |
+
+          > 💡 **Tip:** Modern Android phones use **\`NothingPlayer-arm64-v8a-release.apk\`** — lightweight, R8-shrunk, and optimized for fast launch & low memory usage.
 
           ---
 
@@ -161,18 +164,10 @@ jobs:
 
           ---
 
-          ## 📱 Mobile App Features Included
-          - **Universal Dual-Engine**: AndroidX Media3 (HW+) + LibVLC Native C++ Engine (SW+)
-          - **Full Storage Scanner**: Automatically scans all directories on Internal Storage & SD Cards (excluding Android/data and Android/obb)
-          - **Dolby EAC-3 5.1 / AC-3 / DTS / TrueHD Native Downmixing**: Crystal-clear surround playback with zero codec errors
-          - **Zero-Black-Screen TextureView Rendering**: Direct hardware streaming without video freezing
-          - **Pro Gesture Cinema Controls**: Vertical swipe brightness/volume with 200% audio boost & real-time Nothing OS HUD
-          - **Multi-Track Audio & Subtitle Switchers**: Top bar dialogs for multi-language tracks and embedded subtitles
-          - **Background Audio Service**: MediaStyle foreground playback service with lockscreen and Bluetooth headset controls
-          - **Network Stream Player**: Direct video link playback with clipboard paste and demo streams
-
-          ---
-          *Automated Android APK build powered by GitHub Actions for NOTHING PLAYER.*
+          ## 📱 Codecs & Engine Highlights
+          - **Lightweight Dual-Engine**: Media3 1.7.1 + FFmpeg (HW+) + LibVLC 3.7.8 (SW+) with lazy WebView loading & R8 minification
+          - **Modern Video Codecs**: AV1 (`dav1d`/`libaom`), HEVC/H.265 10-bit, Dolby Vision, VVC/H.266 fallback, VP9, H.264, RTSP & SmoothStreaming
+          - **Surround & Hi-Res Audio**: Dolby Digital Plus (E-AC-3 5.1), AC-3, AC-4, TrueHD, DTS / DTS-HD, Opus, FLAC, ALAC
           EOF
 
       - name: Create GitHub Release with APK

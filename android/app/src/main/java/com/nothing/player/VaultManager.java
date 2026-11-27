@@ -34,6 +34,8 @@ public class VaultManager {
     private static final String KEY_DECOY_PATTERN_HASH = "vault_decoy_pattern_hash";
     private static final String KEY_BIOMETRIC_ENABLED = "vault_biometric_enabled";
     private static final String KEY_AUTO_BIOMETRIC = "vault_auto_biometric";
+    private static final String KEY_AUTO_LOCK_SEC = "vault_auto_lock_sec";
+    private static final String KEY_LAST_BACKGROUND_MS = "vault_last_background_ms";
     private static final String VAULT_DIR = ".vault";
     private static final String META_FILE = "vault_metadata.json";
 
@@ -162,6 +164,39 @@ public class VaultManager {
         if (context == null) return false;
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getBoolean(KEY_BIOMETRIC_ENABLED, false);
+    }
+
+    public static int getAutoLockSeconds(Context context) {
+        if (context == null) return 30;
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getInt(KEY_AUTO_LOCK_SEC, 30);
+    }
+
+    public static void setAutoLockSeconds(Context context, int seconds) {
+        if (context == null) return;
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putInt(KEY_AUTO_LOCK_SEC, seconds).apply();
+    }
+
+    public static void recordBackgroundTimestamp(Context context) {
+        if (context == null) return;
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putLong(KEY_LAST_BACKGROUND_MS, System.currentTimeMillis()).apply();
+    }
+
+    public static void clearBackgroundTimestamp(Context context) {
+        if (context == null) return;
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().remove(KEY_LAST_BACKGROUND_MS).apply();
+    }
+
+    public static boolean isSessionExpired(Context context) {
+        if (context == null || !isSecurityConfigured(context)) return false;
+        int timeoutSec = getAutoLockSeconds(context);
+        if (timeoutSec < 0) return false; // OFF
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        long bgMs = prefs.getLong(KEY_LAST_BACKGROUND_MS, 0L);
+        if (bgMs <= 0L) return false;
+        return (System.currentTimeMillis() - bgMs) >= (timeoutSec * 1000L);
     }
 
     public static void setBiometricEnabled(Context context, boolean enabled) {

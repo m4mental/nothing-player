@@ -28,9 +28,9 @@
         android:layout_gravity="center"
         android:visibility="gone" />
 
-    <!-- YouTube Stream Video Surface (Inside Default Player) -->
-    <WebView
-        android:id="@+id/youtube_stream_view"
+    <!-- YouTube Stream Container (WebView inflated lazily only for YouTube URLs) -->
+    <FrameLayout
+        android:id="@+id/youtube_stream_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="center"

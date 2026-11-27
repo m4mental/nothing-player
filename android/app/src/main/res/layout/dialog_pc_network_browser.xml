@@ -164,5 +164,18 @@
         android:textStyle="bold"
         android:letterSpacing="0.08" />
 
+    <Button
+        android:id="@+id/btn_browse_network_folders"
+        android:layout_width="match_parent"
+        android:layout_height="42dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_btn_nothing_outline"
+        app:backgroundTint="@null"
+        android:text="● BROWSE FOLDERS (SMB / UPNP / FTP)"
+        android:textColor="@color/nothing_white"
+        android:textSize="9.5sp"
+        android:fontFamily="@font/ndot"
+        android:textStyle="bold" />
+
 </LinearLayout>
 

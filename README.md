@@ -270,6 +270,10 @@
 - **ReplayGain / EBU R128 Loudness Auto-Leveler (`pref_replay_gain_leveler`)**: Real-time hardware DSP loudness normalization across tracks and video clips, equalizing whispers and sudden loud spikes to standard target reference.
 - **DJ Crossfade Blending (`pref_crossfade_sec`)**: Seamless linear volume crossfade blending (`Off (0s)`, `2s`, `4s`, `6s`) between songs and playlist tracks in `MusicPlaybackService`.
 - **Bit-Perfect USB DAC Passthrough (`pref_dac_passthrough`)**: Direct `24-bit/192kHz` bitstream output bypassing standard Android OS 48kHz audio mixer downsampling for external audiophile Type-C DACs and IEMs.
+- **Gapless Music Queue & Live Dot-Matrix Spectrum**: Hardware-linked `MediaPlayer.setNextMediaPlayer(...)` zero-gap track transitions paired with `ReplayGainParser` (`REPLAYGAIN_TRACK_GAIN` / EBU `R128_TRACK_GAIN`) volume normalization and the live `DotMatrixSpectrumView` equalizer display inside the Now Playing bottom sheet.
+- **Hardware GL Visual Effects & Frame-Accurate Stepping**: GPU shader presets (`HDR`, `CLEAR`, `ULTRA CLEAR`, `ARCTIC BLUE`, `WARM GLOW`, `CINEMATIC`) via `androidx.media3:media3-effect`, paused frame-by-frame stepping (`±1F`), tap-to-jump `HH:MM:SS` seek dialog, `320x180` scrubbing thumbnails, and per-series remembered audio/subtitle/speed/intro preferences (`SeriesSettingsManager`).
+- **LRU HTTP Stream Cache, Interactive LAN Browser & Wi-Fi Cast (`MediaCacheHelper` & `NetworkCastHelper`)**: 200 MB `SimpleCache` on-disk VOD buffer for instant backward seeks, LibVLC `MediaBrowser` folder browsing (`smb://`, `ftp://`, `sftp://`, UPnP/DLNA) with full-folder queuing, and built-in Chromecast / Wi-Fi Renderer discovery via `RendererDiscoverer`.
+- **Portable JSON Backup & Vault Auto-Lock (`BackupManager` & `VaultManager`)**: Export/Import playback history, bookmarks, virtual playlists, equalizer curves, and series settings from Settings without touching Vault PIN hashes, alongside configurable background Vault Auto-Lock timers (`0s / 30s / 2m / Off`).
 - **Dual Simultaneous Bilingual Subtitles**: Displays two subtitle streams simultaneously (primary cue on bottom, secondary learning cue on top in `tv_secondary_subtitle`).
 - **Hearing-Impaired (SDH) Cleaner (`pref_sub_clean_sdh`)**: Strips descriptive audio tags (`[MUSIC]`, `(SIGHS)`, `[APPLAUSE]`, `#`, `♪`, speaker labels) via regex in `SubtitleParser`, rendering pristine dialogue text.
 - **Edge Palm Rejection Deadzone (`pref_palm_rejection_dp`)**: Configurable touch-deadzone (`Off (0dp)`, `16dp (Standard)`, `24dp (Curved Screen Guard)`) preventing accidental edge touches and palm-grip gesture interruptions on bezel-less screens.
@@ -285,17 +289,16 @@
 
 ## 🛠️ Tech Stack
 
-- **Android Native**: Java / Kotlin (Android SDK 34+ / Android 16 API 36)
-- **Typography & Aesthetics**: Nothing OS NDot / Silkscreen Dot-Matrix Font, Custom Canvas LED Renderers
-- **Persistent Cache**: Disk JSON serialization (`cached_videos.json`, `cached_audios.json`)
-- **Frontend / Hybrid**: React 19, TypeScript, Vite, Vanilla CSS Design System, Capacitor 8
+- **Android Native**: Pure Java Android App (Android SDK 34+ / Target Android 16 API 36) with multi-ABI release splits (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`, `universal`) and R8 minification/resource shrinking
+- **Typography & Aesthetics**: Nothing OS NDot / Silkscreen Dot-Matrix Font, Custom Canvas LED Renderers (`DotMatrixIconView`, `DotMatrixTextView`, `DotMatrixSeekBar`, `DotMatrixProgressBar`, `DotMatrixPatternView`, `DotMatrixSpectrumView`)
+- **Persistent Cache**: Disk JSON serialization (`cached_videos.json`, `cached_audios.json`) + 200 MB `SimpleCache` LRU HTTP stream cache (`MediaCacheHelper`)
 - **Video & Audio Engines**:
-  - `androidx.media3:media3-exoplayer:1.3.1` (with `ChannelMixingAudioProcessor`)
-  - `androidx.media3:media3-ui:1.3.1`
-  - `org.videolan.android:libvlc-all:3.5.1`
+  - `androidx.media3:media3-exoplayer:1.7.1` (+ `hls`, `dash`, `rtsp`, `smoothstreaming`, `effect`, `datasource`, `database`, `ChannelMixingAudioProcessor`)
+  - `org.jellyfin.media3:media3-ffmpeg-decoder:1.6.1+2` (native FFmpeg software audio decoder for AC-3, E-AC-3, DTS, TrueHD, MLP, ALAC, FLAC)
+  - `org.videolan.android:libvlc-all:3.7.8` (universal fallback decoder, `MediaBrowser` SMB/FTP/UPnP browsing, `RendererDiscoverer` Wi-Fi casting)
   - `androidx.biometric:biometric:1.1.0` (Fingerprint & Face Recognition)
 - **Background Media & DSP**:
-  - `androidx.media:media:1.7.0` (`MediaSessionCompat`, `NotificationCompat.MediaStyle`)
+  - `androidx.media:media:1.7.0` (`MediaSessionCompat`, `NotificationCompat.MediaStyle`, gapless `setNextMediaPlayer`)
   - Native `android.media.audiofx` (`Equalizer`, `BassBoost`, `Virtualizer`, `LoudnessEnhancer`, `DynamicsProcessing`)
 - **Image & Thumbnail Caching**: `com.github.bumptech.glide:glide:4.16.0`
 
@@ -308,11 +311,11 @@
 git clone https://github.com/m4mental/nothing-player.git
 cd nothing-player
 
-# 2. Build Native Android APK
+# 2. Run unit tests & build R8 Multi-Architecture Release APKs
 cd android
-./gradlew assembleDebug
+./gradlew testDebugUnitTest assembleRelease
 
-# 3. Install to Connected Nothing Phone (2a) via ADB
-adb install -r app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+# 3. Install to Connected Nothing Phone (2a) (arm64-v8a) via ADB
+adb install -r app/build/outputs/apk/release/NothingPlayer-arm64-v8a-release.apk
 ```
 ```

@@ -87,6 +87,26 @@ public class VaultActivity extends AppCompatActivity {
         checkLockState(true);
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (isUnlocked) {
+            VaultManager.recordBackgroundTimestamp(this);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (isUnlocked && VaultManager.isSessionExpired(this)) {
+            VaultManager.clearBackgroundTimestamp(this);
+            isUnlocked = false;
+            isDecoyMode = false;
+            checkLockState(true);
+            Toast.makeText(this, "VAULT AUTO-LOCKED", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void initViews() {
         btnBack = findViewById(R.id.btn_back_vault);
         tvHeaderTitle = findViewById(R.id.tv_vault_header_title);
@@ -525,6 +545,7 @@ public class VaultActivity extends AppCompatActivity {
     }
 
     private void unlockVault(boolean isDecoy) {
+        VaultManager.clearBackgroundTimestamp(this);
         isUnlocked = true;
         isSettingNewLock = false;
         isAuthorizedForSetup = false;

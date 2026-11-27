@@ -7,19 +7,57 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
 
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class SettingsFragment extends Fragment {
+
+    private ActivityResultLauncher<String> exportBackupLauncher;
+    private ActivityResultLauncher<String[]> importBackupLauncher;
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        exportBackupLauncher = registerForActivityResult(
+                new ActivityResultContracts.CreateDocument("application/json"),
+                uri -> {
+                    if (uri == null || getContext() == null) return;
+                    try {
+                        int count = BackupManager.exportToUri(getContext(), uri);
+                        Toast.makeText(getContext(), "BACKUP EXPORTED (" + count + " GROUPS)", Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        Toast.makeText(getContext(), "EXPORT FAILED: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
+        importBackupLauncher = registerForActivityResult(
+                new ActivityResultContracts.OpenDocument(),
+                uri -> {
+                    if (uri == null || getContext() == null) return;
+                    try {
+                        int keys = BackupManager.importFromUri(getContext(), uri);
+                        Toast.makeText(getContext(), "RESTORED " + keys + " SETTINGS & ITEMS", Toast.LENGTH_LONG).show();
+                    } catch (Exception e) {
+                        Toast.makeText(getContext(), "IMPORT FAILED: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
+    }
 
     @Nullable
     @Override
@@ -382,6 +420,44 @@ public class SettingsFragment extends Fragment {
         if (switchPixelShift != null) {
             switchPixelShift.setChecked(prefs.getBoolean("pref_amoled_pixel_shift", true));
             switchPixelShift.setOnCheckedChangeListener((btn, isChecked) -> prefs.edit().putBoolean("pref_amoled_pixel_shift", isChecked).apply());
+        }
+
+        // 32. Vault Auto-Lock Timeout
+        View cardVaultLock = view.findViewById(R.id.card_vault_autolock);
+        final TextView tvVaultLockVal = view.findViewById(R.id.tv_vault_autolock_val);
+        List<String> lockLabels = Arrays.asList("IMMEDIATE (0S)", "30 SECONDS", "2 MINUTES", "NEVER (OFF)");
+        int[] lockSecs = {0, 30, 120, -1};
+        int curSec = VaultManager.getAutoLockSeconds(getContext());
+        int initLockIdx = 1;
+        for (int i = 0; i < lockSecs.length; i++) {
+            if (lockSecs[i] == curSec) { initLockIdx = i; break; }
+        }
+        if (tvVaultLockVal != null) tvVaultLockVal.setText(lockLabels.get(initLockIdx));
+        if (cardVaultLock != null) {
+            cardVaultLock.setOnClickListener(v -> {
+                int nowSec = VaultManager.getAutoLockSeconds(getContext());
+                int sel = 1;
+                for (int i = 0; i < lockSecs.length; i++) {
+                    if (lockSecs[i] == nowSec) { sel = i; break; }
+                }
+                NothingDialogHelper.showSelectionDialog(requireActivity(), "VAULT AUTO-LOCK TIMEOUT", lockLabels, sel, (which, item) -> {
+                    VaultManager.setAutoLockSeconds(getContext(), lockSecs[which]);
+                    if (tvVaultLockVal != null) tvVaultLockVal.setText(item);
+                });
+            });
+        }
+
+        // 33. JSON Backup Export & Import
+        Button btnExport = view.findViewById(R.id.btn_export_backup_json);
+        if (btnExport != null) {
+            btnExport.setOnClickListener(v -> {
+                String stamp = new SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(new Date());
+                exportBackupLauncher.launch("NothingPlayer_Backup_" + stamp + ".json");
+            });
+        }
+        Button btnImport = view.findViewById(R.id.btn_import_backup_json);
+        if (btnImport != null) {
+            btnImport.setOnClickListener(v -> importBackupLauncher.launch(new String[]{"application/json", "*/*"}));
         }
 
         return view;

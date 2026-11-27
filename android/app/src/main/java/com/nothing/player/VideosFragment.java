@@ -1816,6 +1816,7 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
         EditText etUser = dialogView.findViewById(R.id.et_network_user);
         EditText etPass = dialogView.findViewById(R.id.et_network_pass);
         Button btnConnect = dialogView.findViewById(R.id.btn_connect_network_stream);
+        Button btnBrowseFolders = dialogView.findViewById(R.id.btn_browse_network_folders);
 
         final String[] protocols = {"SMB", "WEBDAV", "FTP", "HTTP"};
         final int[] protoIdx = {0};
@@ -1927,6 +1928,25 @@ public class VideosFragment extends Fragment implements VideoAdapter.OnItemClick
                 intent.putExtra("title", share.title);
                 intent.putExtra("video_title", share.title);
                 startActivity(intent);
+            });
+        }
+
+        if (btnBrowseFolders != null) {
+            btnBrowseFolders.setOnClickListener(v -> {
+                if (!isAdded()) return;
+                String host = etHost != null ? etHost.getText().toString().trim() : "";
+                String initialBrowseUrl = "";
+                if (!host.isEmpty()) {
+                    String proto = btnProtocol != null ? btnProtocol.getText().toString().trim() : protocols[protoIdx[0]];
+                    String path = etPath != null ? etPath.getText().toString().trim() : "";
+                    String user = etUser != null ? etUser.getText().toString().trim() : "";
+                    String pass = etPass != null ? etPass.getText().toString().trim() : "";
+                    NetworkBrowserHelper.NetworkShareItem share = new NetworkBrowserHelper.NetworkShareItem(
+                            proto + " " + host, proto, host, 0, user, pass, path);
+                    initialBrowseUrl = share.toStreamUrl();
+                }
+                dialog.dismiss();
+                NetworkCastHelper.showNetworkBrowserDialog(requireActivity(), initialBrowseUrl);
             });
         }
 

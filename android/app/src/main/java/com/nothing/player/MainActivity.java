@@ -74,6 +74,14 @@ public class MainActivity extends AppCompatActivity {
     };
 
     @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level >= TRIM_MEMORY_UI_HIDDEN || level >= TRIM_MEMORY_RUNNING_LOW) {
+            try { Glide.get(this).trimMemory(level); } catch (Exception ignored) {}
+        }
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -90,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
 
         pagerAdapter = new MainPagerAdapter(this);
         viewPager.setAdapter(pagerAdapter);
-        viewPager.setOffscreenPageLimit(2);
+        viewPager.setOffscreenPageLimit(1);
 
         final boolean[] isPageChanging = {false};
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
@@ -286,6 +294,11 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
             }
+
+            @Override
+            public void onGaplessTrackStarted(String nextPath, String nextUriStr) {
+                runOnUiThread(() -> syncGaplessAdvance(nextPath, nextUriStr));
+            }
         });
 
         MusicPlaybackService.setEventListener(new MusicPlaybackService.PlaybackEventListener() {
@@ -331,7 +344,60 @@ public class MainActivity extends AppCompatActivity {
 
         if (isBound && musicService != null) {
             musicService.playTrack(track.title, track.artist, track.contentUri, track.path);
+            preloadGaplessNextTrack();
         }
+    }
+
+    private void preloadGaplessNextTrack() {
+        if (!isBound || musicService == null || currentPlaylist == null || currentPlaylist.isEmpty()) return;
+        android.content.SharedPreferences prefs = getSharedPreferences("nothing_player_prefs", Context.MODE_PRIVATE);
+        if (prefs.getBoolean("music_shuffle", false)) return;
+        int repeatMode = prefs.getInt("music_repeat_mode", 1);
+        MediaItem nextTrack = null;
+        if (repeatMode == 2) {
+            nextTrack = currentPlayingTrack;
+        } else if (currentTrackIndex + 1 < currentPlaylist.size()) {
+            nextTrack = currentPlaylist.get(currentTrackIndex + 1);
+        } else if (repeatMode == 1) {
+            nextTrack = currentPlaylist.get(0);
+        }
+        if (nextTrack != null) {
+            musicService.preloadNextGaplessTrack(nextTrack.title, nextTrack.artist, nextTrack.contentUri, nextTrack.path);
+        }
+    }
+
+    private void syncGaplessAdvance(String startedPath, String startedUriStr) {
+        if (currentPlaylist == null || currentPlaylist.isEmpty()) return;
+        int repeatMode = getSharedPreferences("nothing_player_prefs", Context.MODE_PRIVATE)
+                .getInt("music_repeat_mode", 1);
+        if (repeatMode != 2) {
+            if (currentTrackIndex + 1 < currentPlaylist.size()) {
+                currentTrackIndex++;
+            } else if (repeatMode == 1) {
+                currentTrackIndex = 0;
+            }
+        }
+        MediaItem track = currentPlaylist.get(currentTrackIndex);
+        this.currentPlayingTrack = track;
+        this.isPlaying = true;
+        miniPlayerContainer.setVisibility(View.VISIBLE);
+        miniPlayerTitle.setText(track.title);
+        miniPlayerArtist.setText(track.artist != null ? track.artist : "Unknown Artist");
+        miniPlayerBtnPlay.setImageResource(R.drawable.ic_pause_dotmatrix);
+        if (!isFinishing() && !isDestroyed()) {
+            Glide.with(this)
+                    .load(track.path != null ? track.path : track.contentUri)
+                    .placeholder(R.drawable.ic_headphones)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .into(miniPlayerArt);
+        }
+        if (pagerAdapter.getMusicFragment() != null) {
+            pagerAdapter.getMusicFragment().notifyCurrentTrackChanged(track.id);
+        }
+        if (activeNowPlayingSheet != null) {
+            activeNowPlayingSheet.updateTrack(track, true);
+        }
+        preloadGaplessNextTrack();
     }
 
     public void togglePlayPause() {

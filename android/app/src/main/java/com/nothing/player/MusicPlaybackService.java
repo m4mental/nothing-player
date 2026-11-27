@@ -58,6 +58,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
     public static MusicPlaybackService instance;
 
     private MediaPlayer mediaPlayer;
+    private MediaPlayer nextMediaPlayer;
     private MediaSessionCompat mediaSession;
     private NotificationManager notificationManager;
     private AudioManager audioManager;
@@ -68,6 +69,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
     private boolean isScreenStateReceiverRegistered = false;
     private boolean isScreenOff = false;
     private boolean isPreparing = false;
+    private boolean isNextPrepared = false;
     private boolean pauseRequestedWhilePreparing = false;
     private boolean pausedByTransientFocusLoss = false;
     private final Handler crossfadeHandler = new Handler(Looper.getMainLooper());
@@ -76,6 +78,12 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
     private String currentArtist = "Unknown Artist";
     private String currentUriStr = "";
     private String currentPath = "";
+    private String nextTitle = "";
+    private String nextArtist = "";
+    private String nextUriStr = "";
+    private String nextPath = "";
+    private float currentReplayGainScalar = 1.0f;
+    private float nextReplayGainScalar = 1.0f;
     private Bitmap currentAlbumArt = null;
     private final ExecutorService artExecutor = Executors.newSingleThreadExecutor();
     private boolean isPlaying = false;
@@ -83,6 +91,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
     public interface PlaybackCallback {
         void onStateChanged(boolean playing);
         void onTrackEnded();
+        default void onGaplessTrackStarted(String nextPath, String nextUriStr) {}
         default void onNextRequested() {}
         default void onPrevRequested() {}
     }
@@ -148,22 +157,71 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         initAudioSystem();
     }
 
+    private MediaPlayer createConfiguredMediaPlayer() {
+        MediaPlayer mp = new MediaPlayer();
+        mp.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
+        SharedPreferences prefs = getSharedPreferences("nothing_player_prefs", Context.MODE_PRIVATE);
+        boolean dacPassthrough = prefs.getBoolean("pref_dac_passthrough", false);
+        AudioAttributes.Builder attrs = new AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .setUsage(AudioAttributes.USAGE_MEDIA);
+        if (dacPassthrough && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            attrs.setAllowedCapturePolicy(AudioAttributes.ALLOW_CAPTURE_BY_ALL);
+        }
+        mp.setAudioAttributes(attrs.build());
+        mp.setOnCompletionListener(this);
+        mp.setOnErrorListener(this);
+        return mp;
+    }
+
     private void initMediaPlayer() {
         if (mediaPlayer == null) {
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
-            SharedPreferences prefs = getSharedPreferences("nothing_player_prefs", Context.MODE_PRIVATE);
-            boolean dacPassthrough = prefs.getBoolean("pref_dac_passthrough", false);
-            AudioAttributes.Builder attrs = new AudioAttributes.Builder()
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .setUsage(AudioAttributes.USAGE_MEDIA);
-            if (dacPassthrough && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                attrs.setAllowedCapturePolicy(AudioAttributes.ALLOW_CAPTURE_BY_ALL);
-            }
-            mediaPlayer.setAudioAttributes(attrs.build());
-            mediaPlayer.setOnCompletionListener(this);
-            mediaPlayer.setOnErrorListener(this);
+            mediaPlayer = createConfiguredMediaPlayer();
         }
+    }
+
+    private void releaseNextMediaPlayer() {
+        isNextPrepared = false;
+        nextTitle = "";
+        nextArtist = "";
+        nextUriStr = "";
+        nextPath = "";
+        nextReplayGainScalar = 1.0f;
+        if (mediaPlayer != null) {
+            try {
+                mediaPlayer.setNextMediaPlayer(null);
+            } catch (Exception ignored) {}
+        }
+        if (nextMediaPlayer != null) {
+            try {
+                nextMediaPlayer.release();
+            } catch (Exception ignored) {}
+            nextMediaPlayer = null;
+        }
+    }
+
+    private Uri resolveAudioUri(String uriStr, String path) {
+        if (uriStr != null && !uriStr.isEmpty()) {
+            return Uri.parse(uriStr);
+        }
+        if (path != null && !path.isEmpty()) {
+            if (path.startsWith("content://")) {
+                return Uri.parse(path);
+            }
+            File f = new File(path);
+            if (f.exists()) {
+                return Uri.fromFile(f);
+            }
+            return Uri.parse(path);
+        }
+        return null;
+    }
+
+    private float readReplayGainScalar(String path) {
+        SharedPreferences p = getSharedPreferences("nothing_player_prefs", Context.MODE_PRIVATE);
+        if (!p.getBoolean("pref_replay_gain_leveler", true)) return 1.0f;
+        Float db = ReplayGainParser.parseGainDbFromFile(path);
+        return db != null ? ReplayGainParser.dbToLinearAttenuation(db) : 1.0f;
     }
 
     private void initMediaSession() {
@@ -363,32 +421,32 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
             this.currentArtist = (artist != null && !artist.isEmpty()) ? artist : "Nothing Player";
             this.currentUriStr = uriStr;
             this.currentPath = path;
+            this.currentReplayGainScalar = 1.0f;
 
             crossfadeHandler.removeCallbacksAndMessages(null);
+            releaseNextMediaPlayer();
             pauseRequestedWhilePreparing = false;
             pausedByTransientFocusLoss = false;
             initMediaPlayer();
             mediaPlayer.reset();
 
-            Uri uri = null;
-            if (uriStr != null && !uriStr.isEmpty()) {
-                uri = Uri.parse(uriStr);
-            } else if (path != null && !path.isEmpty()) {
-                if (path.startsWith("content://")) {
-                    uri = Uri.parse(path);
-                } else {
-                    File f = new File(path);
-                    if (f.exists()) {
-                        uri = Uri.fromFile(f);
-                    } else {
-                        uri = Uri.parse(path);
-                    }
-                }
-            }
+            Uri uri = resolveAudioUri(uriStr, path);
 
             if (uri != null) {
                 clearAlbumArt();
                 loadAlbumArtAsync(uri, uriStr, path);
+                if (path != null && !artExecutor.isShutdown()) {
+                    final String pSnap = path;
+                    artExecutor.execute(() -> {
+                        float scalar = readReplayGainScalar(pSnap);
+                        crossfadeHandler.post(() -> {
+                            if (pSnap.equals(currentPath) && mediaPlayer != null && !isPreparing) {
+                                currentReplayGainScalar = scalar;
+                                applyEffectiveVolume();
+                            }
+                        });
+                    });
+                }
                 mediaPlayer.setDataSource(getApplicationContext(), uri);
                 isPreparing = true;
                 isPlaying = false;
@@ -437,6 +495,59 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         }
     }
 
+    /**
+     * Preloads and links the next track natively via MediaPlayer.setNextMediaPlayer
+     * for true zero-gap transition between queued songs.
+     */
+    public void preloadNextGaplessTrack(String title, String artist, String uriStr, String path) {
+        releaseNextMediaPlayer();
+        Uri uri = resolveAudioUri(uriStr, path);
+        if (uri == null || mediaPlayer == null) return;
+        try {
+            this.nextTitle = (title != null && !title.isEmpty()) ? title : "Nothing Track";
+            this.nextArtist = (artist != null && !artist.isEmpty()) ? artist : "Nothing Player";
+            this.nextUriStr = uriStr != null ? uriStr : "";
+            this.nextPath = path != null ? path : "";
+            this.nextReplayGainScalar = 1.0f;
+
+            if (path != null && !artExecutor.isShutdown()) {
+                final String nextSnap = path;
+                artExecutor.execute(() -> {
+                    float scalar = readReplayGainScalar(nextSnap);
+                    if (nextSnap.equals(nextPath)) {
+                        nextReplayGainScalar = scalar;
+                    }
+                });
+            }
+
+            final MediaPlayer np = createConfiguredMediaPlayer();
+            nextMediaPlayer = np;
+            np.setDataSource(getApplicationContext(), uri);
+            np.setOnPreparedListener(mp -> {
+                if (mp != nextMediaPlayer || mediaPlayer == null || isPreparing) {
+                    return;
+                }
+                try {
+                    mp.setVolume(nextReplayGainScalar, nextReplayGainScalar);
+                    mediaPlayer.setNextMediaPlayer(mp);
+                    isNextPrepared = true;
+                } catch (Exception e) {
+                    isNextPrepared = false;
+                }
+            });
+            np.prepareAsync();
+        } catch (Exception ignored) {
+            releaseNextMediaPlayer();
+        }
+    }
+
+    private void applyEffectiveVolume() {
+        if (mediaPlayer == null) return;
+        try {
+            mediaPlayer.setVolume(currentReplayGainScalar, currentReplayGainScalar);
+        } catch (Exception ignored) {}
+    }
+
     private void applyCrossfadeStart() {
         if (mediaPlayer == null) return;
         crossfadeHandler.removeCallbacksAndMessages(null);
@@ -447,7 +558,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         else if (crossfadePref.contains("4")) sec = 4;
         else if (crossfadePref.contains("6")) sec = 6;
         if (sec <= 0) {
-            mediaPlayer.setVolume(1.0f, 1.0f);
+            applyEffectiveVolume();
             return;
         }
         final int durationSec = sec;
@@ -455,7 +566,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         final long interval = (durationSec * 1000L) / steps;
         mediaPlayer.setVolume(0.0f, 0.0f);
         for (int i = 1; i <= steps; i++) {
-            final float vol = i / (float) steps;
+            final float vol = (i / (float) steps) * currentReplayGainScalar;
             crossfadeHandler.postDelayed(() -> {
                 try {
                     if (mediaPlayer != null && isPlaying) {
@@ -498,7 +609,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         if (isPreparing) return;
         if (!requestAudioFocus()) return;
         registerNoisyReceiver();
-        mediaPlayer.setVolume(1.0f, 1.0f);
+        applyEffectiveVolume();
         mediaPlayer.start();
         this.isPlaying = true;
         updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING);
@@ -533,6 +644,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
         pausedByTransientFocusLoss = false;
         abandonAudioFocus();
         unregisterNoisyReceiver();
+        releaseNextMediaPlayer();
         if (mediaPlayer != null) {
             try {
                 mediaPlayer.stop();
@@ -643,7 +755,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
                     pausedByTransientFocusLoss = false;
                     resume();
                 } else if (mediaPlayer != null) {
-                    try { mediaPlayer.setVolume(1.0f, 1.0f); } catch (Exception ignored) {}
+                    applyEffectiveVolume();
                 }
                 break;
         }
@@ -861,6 +973,41 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
     @Override
     public void onCompletion(MediaPlayer mp) {
         crossfadeHandler.removeCallbacksAndMessages(null);
+        if (nextMediaPlayer != null && isNextPrepared && mp == mediaPlayer) {
+            MediaPlayer finished = mediaPlayer;
+            mediaPlayer = nextMediaPlayer;
+            nextMediaPlayer = null;
+            isNextPrepared = false;
+            try { finished.release(); } catch (Exception ignored) {}
+
+            currentTitle = nextTitle;
+            currentArtist = nextArtist;
+            currentUriStr = nextUriStr;
+            currentPath = nextPath;
+            currentReplayGainScalar = nextReplayGainScalar;
+            nextTitle = "";
+            nextArtist = "";
+            nextUriStr = "";
+            nextPath = "";
+            nextReplayGainScalar = 1.0f;
+            this.isPlaying = true;
+            this.isPreparing = false;
+
+            applyEffectiveVolume();
+            AudioEffectManager.getInstance().attachAudioSession(mediaPlayer.getAudioSessionId(), MusicPlaybackService.this);
+            Uri uri = resolveAudioUri(currentUriStr, currentPath);
+            if (uri != null) {
+                clearAlbumArt();
+                loadAlbumArtAsync(uri, currentUriStr, currentPath);
+            }
+            updateMediaSessionMetadata();
+            updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING);
+            updateNotification();
+            if (callback != null) {
+                callback.onGaplessTrackStarted(currentPath, currentUriStr);
+            }
+            return;
+        }
         this.isPlaying = false;
         updateMediaSessionPlaybackState(PlaybackStateCompat.STATE_PAUSED);
         updateNotification();
@@ -874,6 +1021,10 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
 
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
+        if (mp == nextMediaPlayer) {
+            releaseNextMediaPlayer();
+            return true;
+        }
         crossfadeHandler.removeCallbacksAndMessages(null);
         isPreparing = false;
         pauseRequestedWhilePreparing = false;
@@ -892,6 +1043,7 @@ public class MusicPlaybackService extends Service implements MediaPlayer.OnCompl
     @Override
     public void onDestroy() {
         crossfadeHandler.removeCallbacksAndMessages(null);
+        releaseNextMediaPlayer();
         abandonAudioFocus();
         unregisterNoisyReceiver();
         if (isScreenStateReceiverRegistered && screenStateReceiver != null) {
